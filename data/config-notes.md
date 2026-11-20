@@ -189,6 +189,8 @@ The levels, one object a line, in play order (was `window.LEVELS` in the one-sho
 - `eiffel_height`, `eiffel_crush_width`, `eiffel_crush_damage`, `eiffel_value`: the Eiffel Tower, France's
   crane (the first crane of each level in France): px tall (the length it falls across), px it
   crushes each side, € to each vehicle under it, € it is worth.
+- `bigben_height`, `bigben_crush_width`, `bigben_crush_damage`, `bigben_value`: Big Ben, the United Kingdom's
+  crane, the same way.
 
 Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_cost`.
 

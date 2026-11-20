@@ -411,12 +411,13 @@ function reset() {
       st.blocks.splice(st.blocks.indexOf(S), 1);
       const dir = S.y > 0 ? -1 : 1, edge = S.y > 0 ? S.y - S.hw : S.y + S.hw; // it leans over the road
       // in France the first one is the Eiffel Tower: it falls the same way, longer and wider
-      const eiffel = country === 'fr' && i === 0;
-      const c: Loose = { x: S.x, y: edge - dir * (eiffel ? 40 : 26), dir, theta: 0, w: 0, falling: false, fallen: false, eiffel,
-        len: eiffel ? tune.eiffel_height : tune.crane_height + tune.crane_jib * 0.2, crushW: eiffel ? tune.eiffel_crush_width : tune.crane_crush_width,
-        crushDmg: eiffel ? tune.eiffel_crush_damage : tune.crane_crush_damage, value: eiffel ? tune.eiffel_value : tune.crane_value };
+      // the first one is the country's monument (MONUMENTS): it falls the same way, longer and wider
+      const m = i === 0 ? MONUMENTS[country] : '';
+      const c: Loose = { x: S.x, y: edge - dir * (m ? 40 : 26), dir, theta: 0, w: 0, falling: false, fallen: false, monument: m, eiffel: m === 'eiffel',
+        len: m ? tune[m + '_height'] : tune.crane_height + tune.crane_jib * 0.2, crushW: m ? tune[m + '_crush_width'] : tune.crane_crush_width,
+        crushDmg: m ? tune[m + '_crush_damage'] : tune.crane_crush_damage, value: m ? tune[m + '_value'] : tune.crane_value };
       st.cranes.push(c); st.lots.push([S.x - S.hl, S.y - S.hw, S.hl * 2, S.hw * 2]);
-      const foot = eiffel ? 30 : 10, tall = eiffel ? tune.eiffel_height : tune.crane_height;
+      const foot = m ? 30 : 10, tall = m ? tune[m + '_height'] : tune.crane_height;
       st.props.push({ static: true, kind: 'crane', ref: c, x: c.x, y: c.y, a: 0, hl: foot, hw: foot, h: tall, height: tall, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 });
     }
     if (lv.shops) for (const S of front) {
@@ -1417,10 +1418,10 @@ function craneLand(c: Loose) {
     b.inv = true; loosen(b); hurt(b, c.crushDmg, b.x, b.y);
   }
   for (const S of st.shops) if (Math.abs(S.x - x0) < S.hl + 10 && Math.min(y0, y1) < S.y + S.hw && Math.max(y0, y1) > S.y - S.hw) shopHurt(S, tune.crane_shop_damage);
-  st.damage += c.value; st.floats.push({ x: x0, y: (y0 + y1) / 2, txt: (c.eiffel ? 'LA TOUR EIFFEL ! +' : 'LA GRUE ! +') + fmt(c.value) + ' €', t: 0, color: '#ffc83d', big: true });
+  st.damage += c.value; st.floats.push({ x: x0, y: (y0 + y1) / 2, txt: (c.monument ? MONUMENT_NAME[c.monument] : 'LA GRUE') + ' ! +' + fmt(c.value) + ' €', t: 0, color: '#ffc83d', big: true });
   for (let i = 0; i < 40; i++) { const yy = y0 + (y1 - y0) * vr(), an = vr() * Math.PI * 2, sp = 60 + vr() * 200; addPart(i % 2 ? 'spark' : 'smoke', x0 + (vr() - 0.5) * 20, yy, 10, Math.cos(an) * sp, Math.sin(an) * sp, 40 + vr() * 120, 0.4 + vr() * 0.6); }
   st.shake = 26; crunch(1, true);
-  const wall: Loose = { static: true, kind: 'crane_down', ref: c, x: x0, y: (y0 + y1) / 2, a: 0, hl: c.eiffel ? 16 : 8, hw: Math.abs(y1 - y0) / 2, h: 14, height: 14, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
+  const wall: Loose = { static: true, kind: 'crane_down', ref: c, x: x0, y: (y0 + y1) / 2, a: 0, hl: c.monument ? 16 : 8, hw: Math.abs(y1 - y0) / 2, h: 14, height: 14, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
   st.props.push(wall); if (st.statics) st.statics.push(wall);
 }
 // a line of girder between two 3D points, drawn as a flat band facing the screen
@@ -1448,6 +1449,34 @@ function drawCrane(c: Loose) {
     prism([[tip[0] - 5, tip[1] - 5], [tip[0] + 5, tip[1] - 5], [tip[0] + 5, tip[1] + 5], [tip[0] - 5, tip[1] + 5]], 30, 40, '#e03131', '#a61e1e');
   }
   beam(base, [c.x, c.y, 3], 26, '#495057');
+}
+// each country's monument, in place of the first crane of a level, and what the screen says when it falls
+const MONUMENTS: Loose = { fr: 'eiffel', uk: 'bigben' };
+const MONUMENT_NAME: Loose = { eiffel: 'LA TOUR EIFFEL', bigben: 'BIG BEN' };
+// Big Ben (the United Kingdom's crane): a square stone tower, the clock faces, the belfry and the
+// spire. It stands and falls like a crane: c.theta tips it over the road.
+function drawBigBen(c: Loose) {
+  const Hm = tune.bigben_height, th = c.theta, cs = Math.cos(th), sn = Math.sin(th);
+  const at = (h: number, ox: number) => [c.x + ox, c.y + c.dir * h * sn, Math.max(0, h * cs)];
+  const stone = '#d6bd84', dark = '#a88a52', roof = '#5f7a74', gold = '#e0b13a', W2 = 26;
+  const shaft = (h0: number, h1: number, w: number, col: string) => { const n = Math.max(1, Math.round((h1 - h0) / 12)); for (let i = 0; i < n; i++) beam(at(h0 + (h1 - h0) * i / n, 0), at(h0 + (h1 - h0) * (i + 1) / n, 0), w, col); };
+  shaft(0, Hm * 0.62, W2 * 2, stone); // the tower
+  for (const side of [-1, 1]) beam(at(0, side * (W2 - 3)), at(Hm * 0.62, side * (W2 - 3)), 4, dark); // its corners
+  for (let k = 1; k < 6; k++) beam(at(Hm * 0.62 * k / 6, -W2), at(Hm * 0.62 * k / 6, W2), 2, dark); // the floors' bands
+  shaft(Hm * 0.62, Hm * 0.74, W2 * 2.3, stone); // the clock stage, a little wider
+  // the clock face: a white disc with its two hands, facing the screen while it stands
+  const cc = P(...(at(Hm * 0.68, 0) as [number, number, number])), r = 17 * cam.zoom * Math.max(0.35, cs);
+  ctx.fillStyle = '#f8f4e6'; ctx.beginPath(); ctx.ellipse(cc[0], cc[1], r, r * Math.max(0.35, cs), 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = gold; ctx.lineWidth = 2.5 * cam.zoom; ctx.stroke();
+  ctx.strokeStyle = '#1d1a26'; ctx.lineWidth = 2 * cam.zoom; ctx.beginPath();
+  ctx.moveTo(cc[0], cc[1]); ctx.lineTo(cc[0] + r * 0.55, cc[1] - r * 0.2 * cs); ctx.moveTo(cc[0], cc[1]); ctx.lineTo(cc[0] - r * 0.1, cc[1] - r * 0.8 * cs); ctx.stroke();
+  shaft(Hm * 0.74, Hm * 0.8, W2 * 1.8, dark); // the belfry
+  for (const ox of [-W2 * 0.5, 0, W2 * 0.5]) beam(at(Hm * 0.745, ox), at(Hm * 0.795, ox), 5, '#3b3326'); // its arches
+  // the spire: a tall pointed roof, a gold finial on top
+  const b0 = P(...(at(Hm * 0.8, -W2 * 0.9) as [number, number, number])), b1 = P(...(at(Hm * 0.8, W2 * 0.9) as [number, number, number])), tip = P(...(at(Hm * 0.97, 0) as [number, number, number]));
+  poly([b0, b1, tip], roof);
+  beam(at(Hm * 0.97, 0), at(Hm, 0), 3, gold);
+  if (!c.fallen) beam([c.x - 36, c.y, 0], [c.x + 36, c.y, 0], 18, '#6c6253'); // the base
 }
 // the Eiffel Tower (France's crane): four bronze legs tapering to a spire, two platforms, the
 // arches at its feet. It stands and falls like a crane: c.theta tips it over the road.
@@ -2074,7 +2103,7 @@ function drawRamp() {
 }
 function drawBarrier(S: Loose) {
   if (S.kind === 'bound' || S.kind === 'tunnel') return; // invisible walls (the tunnels are drawn over the city)
-  if (S.ref && S.ref.eiffel) return; // the Eiffel Tower's collider, standing or fallen: the tower draws itself
+  if (S.ref && S.ref.monument) return; // a monument's collider, standing or fallen: the monument draws itself
   if (S.kind === 'median') { // a long concrete barrier with reflectors
     prism([[S.x - S.hl, S.y - S.hw], [S.x + S.hl, S.y - S.hw], [S.x + S.hl, S.y + S.hw], [S.x - S.hl, S.y + S.hw]], 0, S.h, '#ced4da', '#adb5bd');
     const x0 = Math.floor((camDraw.x - W / cam.zoom) / 80) * 80;
@@ -2172,7 +2201,7 @@ function drawWorld() {
   const d = (S: Loose) => { const p = P(S.x, S.y, 0); return (p[0] - VP[0]) ** 2 + (p[1] - VP[1]) ** 2; };
   blocks.sort((a: Loose, b: Loose) => d(b) - d(a));
   for (const S of blocks) drawBuilding(S);
-  for (const c of st.cranes) c.eiffel ? drawEiffel(c) : drawCrane(c);
+  for (const c of st.cranes) c.monument === 'eiffel' ? drawEiffel(c) : c.monument === 'bigben' ? drawBigBen(c) : drawCrane(c);
   drawTunnels();
   for (const b of air) { drawShadow(b); }
   air.sort((a: Loose, b: Loose) => a.z - b.z);

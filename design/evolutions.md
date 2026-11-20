@@ -64,6 +64,74 @@ En complément :
 - **Niveaux** : le périphérique, les Champs-Élysées, la Côte d'Azur, la montagne enneigée (le verglas
   existe), la Bretagne sous la pluie, le 14 Juillet de nuit avec feux d'artifice.
 
+### Les pays suivants
+
+Objectif : **au moins 5 pays** pour commencer, sur plusieurs continents (Europe, Asie, Amérique ;
+Océanie et Afrique plus tard). Retenus avec la France : **Royaume-Uni, Japon, États-Unis, Brésil**,
+et **l'Italie** pour la vague suivante.
+
+Ordre conseillé après la France : **États-Unis et Japon** (plus gros marchés du Play Store, et leurs
+mécaniques changent beaucoup le jeu), puis Royaume-Uni et Brésil, puis l'Italie.
+
+Chaque fiche suit le modèle de la France, avec cinq ingrédients : circulation, monument (à la place
+d'une grue), gadget signature (à la place du T-Rex), **une mécanique propre au pays**, et événements
+ou météo. Garde-fous en plus de la règle de classification : pas de lieu religieux ni de mémorial,
+pas d'image sensible (par exemple pas de gratte-ciel qui s'effondre à New York), et aucune marque,
+licence ou personnage protégé.
+
+#### Royaume-Uni (Europe)
+
+- **Mécanique : la conduite à gauche.** Tout est inversé, réflexes du joueur compris.
+- Circulation : bus à impériale rouges, taxis noirs, mini-citadines.
+- Monument : la tour de Big Ben.
+- Gadget signature : **le monstre du loch**, qui surgit du fleuve et balaie le boulevard (une créature
+  légendaire qui frappe, comme le T-Rex ; le joueur ne percute pas d'animal).
+- Événements : le brouillard de Londres (existe déjà), l'heure du thé (toute la circulation s'arrête
+  net, puis repart en même temps).
+- Boutiques : cabines téléphoniques rouges, pub, salon de thé.
+
+#### Japon (Asie)
+
+- **Mécanique : l'échangeur sur plusieurs étages** : des voies qui se croisent en hauteur, des
+  véhicules qui tombent d'un niveau à l'autre.
+- Circulation : mini-camions kei, taxis à portes automatiques, voitures cubiques, motos de livraison.
+- Monument : la tour de Tokyo, rouge et blanche (écho à la tour Eiffel).
+- Gadget signature : **un monstre géant (kaiju)** qui sort de la baie, traverse le carrefour comme le
+  T-Rex et **crache un rayon** qui balaie le boulevard. Pour rester dans le genre sans toucher au
+  personnage protégé de Toho (pas de royalties) :
+  - un nom original, **jamais en « -zilla »** ;
+  - une silhouette à nous, différente du T-Rex et de Godzilla (crête, queue en massue, couleurs vives) ;
+  - un rayon qui s'éloigne de l'original : **pas bleu**, pas de plaques dorsales qui s'illuminent
+    (par exemple vert acide ou violet, boule d'énergie ou souffle en spirale).
+- Événements : le typhon (vent et pluie), le festival des lanternes de nuit.
+
+#### États-Unis (Amérique)
+
+- **Mécanique : les très larges boulevards** à 8 voies et beaucoup de véhicules lourds : le pays des
+  records de dégâts.
+- Circulation : taxis jaunes, bus scolaires, gros pick-ups, semi-remorques à long nez, camions de glaces.
+- Monument : **les lettres géantes sur la colline** d'Hollywood, qui dévalent une par une.
+- Gadget signature : **la tornade**, qui aspire et projette les voitures.
+- Véhicule joueur : le monster truck.
+- Événements : la course-poursuite (existe déjà), le défilé de chars.
+
+#### Brésil (Amérique)
+
+- **Mécanique : les rues en pente** de Rio : les épaves dévalent la colline, le carambolage continue
+  tout seul en bas.
+- Circulation : minibus colorés, motos-taxis, petites voitures.
+- Monument : **le téléphérique du Pain de Sucre**, dont la cabine se décroche et roule (pas le Christ
+  Rédempteur, lieu religieux).
+- Gadget signature : **un char de carnaval géant** qui déboule (le char seul, sans danseurs).
+- Événements : la pluie tropicale, le défilé de chars.
+
+#### Italie (Europe, vague suivante)
+
+- **Mécanique : les ruelles étroites.**
+- Circulation : scooters, petites citadines rondes.
+- Monument : **la tour de Pise, qui finit enfin par tomber.**
+- Gadget signature : **le volcan**, qui projette des blocs de lave sur le boulevard.
+
 ## Le mode Expert (nom à trouver)
 
 Deux modes : **Arcade** (le jeu actuel) et **Expert**. En Expert, déclencher un gadget lance un

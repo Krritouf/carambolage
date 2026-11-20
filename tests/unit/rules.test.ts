@@ -1,10 +1,9 @@
 // Vitest: the scoring rules in src/game/, run in Node with no browser.
 import { describe, expect, it } from 'vitest';
 import config from '../../data/config.json';
-import { finalScore, fmt, impactDamage, priceFor, starCount } from '../../src/game/rules';
+import { finalScore, fmt, impactDamage, levelTargets, priceFor, starsAt } from '../../src/game/rules';
 import { rng, setSeed } from '../../src/game/random';
 
-const star2 = config.star2.value, star3 = config.star3.value, objective = config.threshold_1.value;
 
 describe('rng', () => {
   it('repeats the same numbers for the same seed', () => {
@@ -14,15 +13,28 @@ describe('rng', () => {
   });
 });
 
-describe('starCount', () => {
+describe('starsAt', () => {
+  const targets = [1000, 2500, 4000]; // [1, 2, 3 stars]
   it('gives no star below the objective and one at it', () => {
-    expect(starCount(objective - 1, objective, star2, star3)).toBe(0);
-    expect(starCount(objective, objective, star2, star3)).toBe(1);
+    expect(starsAt(999, targets)).toBe(0);
+    expect(starsAt(1000, targets)).toBe(1);
   });
-  it('gives two stars at star2 x the objective and three at star3 x', () => {
-    expect(starCount(objective * star2 - 1, objective, star2, star3)).toBe(1);
-    expect(starCount(objective * star2, objective, star2, star3)).toBe(2);
-    expect(starCount(objective * star3, objective, star2, star3)).toBe(3);
+  it('gives two stars at the second target and three at the third', () => {
+    expect(starsAt(2499, targets)).toBe(1);
+    expect(starsAt(2500, targets)).toBe(2);
+    expect(starsAt(3999, targets)).toBe(2);
+    expect(starsAt(4000, targets)).toBe(3);
+  });
+});
+
+describe('levelTargets', () => {
+  it("uses a level's own 2- and 3-star scores when the config has them", () => {
+    const tune = { threshold_3: 1000, star2_3: 1800, star3_3: 5000, star2: 2, star3: 3.2 };
+    expect(levelTargets(3, tune)).toEqual([1000, 1800, 5000]);
+  });
+  it('falls back to the objective times the shared ratios', () => {
+    const tune = { threshold_3: 1000, star2: 2, star3: 3.2 };
+    expect(levelTargets(3, tune)).toEqual([1000, 2000, 3200]);
   });
 });
 

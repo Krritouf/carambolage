@@ -15,9 +15,19 @@ export function finalScore(damage: number, bonus: number, mult: number, insuranc
   return Math.round((damage + bonus) * mult * insurance);
 }
 
-/** Stars for a score: 1 at the objective, 2 at star2 x objective, 3 at star3 x objective. */
-export function starCount(score: number, objective: number, star2: number, star3: number): number {
-  return score >= objective * star3 ? 3 : score >= objective * star2 ? 2 : score >= objective ? 1 : 0;
+/**
+ * A level's three targets in euros: [1 star, 2 stars, 3 stars]. threshold_N is the objective;
+ * star2_N and star3_N, when the config has them, are that level's own 2- and 3-star scores,
+ * else the objective times the shared star2 / star3 ratios.
+ */
+export function levelTargets(level: number, tune: Record<string, number>): [number, number, number] {
+  const t1 = tune['threshold_' + level];
+  return [t1, tune['star2_' + level] ?? t1 * tune.star2, tune['star3_' + level] ?? t1 * tune.star3];
+}
+
+/** Stars for a score against a level's three targets. */
+export function starsAt(score: number, targets: readonly number[]): number {
+  return score >= targets[2] ? 3 : score >= targets[1] ? 2 : score >= targets[0] ? 1 : 0;
 }
 
 /** A garage price for the vehicle at the wheel: the base price x the vehicle's factor, to the nearest 500. */

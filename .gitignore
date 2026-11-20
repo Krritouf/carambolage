@@ -6,3 +6,7 @@ dist-single/
 test-results/
 playwright-report/
 prototype/dist/
+
+# The autopilot's measurements (tools/balance): made again by a run
+tools/balance/results/
+tools/balance/old/

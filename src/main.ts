@@ -7,7 +7,7 @@
 import { CONFIG, LEVELS, tune } from './config';
 import { crunch, engineSound, isMuted, setMuted, startAudio, tone } from './audio';
 import { rng, setSeed, vr } from './game/random';
-import { finalScore, fmt, impactDamage, priceFor, starCount } from './game/rules';
+import { finalScore, fmt, impactDamage, levelTargets, priceFor, starsAt } from './game/rules';
 import type { Loose } from './game/types';
 import { clock, install, manual, params, seedFrom } from './hook';
 import { defaultLang, setLang, tr } from './i18n';
@@ -213,7 +213,9 @@ function dailyLevel() {
 const curLevel = () => daily ? dailyLevel() : LEVELS[levelIdx];
 const TH = () => daily ? dailyLevel().threshold : tune['threshold_' + (levelIdx + 1)];
 const bestNow = () => daily ? (dailyRec.date === today() ? dailyRec.score : 0) : best[levelIdx];
-const starsFor = (score: number, th: number) => starCount(score, th, tune.star2, tune.star3);
+// the run's three targets [1, 2, 3 stars]: the level's own (levelTargets), or the daily's objective times the shared ratios
+const targetsNow = (): number[] => daily ? [TH(), TH() * tune.star2, TH() * tune.star3] : levelTargets(levelIdx + 1, tune);
+const levelStars = (i: number) => starsAt(best[i], levelTargets(i + 1, tune)); // the stars a level's best has won
 const SINGULAR: Loose = { car: 'voiture', taxi: 'taxi', moto: 'moto', bus: 'bus', truck: 'camion', tanker: 'citerne', police: 'voiture de police', ambulance: 'ambulance', fire: 'camion de pompiers' };
 const PLURAL: Loose = { car: 'voitures', taxi: 'taxis', moto: 'motos', bus: 'bus', truck: 'camions', tanker: 'citernes', police: 'voitures de police', ambulance: 'ambulances', fire: 'camions de pompiers' };
 function chalLabel(c: Loose) {
@@ -1222,7 +1224,7 @@ function endRun() {
   st.final = finalScore(st.damage, st.bonus, st.mult, st.insK);
   st.score = st.final;
   st.passed = st.final >= th;
-  st.stars = starsFor(st.final, th);
+  st.stars = starsAt(st.final, targetsNow());
   st.newBest = st.final > bestNow();
   st.chal = [];
   if (daily) {
@@ -1906,7 +1908,7 @@ const TABS: Loose = [
   { name: 'VÉHICULES', cars: true },
 ];
 const carStars = (id: Loose) => id === 'sport' ? 0 : tune['my_stars_' + id]; // stars it takes to unlock a vehicle
-const totalStars = () => LEVELS.reduce((a: Loose, lv: Loose, i: Loose) => a + starsFor(best[i], tune['threshold_' + (i + 1)]), 0);
+const totalStars = () => LEVELS.reduce((a: Loose, lv: Loose, i: Loose) => a + levelStars(i), 0);
 const priceK = () => tune['my_price_' + up.car] || 1; // a better vehicle pays more for each item
 const priceOf = (g: Loose, lv: number) => priceFor(g.cost(lv), priceK());
 function carDesc(id: Loose) {
@@ -1980,7 +1982,7 @@ function padlock(x: Loose, y: Loose, k: Loose, c: Loose) {
 }
 function drawWheelCard(i: Loose, k: Loose) {
   const r = wheelRect(k), lv = LEVELS[i], ok = i < unlocked, sel = Math.abs(k) < 0.5 && !daily, sc = r.sc, mx = r.x + r.w / 2;
-  const nst = starsFor(best[i], tune['threshold_' + (i + 1)]);
+  const nst = levelStars(i);
   ctx.globalAlpha = Math.max(0.3, 1 - Math.abs(k) * 0.25);
   panel(r.x, r.y, r.w, r.h, sel ? 'rgba(90,70,30,0.97)' : ok ? 'rgba(27,21,48,0.94)' : 'rgba(27,21,48,0.8)');
   if (sel) { ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 3; ctx.strokeRect(r.x + 8, r.y + 3, r.w - 16, r.h - 6); }
@@ -2270,7 +2272,7 @@ const scenes: Loose = {
       text('SCORE', W / 2 - 270, 292, 26, '#ffc83d', 'left', 'bold');
       text(fmt(st.final) + ' €', W / 2 + 270, 292, 36, '#fff', 'right', 'bold');
       for (let k = 0; k < 3; k++) star(W / 2 - 52 + k * 52, 340, 21, k < st.stars ? '#ffc83d' : '#3b3160');
-      text(`Objectif ${fmt(th)} €   ·   2 étoiles ${fmt(th * tune.star2)} €   ·   3 étoiles ${fmt(th * tune.star3)} €`, W / 2, 380, 16, '#d0c8f0', 'center', 'bold');
+      text(`Objectif ${fmt(th)} €   ·   2 étoiles ${fmt(targetsNow()[1])} €   ·   3 étoiles ${fmt(targetsNow()[2])} €`, W / 2, 380, 16, '#d0c8f0', 'center', 'bold');
       text(`Meilleur ${fmt(bestNow())} €${st.newBest ? '   NOUVEAU RECORD !' : ''}`, W / 2, 402, 16, st.newBest ? '#ffc83d' : '#d0c8f0', 'center', 'bold');
       st.chal.forEach((r: Loose, i: Loose) => {
         const y = 436 + i * 26;

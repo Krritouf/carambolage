@@ -56,6 +56,8 @@
   "oil_drop_gap": { "value": 12, "min": 4, "max": 60, "step": 1 },
   "oil_radius": { "value": 13, "min": 4, "max": 40, "step": 1 },
   "oil_max": { "value": 700, "min": 50, "max": 3000, "step": 50 },
+  "parts_max": { "value": 500, "min": 100, "max": 2000, "step": 50 },
+  "floats_max": { "value": 40, "min": 10, "max": 300, "step": 5 },
   "oil_spin": { "value": 7, "min": 0, "max": 20, "step": 0.5 },
   "oil_grip": { "value": 0.15, "min": 0, "max": 1, "step": 0.05 },
   "oil_time": { "value": 0.8, "min": 0.1, "max": 3, "step": 0.05 },

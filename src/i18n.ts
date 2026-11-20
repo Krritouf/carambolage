@@ -27,7 +27,7 @@ const EN: Record<string, string> = {
   'Flèches ou ZQSD : accélérer, freiner, tourner': 'Arrows or WASD: speed up, brake, steer',
   'Au premier choc, tu perds le contrôle !': 'First impact and you lose control!',
   'R : rejouer · P : pause · M : son · gadgets du garage : Espace, F, T, C': 'R: retry · P: pause · M: sound · garage gadgets: Space, F, T, C',
-  'AGRICULTEURS PAS CONTENTS !': 'ANGRY FARMERS!', 'C : AGRICULTEURS PAS CONTENTS': 'C: ANGRY FARMERS', 'TRACTEURS': 'TRACTORS',
+  'AGRICULTEURS PAS CONTENTS !': 'ANGRY FARMERS!', 'C : TRACTEURS': 'C: TRACTORS', 'TRACTEURS': 'TRACTORS',
   'Agriculteurs pas contents': 'Angry farmers', 'Botte de foin': 'Hay bale', 'Tracteur': 'Tractor',
   'C : des tracteurs déboulent par la gauche, bousculent tout et sèment du foin, sans toucher aux bâtiments':
     'C: tractors storm in from the left, shove everything aside and spill hay, leaving the buildings alone',

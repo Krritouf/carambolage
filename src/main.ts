@@ -71,13 +71,13 @@ function text(s: Loose, x: Loose, y: Loose, size: Loose, c: Loose, align: Loose 
 }
 
 // colour helpers (cached)
-const shadeCache = new Map();
+const shadeByHex = new Map<string, Map<number, string>>();
 function shade(hex: Loose, f: Loose) {
-  const key = hex + f.toFixed(2);
-  let v = shadeCache.get(key); if (v) return v;
+  const q = Math.round(f * 100); let byF = shadeByHex.get(hex); if (!byF) shadeByHex.set(hex, byF = new Map());
+  let v = byF.get(q); if (v) return v;
   const n = parseInt(hex.slice(1), 16);
   const r = Math.min(255, Math.round(((n >> 16) & 255) * f)), g = Math.min(255, Math.round(((n >> 8) & 255) * f)), b = Math.min(255, Math.round((n & 255) * f));
-  v = `rgb(${r},${g},${b})`; shadeCache.set(key, v); return v;
+  v = `rgb(${r},${g},${b})`; byF.set(q, v); return v;
 }
 function mix(a: Loose, b: Loose, t: Loose) {
   const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16);
@@ -681,7 +681,7 @@ function stepParts(sdt: Loose) {
   for (let i = st.floats.length - 1; i >= 0; i--) { st.floats[i].t += sdt; if (st.floats[i].t > 1.3) st.floats.splice(i, 1); }
 }
 function addPart(type: Loose, x: Loose, y: Loose, z: Loose, vx: Loose, vy: Loose, vz: Loose, life: Loose): Loose {
-  const ps = state.parts; if (ps.length > 900) return null;
+  const ps = state.parts; if (ps.length > tune.parts_max) return null;
   const p = { type, x, y, z, vx, vy, vz, life, max: life, size: 4, rot: 0, color: '#fff' };
   ps.push(p); return p;
 }
@@ -774,20 +774,69 @@ function addOil(x: Loose, y: Loose, r: Loose, src: Loose, inv = true) {
   for (let i = 0; i < n; i++) shape.push(0.7 + vr() * 0.5);
   const o = { x, y, r, src, inv, shape, rot: vr() * 6, seq: ++st.oilSeq }; // seq: the replay shows only what was there at its moment
   st.oils.push(o);
-  const k = Math.floor(x / OIL_CELL) + ',' + Math.floor(y / OIL_CELL);
+  const k = cellKey(Math.floor(x / OIL_CELL), Math.floor(y / OIL_CELL));
   (st.oilGrid.get(k) || st.oilGrid.set(k, []).get(k)).push(o);
   if (st.oils.length > tune.oil_max) {
-    const old = st.oils.shift(), ok = Math.floor(old.x / OIL_CELL) + ',' + Math.floor(old.y / OIL_CELL), arr = st.oilGrid.get(ok);
+    const old = st.oils.shift(), ok = cellKey(Math.floor(old.x / OIL_CELL), Math.floor(old.y / OIL_CELL)), arr = st.oilGrid.get(ok);
     if (arr) arr.splice(arr.indexOf(old), 1);
   }
 }
 function onOil(b: Loose) {
   const cx = Math.floor(b.x / OIL_CELL), cy = Math.floor(b.y / OIL_CELL);
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
-    const arr = state.oilGrid.get((cx + i) + ',' + (cy + j)); if (!arr) continue;
+    const arr = state.oilGrid.get(cellKey(cx + i, cy + j)); if (!arr) continue;
     for (const o of arr) if (o.src !== b.id && Math.hypot(o.x - b.x, o.y - b.y) < o.r + b.hw * 0.6) return o;
   }
   return null;
+}
+// ---- The collision grids ----------------------------------------------------------------------
+// Bodies go in square cells by their centre; a cell is at least as wide as the widest pair can be
+// apart and still touch, plus some slack for the pushes during a pass, so the 3 x 3 cells round a
+// body hold everything it can hit. The statics (buildings, walls) never move: their grid is built
+// once per level and again when one is added (a fallen crane).
+const CELL_PAD = 40;
+const cellKey = (cx: number, cy: number) => (cx + 4096) * 8192 + (cy + 4096);
+function buildBodyGrid(bodies: Loose[]) {
+  let maxHl = 0; for (const b of bodies) if (b.hl > maxHl) maxHl = b.hl;
+  const size = Math.max(120, maxHl * 2 + CELL_PAD), cells = new Map<number, number[]>();
+  for (let i = 0; i < bodies.length; i++) {
+    const b = bodies[i], key = cellKey(Math.floor(b.x / size), Math.floor(b.y / size));
+    const c = cells.get(key); if (c) c.push(i); else cells.set(key, [i]);
+  }
+  return { size, cells, n: bodies.length };
+}
+const pairBuf: number[] = [];
+/** The bodies after i (by index, in order) that may touch body i. */
+function bodyPairs(grid: Loose, bodies: Loose[], i: number): number[] {
+  pairBuf.length = 0;
+  const b = bodies[i], cx = Math.floor(b.x / grid.size), cy = Math.floor(b.y / grid.size);
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+    const c = grid.cells.get(cellKey(cx + dx, cy + dy)); if (!c) continue;
+    for (const k of c) if (k > i) pairBuf.push(k);
+  }
+  for (let k = Math.max(i + 1, grid.n); k < bodies.length; k++) pairBuf.push(k); // added during this pass: not in the grid
+  return pairBuf.sort((a, b2) => a - b2);
+}
+const SCELL = 160;
+let sGrid: Loose = null, sStamp = new Int32Array(0), sTick = 0;
+const nearBuf: number[] = [];
+/** The statics whose box may overlap body A's, in their array's order. */
+function staticsNear(statics: Loose[], A: Loose): number[] {
+  if (!sGrid || sGrid.list !== statics || sGrid.n !== statics.length) { // build (or rebuild) the statics' grid
+    const cells = new Map<number, number[]>();
+    statics.forEach((S: Loose, si: number) => {
+      const x0 = Math.floor((S.x - S.hl) / SCELL), x1 = Math.floor((S.x + S.hl) / SCELL), y0 = Math.floor((S.y - S.hw) / SCELL), y1 = Math.floor((S.y + S.hw) / SCELL);
+      for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) { const k = cellKey(cx, cy), c = cells.get(k); if (c) c.push(si); else cells.set(k, [si]); }
+    });
+    sGrid = { list: statics, n: statics.length, cells }; sStamp = new Int32Array(statics.length); sTick = 0;
+  }
+  nearBuf.length = 0; sTick++;
+  const x0 = Math.floor((A.x - A.hl) / SCELL), x1 = Math.floor((A.x + A.hl) / SCELL), y0 = Math.floor((A.y - A.hl) / SCELL), y1 = Math.floor((A.y + A.hl) / SCELL);
+  for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
+    const c = sGrid.cells.get(cellKey(cx, cy)); if (!c) continue;
+    for (const si of c) if (sStamp[si] !== sTick) { sStamp[si] = sTick; nearBuf.push(si); }
+  }
+  return nearBuf.sort((a, b2) => a - b2);
 }
 function physics(dt: Loose) {
   const st = state, bodies = st.bodies;
@@ -835,12 +884,15 @@ function physics(dt: Loose) {
       } else if (b.onRamp) { b.onRamp = false; b.z = 0; }
     }
   }
-  // collisions: vehicles with vehicles, then with blocks and props
+  // collisions: vehicles with vehicles, then with blocks and props. A grid finds the pairs that can
+  // touch (bodyPairs, staticsNear); they are taken in the same order as testing every pair, so the
+  // game plays exactly as before, without testing each vehicle against all the others
   const statics = st.statics || (st.statics = st.blocks.concat(st.props));
   for (let it = 0; it < 2; it++) {
+    const grid = buildBodyGrid(bodies);
     for (let i = 0; i < bodies.length; i++) {
       const A = bodies[i];
-      for (let k = i + 1; k < bodies.length; k++) {
+      for (const k of bodyPairs(grid, bodies, i)) {
         const B = bodies[k];
         if (tr && ((A === pl && B === tr) || (A === tr && B === pl))) continue;
         const rr = A.hl + B.hl; if (Math.abs(A.x - B.x) > rr || Math.abs(A.y - B.y) > rr) continue;
@@ -852,7 +904,8 @@ function physics(dt: Loose) {
         const j = resolve(A, B, c);
         impact(A, B, j, c, fall);
       }
-      for (const S of statics) {
+      for (const si of staticsNear(statics, A)) {
+        const S = statics[si];
         if (Math.abs(A.x - S.x) > S.hl + A.hl || Math.abs(A.y - S.y) > S.hw + A.hl) continue;
         if (A.z > S.height && S.kind !== 'building' && S.kind !== 'bound' && S.kind !== 'tunnel') continue; // nobody flies over a building
         if (S.kind === 'tunnel' && A.ai) continue; // traffic drives in and out of the tunnels
@@ -1033,6 +1086,9 @@ function updatePlay(dt: Loose) {
     if (q.type === 'smoke' || q.type === 'fire') { q.vx *= 0.97; q.vy *= 0.97; }
   }
   for (let i = st.floats.length - 1; i >= 0; i--) { st.floats[i].t += dt; if (st.floats[i].t > 1.3) st.floats.splice(i, 1); }
+  if (st.floats.length > tune.floats_max) { // too many at once: the oldest small ones go first, the big banners stay
+    for (let i = 0; i < st.floats.length && st.floats.length > tune.floats_max; ) if (!st.floats[i].big) st.floats.splice(i, 1); else i++;
+  }
   st.shake *= Math.exp(-6 * dt);
   if (st.bannerT > 0) st.bannerT -= dt;
   // the replay: a snapshot of the pile-up every other step
@@ -1822,27 +1878,72 @@ function drawGround() {
     ctx.fillStyle = '#c9a36a'; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = '#ff922b'; ctx.lineWidth = 4; ctx.setLineDash([14, 8]); ctx.strokeRect(x + 4, y + 4, w - 8, h - 8); ctx.setLineDash([]);
   }
-  // scorch marks under blasts
-  ctx.fillStyle = 'rgba(30,22,30,0.55)';
-  for (const [x, y, r] of st.scorch) { ctx.beginPath(); for (let i = 0; i < 10; i++) { const an = i * Math.PI / 5, rr = r * (0.75 + ((i * 7919) % 5) * 0.07); ctx.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); } ctx.closePath(); ctx.fill(); }
-  // oil: dark glossy blobs with a rainbow sheen
-  ctx.fillStyle = 'rgba(18,14,26,0.88)';
-  ctx.beginPath();
-  for (const o of st.oils) {
-    const n = o.shape.length;
-    for (let i = 0; i <= n; i++) { const k = i % n, an = o.rot + k * Math.PI * 2 / n, rr = o.r * o.shape[k]; const x = o.x + Math.cos(an) * rr, y = o.y + Math.sin(an) * rr * 0.8; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+  // the marks on the road: scorch, oil, skids. In play they are painted once, as they appear, on a
+  // layer that each frame only copies; the replay, which shows them as they were at each moment,
+  // paints them all every frame
+  if (scene === 'replay') paintMarks(ctx, st.scorch, st.oils, st.skids);
+  else { // only the tiles on screen
+    const L = marksLayer(st), T = MARKS_TILE, hw = W / 2 / cam.zoom + T, hh = H / 2 / cam.zoom + T;
+    const tx0 = Math.floor((camDraw.x - hw) / T), tx1 = Math.floor((camDraw.x + hw) / T), ty0 = Math.floor((camDraw.y - hh) / T), ty1 = Math.floor((camDraw.y + hh) / T);
+    for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) { const tile = L.tiles.get(cellKey(tx, ty)); if (tile) ctx.drawImage(tile.canvas, tx * T, ty * T, T, T); }
   }
-  ctx.fill();
-  ctx.lineWidth = 1.5;
-  for (const o of st.oils) if (o.r > tune.oil_radius * 1.2) {
-    ctx.strokeStyle = 'rgba(120,90,255,0.6)'; ctx.beginPath(); ctx.moveTo(o.x - o.r * 0.4, o.y - o.r * 0.2); ctx.lineTo(o.x + o.r * 0.1, o.y - o.r * 0.35); ctx.stroke();
-    ctx.strokeStyle = 'rgba(46,196,182,0.6)'; ctx.beginPath(); ctx.moveTo(o.x - o.r * 0.2, o.y + o.r * 0.1); ctx.lineTo(o.x + o.r * 0.35, o.y - o.r * 0.05); ctx.stroke();
-  }
-  // skid marks
-  ctx.strokeStyle = 'rgba(25,20,35,0.45)'; ctx.lineWidth = 3; ctx.beginPath();
-  for (const s of st.skids) { ctx.moveTo(s[0], s[1]); ctx.lineTo(s[2], s[3]); }
-  ctx.stroke();
   ctx.restore();
+}
+const MARKS_SCALE = 0.75, MARKS_TILE = 512; // the marks' pixels per world unit; a tile's side in world units
+/** The level's marks: square tiles, each painted when a mark lands on it (so only that tile is sent to the screen again). */
+function marksLayer(st: Loose) {
+  const L = st.marks || (st.marks = { tiles: new Map(), oilSeq: 0, skidSeq: 0, scorchN: 0 });
+  // what is new: the arrays only grow at their end (old oil and skids may leave the front)
+  let i = st.oils.length; while (i > 0 && st.oils[i - 1].seq > L.oilSeq) i--;
+  let j = st.skids.length; while (j > 0 && st.skids[j - 1][4] > L.skidSeq) j--;
+  if (i === st.oils.length && j === st.skids.length && L.scorchN === st.scorch.length) return L;
+  // each new mark goes to every tile its box touches
+  const T = MARKS_TILE, k = MARKS_SCALE, todo = new Map<number, Loose>();
+  const put = (x0: number, y0: number, x1: number, y1: number, kind: string, m: Loose) => {
+    for (let tx = Math.floor(x0 / T); tx <= Math.floor(x1 / T); tx++) for (let ty = Math.floor(y0 / T); ty <= Math.floor(y1 / T); ty++) {
+      const key = cellKey(tx, ty); let w = todo.get(key);
+      if (!w) todo.set(key, w = { tx, ty, scorch: [], oils: [], skids: [] });
+      w[kind].push(m);
+    }
+  };
+  for (let n = L.scorchN; n < st.scorch.length; n++) { const [x, y, r] = st.scorch[n]; put(x - r, y - r, x + r, y + r, 'scorch', st.scorch[n]); }
+  for (let n = i; n < st.oils.length; n++) { const o = st.oils[n], r = o.r * 1.25; put(o.x - r, o.y - r, o.x + r, o.y + r, 'oils', o); }
+  for (let n = j; n < st.skids.length; n++) { const q = st.skids[n]; put(Math.min(q[0], q[2]) - 3, Math.min(q[1], q[3]) - 3, Math.max(q[0], q[2]) + 3, Math.max(q[1], q[3]) + 3, 'skids', q); }
+  for (const [key, w] of todo) {
+    let tile = L.tiles.get(key);
+    if (!tile) {
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = Math.ceil(T * k);
+      const g = canvas.getContext('2d')!; g.setTransform(k, 0, 0, k, -w.tx * T * k, -w.ty * T * k);
+      L.tiles.set(key, tile = { canvas, g });
+    }
+    paintMarks(tile.g, w.scorch, w.oils, w.skids);
+  }
+  L.scorchN = st.scorch.length; L.oilSeq = st.oilSeq; L.skidSeq = st.skidSeq;
+  return L;
+}
+/** Paints scorch marks, oil (dark glossy blobs with a rainbow sheen) and skid marks, in world units. */
+function paintMarks(g: CanvasRenderingContext2D, scorch: Loose[], oils: Loose[], skids: Loose[]) {
+  g.fillStyle = 'rgba(30,22,30,0.55)';
+  for (const [x, y, r] of scorch) { g.beginPath(); for (let i = 0; i < 10; i++) { const an = i * Math.PI / 5, rr = r * (0.75 + ((i * 7919) % 5) * 0.07); g.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); } g.closePath(); g.fill(); }
+  if (oils.length) {
+    g.fillStyle = 'rgba(18,14,26,0.88)';
+    g.beginPath();
+    for (const o of oils) {
+      const n = o.shape.length;
+      for (let i = 0; i <= n; i++) { const k = i % n, an = o.rot + k * Math.PI * 2 / n, rr = o.r * o.shape[k]; const x = o.x + Math.cos(an) * rr, y = o.y + Math.sin(an) * rr * 0.8; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
+    }
+    g.fill();
+    g.lineWidth = 1.5;
+    for (const o of oils) if (o.r > tune.oil_radius * 1.2) {
+      g.strokeStyle = 'rgba(120,90,255,0.6)'; g.beginPath(); g.moveTo(o.x - o.r * 0.4, o.y - o.r * 0.2); g.lineTo(o.x + o.r * 0.1, o.y - o.r * 0.35); g.stroke();
+      g.strokeStyle = 'rgba(46,196,182,0.6)'; g.beginPath(); g.moveTo(o.x - o.r * 0.2, o.y + o.r * 0.1); g.lineTo(o.x + o.r * 0.35, o.y - o.r * 0.05); g.stroke();
+    }
+  }
+  if (skids.length) {
+    g.strokeStyle = 'rgba(25,20,35,0.45)'; g.lineWidth = 3; g.beginPath();
+    for (const s2 of skids) { g.moveTo(s2[0], s2[1]); g.lineTo(s2[2], s2[3]); }
+    g.stroke();
+  }
 }
 function drawRamp() {
   const st = state; if (!st.ramp) return;
@@ -2081,7 +2182,7 @@ function drawHUD() {
   if (p.gear.dynamite && st.dynLeft > 0) gearHud.push([dynIcon, 'ESPACE : DYNAMITE ×' + st.dynLeft, '#ff9fb2']);
   if (st.rocketsLeft > 0) gearHud.push([rocketIcon, 'F : ROQUETTE ×' + st.rocketsLeft, '#9fd3ff']);
   if (G().trex && !st.trexUsed) gearHud.push([trexIcon, 'T : APPEL DU JURASSIQUE', '#b4e33d']);
-  if (G().farmers && country === 'fr' && !st.farmersUsed) gearHud.push([farmersIcon, 'C : AGRICULTEURS PAS CONTENTS', '#ffa94d']);
+  if (G().farmers && country === 'fr' && !st.farmersUsed) gearHud.push([farmersIcon, 'C : TRACTEURS', '#ffa94d']);
   if (st.phase !== 'intro' && !TOUCH) gearHud.forEach(([ic, label, c]: Loose, i: Loose) => {
     const y = 130 + i * 44;
     panel(W - 236, y, 220, 38); ic(W - 206, y + 19, 0.7); text(label, W - 112, y + 19, 15, c, 'center', 'bold');
@@ -2410,8 +2511,8 @@ const scenes: Loose = {
         if (!c.ready) { ctx.fillStyle = 'rgba(27,21,48,0.6)'; ctx.fillRect(mx - 66, r.y + 30, 132, 88); }
         text(c.name, mx, r.y + 148, c.name.length > 10 ? 21 : 26, c.ready ? '#fff' : '#8a80a8', 'center', 'bold');
         if (c.ready) {
-          for (let s2 = 0; s2 < 3; s2++) star(mx - 30 + s2 * 30, r.y + 190, 12, '#ffc83d');
-          text(`${totalStars()} / ${LEVELS.length * 3}`, mx, r.y + 222, 18, '#fff', 'center', 'bold');
+          star(mx - 44, r.y + 200, 14, '#ffc83d'); // the stars won in this country, out of all of them
+          text(`${totalStars()} / ${LEVELS.length * 3}`, mx + 14, r.y + 201, 24, '#fff', 'center', 'bold');
           text(`${LEVELS.length} niveaux`, mx, r.y + 250, 15, '#d0c8f0', 'center', 'bold');
         } else {
           padlock(mx, r.y + 196, 1, '#8a80a8');
@@ -2782,8 +2883,21 @@ function drawTouch() {
     text('Tourne ton téléphone à l\'horizontale', W / 2, H / 2, 40, '#ffc83d', 'center', 'bold', 6);
   }
 }
-function drawFrame() { btns.length = 0; scenes[scene].draw(); drawTouch(); }
-function frame() { tick(); requestAnimationFrame(frame); }
+function drawFrame() { btns.length = 0; scenes[scene].draw(); drawTouch(); if (SHOW_FPS) drawFps(); }
+// the frames-a-second counter, for testing only: ?fps in the address, or window.SHOW_FPS set by a test page
+const SHOW_FPS = params.get('fps') !== null || !!(window as Loose).SHOW_FPS;
+let fpsShown = 0, fpsFrames = 0, fpsT0 = 0;
+function countFps() {
+  const now = performance.now(); fpsFrames++;
+  if (!fpsT0) fpsT0 = now;
+  if (now - fpsT0 >= 500) { fpsShown = Math.round(fpsFrames * 1000 / (now - fpsT0)); fpsFrames = 0; fpsT0 = now; }
+}
+function drawFps() {
+  const c = fpsShown >= 55 ? '#19c37d' : fpsShown >= 30 ? '#ffa94d' : '#ff5e7a';
+  ctx.fillStyle = 'rgba(14,10,28,0.8)'; ctx.fillRect(W / 2 - 70, 6, 140, 34);
+  text(`${fpsShown} images/s`, W / 2, 24, 20, c, 'center', 'bold');
+}
+function frame() { tick(); if (SHOW_FPS) countFps(); requestAnimationFrame(frame); }
 function timer() { if (document.visibilityState === 'visible' && clock.now() - last > 0.1) tick(); }
 
 install({

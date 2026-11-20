@@ -221,3 +221,8 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 
 - `combo_bonus`: € added to the bonus when the T-Rex meets the convoy (once a run)
 - `mass_farmtractor`, `value_farmtractor`: each tractor the T-Rex sends flying: its mass, and the € it scores as a wreck
+
+## Performance limits
+
+- `parts_max`: particles (smoke, fire, sparks, debris) on screen at most; new ones are skipped beyond it
+- `floats_max`: floating texts (+€) at once; beyond it the oldest small ones go, the big banners stay

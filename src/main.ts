@@ -368,11 +368,16 @@ function buildRoundabout(st: Loose, lv: Loose) {
   for (const [hl, hw] of [[ri, ri * 0.6], [ri * 0.6, ri], [ri * 0.85, ri * 0.85]]) // a rounded island: a wide box, a tall one, a square
     st.props.push({ static: true, kind: 'island', part: arc, x: 0, y: 0, a: 0, hl, hw, h: 6, height: 999, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 });
 }
-/** Where a lane's car should be across the road at x: its lane, or round the ring when the ring bulges further out. */
+/**
+ * Where a lane's car should be across the road at x: its lane, or round the ring when the ring bulges
+ * further out. The way round is an ellipse, as wide as the ring plus rb_lead along the road: the car
+ * starts to bend before it reaches the ring, so a long one's front clears the island (a lane near the
+ * middle of the road points straight at it).
+ */
 function laneTargetY(ln: Loose, x: number): number {
   const rb = state.roundabout; if (!rb) return ln.y;
-  const R = ringRadius(rb, ln.idx || 0); if (Math.abs(x) >= R) return ln.y;
-  const yc = Math.sign(ln.y) * Math.sqrt(R * R - x * x);
+  const R = ringRadius(rb, ln.idx || 0), A = R + tune.rb_lead; if (Math.abs(x) >= A) return ln.y;
+  const yc = Math.sign(ln.y) * R * Math.sqrt(1 - (x / A) * (x / A));
   return Math.abs(yc) > Math.abs(ln.y) ? yc : ln.y;
 }
 function drawRoundaboutGround(st: Loose) {

@@ -118,3 +118,18 @@ test('the Arc de Triomphe takes the hits on its island', async ({ page }) => {
   });
   expect(r).toEqual({ arcHurt: true, crashed: true });
 });
+
+test('on the roundabout every lane gets round, the inner one too, long vehicles included', async ({ page }) => {
+  await openLevel(page, 20);
+  const lanes = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    st.player.x = 2000; st.player.y = 2000; st.player.control = false; st.timeLeft = 1e9;
+    const through = new Set<number>(); // the lanes (by direction and index) that had a vehicle past the middle
+    for (let f = 0; f < 60 * 25; f++) {
+      g.step(1, false);
+      for (const c of st.bodies) if (c.ai && Math.abs(c.x) < 8) through.add(c.lane.dir * (10 + c.lane.idx)); // eastbound 10-13, westbound -10 to -13
+    }
+    return [...through].sort((a, b) => a - b);
+  });
+  expect(lanes).toEqual([-13, -12, -11, -10, 10, 11, 12, 13]); // both ways, lanes 0 to 3
+});

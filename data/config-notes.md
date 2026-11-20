@@ -253,4 +253,6 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 
 - `threshold_20`, `star2_20`, `star3_20`: its 1, 2 and 3-star scores, 12 % above level 19's until the autopilot measures them
 - `rb_island`: px, the island's radius (the ring's lanes go round it)
+- `rb_lead`: px before the ring where a lane starts to bend round it (its way round is an ellipse this much
+  wider than the ring), so a long vehicle's front clears the island
 - `value_arc`: € the Arc de Triomphe is worth; it takes the hits like a shop and falls once it has taken them all

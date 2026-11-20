@@ -179,6 +179,8 @@ const EXT = 1500; // px: the boulevard runs from -EXT to +EXT
 const SIDEWALK = 20, APPROACH_HALF = 38;
 const PALETTE = ['#ff5e7a', '#2ec4b6', '#ffc83d', '#7b5cff', '#ff8fd0', '#19c37d', '#4aa8ff', '#ff7b39', '#b4e33d', '#f45b69'];
 const CAR_COLORS = ['#2f80ff', '#12b886', '#9b5de5', '#f1f3f5', '#ff922b', '#15aabf', '#e64980', '#82c91e'];
+// France's cars: as many colours as CAR_COLORS, so a seed draws the same traffic in either
+const CAR_COLORS_FR = ['#4d79c7', '#f1f3f5', '#c92a2a', '#f3d27a', '#8fbfa0', '#9aa0a6', '#e8590c', '#3b3a4a'];
 const KINDS: Loose = {
   player: { name: 'Ta voiture', l: 46, w: 23, h: 20 },
   car: { name: 'Voiture', l: 42, w: 21, h: 20 },
@@ -276,6 +278,16 @@ const MODELS: Loose = {
   semi: { name: 'Semi-remorque', l: 50, w: 30, h: 26, color: '#7b5cff', draw: 'tractor', trailer: true },
 };
 const CARS = Object.keys(MODELS);
+// each country's names and paint for the garage's vehicles (same sizes and stats everywhere)
+const MODELS_BASE = Object.fromEntries(CARS.map(id => [id, { name: MODELS[id].name, color: MODELS[id].color }]));
+const COUNTRY_MODELS: Loose = {
+  fr: { sport: { name: 'Berlinette', color: '#1f4fbf' }, van: { name: 'Camionnette jaune', color: '#ffd21f' }, ambulance: { name: 'Ambulance', color: '#f8f9fa' },
+    truck: { name: 'Camion du boulanger', color: '#c92a2a' }, semi: { name: 'Routier', color: '#1f4fbf' } },
+};
+/** Paints and names the garage's vehicles the way a country has them. */
+function applyCountryModels(id: string) {
+  for (const k of CARS) Object.assign(MODELS[k], MODELS_BASE[k], (COUNTRY_MODELS[id] || {})[k] || {});
+}
 const wetK = () => state.lv.ice ? tune.ice_grip : state.lv.rain ? tune.rain_grip : 1; // grip and braking on a wet or icy road
 // the shops on the boulevard from level 10: name, roof colour (values and weights in config)
 const SHOPS: Loose = {
@@ -439,13 +451,14 @@ function pickKind(mix: Loose) {
 }
 function spawnOn(ln: Loose, x: Loose) {
   const kind = pickKind(state.lv.mix);
-  const color = kind === 'police' || kind === 'ambulance' ? '#f8f9fa' : kind === 'fire' ? '#e8202a' : kind === 'taxi' ? '#ffd21f' : kind === 'bus' ? '#ff8a00' : kind === 'moto' ? '#26262e'
-    : kind === 'truck' ? '#3d7bff' : kind === 'tanker' ? '#e03131' : CAR_COLORS[Math.floor(rng() * CAR_COLORS.length)];
+  const fr = country === 'fr', cars = fr ? CAR_COLORS_FR : CAR_COLORS; // France: a Paris taxi, a green bus, the baker's truck
+  const color = kind === 'police' || kind === 'ambulance' ? '#f8f9fa' : kind === 'fire' ? '#e8202a' : kind === 'taxi' ? (fr ? '#2b2b33' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : '#ff8a00') : kind === 'moto' ? '#26262e'
+    : kind === 'truck' ? (fr ? '#f3e3c3' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
   const b = mkBody(kind, x, ln.y, ln.dir > 0 ? 0 : Math.PI, color);
   for (const o of state.bodies) if (Math.abs(o.y - ln.y) < 20 && Math.abs(o.x - x) < o.hl + b.hl + 30) return false;
   b.lane = ln; b.cruise = tune['speed_' + kind] * (0.9 + rng() * 0.2) * (state.lv.speedMul || 1);
   b.vx = ln.dir * b.cruise; b.id = state.nextId++;
-  if (kind === 'moto') b.rider = CAR_COLORS[Math.floor(rng() * CAR_COLORS.length)];
+  if (kind === 'moto') b.rider = cars[Math.floor(rng() * cars.length)];
   state.bodies.push(b); return true;
 }
 
@@ -1442,6 +1455,101 @@ function drawShadow(b: Loose) {
   poly(pts.map((p: Loose) => P(p[0] + off, p[1] + off * 1.2, 0)), '#120b2a');
   ctx.globalAlpha = 1;
 }
+// ---- France's vehicles: the same bodies, drawn the French way ---------------------------------
+/** A flat rectangle turned by ang in the vehicle's frame (the ambulance's star). */
+function flatTurned(b: Loose, ox: number, oy: number, len: number, wid: number, ang: number, h: number, color: string) {
+  const c = Math.cos(b.a), s2 = Math.sin(b.a), ca = Math.cos(ang), sa = Math.sin(ang);
+  const pts = [[-len / 2, -wid / 2], [len / 2, -wid / 2], [len / 2, wid / 2], [-len / 2, wid / 2]].map(([u, v]) => {
+    const u2 = ox + u * ca - v * sa, v2 = oy + u * sa + v * ca; return P(b.x + c * u2 - s2 * v2, b.y + s2 * u2 + c * v2, h);
+  });
+  poly(pts, color);
+}
+/** Draws a vehicle the French way; false for a kind France draws like everyone else. */
+function drawFrench(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean): boolean {
+  const lights = (h: number) => { // headlights in front, brake lights behind
+    flat(b, L / 2 - 2, Wd * 0.3, 3, 5, z + h, '#fff3bf'); flat(b, L / 2 - 2, -Wd * 0.3, 3, 5, z + h, '#fff3bf');
+    flat(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e'); flat(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e');
+  };
+  const paint = (c: string) => wreck ? col : mix(c, '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
+  if (dk === 'car' && b.id % 2 === 0) { // the little round car with the canvas roof
+    box(L * 0.2, L * 0.36, Wd * 0.86, 3, 9, col, col); // the sloping bonnet
+    box(-L * 0.1, L * 0.62, Wd, 3, 12, col, col);
+    box(-L * 0.08, L * 0.46, Wd * 0.8, 12, 20, glass, glass);
+    flat(b, -L * 0.08, 0, L * 0.4, Wd * 0.62, z + 20.1, '#495057'); // the canvas roof, rolled half back
+    flat(b, -L * 0.2, 0, L * 0.12, Wd * 0.66, z + 20.3, '#343a40');
+    flat(b, L / 2 - 3, Wd * 0.32, 4, 4, z + 9, '#fff3bf'); flat(b, L / 2 - 3, -Wd * 0.32, 4, 4, z + 9, '#fff3bf'); // round eyes
+    flat(b, -L / 2 + 1.5, Wd * 0.3, 2, 4, z + 10, b.braking ? '#ff1e1e' : '#a61e1e'); flat(b, -L / 2 + 1.5, -Wd * 0.3, 2, 4, z + 10, b.braking ? '#ff1e1e' : '#a61e1e');
+    return true;
+  }
+  if (dk === 'car' || dk === 'taxi' || dk === 'police') { // the boxy little car of the seventies (and the taxi, the police)
+    box(0, L, Wd, 3, 11, col, col);
+    box(-L * 0.06, L * 0.62, Wd * 0.88, 11, 23, glass, glass); // a tall square cabin, glass all round
+    flat(b, -L * 0.06, 0, L * 0.58, Wd * 0.8, z + 23.1, shade(col, 1.12));
+    lights(11);
+    if (dk === 'taxi') { box(-2, 7, 13, 23, 27, '#f8f9fa', '#ced4da'); flat(b, -2, 0, 4, 9, z + 27.1, '#40c057'); } // the roof sign, green: free
+    if (dk === 'police') { // white with a blue band and a thin red one, and the light bar
+      flat(b, 0, Wd / 2 - 2.5, L * 0.92, 3, z + 11.1, '#1c4ed8'); flat(b, 0, -Wd / 2 + 2.5, L * 0.92, 3, z + 11.1, '#1c4ed8');
+      flat(b, 0, Wd / 2 - 4.5, L * 0.92, 1.2, z + 11.15, '#e03131'); flat(b, 0, -Wd / 2 + 4.5, L * 0.92, 1.2, z + 11.15, '#e03131');
+      siren(b, -2, Wd * 0.75, 23);
+    }
+    return true;
+  }
+  if (dk === 'moto') { // a scooter: a leg shield in front, the rider sitting up
+    box(-2, L * 0.8, Wd * 0.7, 3, 9, '#e9ecef', '#adb5bd');
+    box(L * 0.3, 4, Wd * 0.8, 6, 16, '#e9ecef', '#adb5bd'); // the leg shield
+    flat(b, L / 2 - 2, 0, 3, Wd * 0.5, z + 9, '#ffe066');
+    box(-3, 9, Wd, 9, 16, b.rider || '#2f80ff', b.rider || '#2f80ff');
+    box(-1, 6, Wd * 0.75, 16, 21, '#343a40', '#212529'); // helmet
+    return true;
+  }
+  if (dk === 'bus') { // the Paris bus: green below, white above
+    box(0, L, Wd, 2, 12, paint('#2b8a3e'), paint('#2b8a3e'));
+    box(0, L - 4, Wd - 2, 12, 25, col, glass);
+    flat(b, 0, 0, L - 10, Wd - 10, z + 25, shade(col, 1.05));
+    flat(b, 0, Wd / 2 - 2.5, L - 8, 3, z + 25.1, glass); flat(b, 0, -Wd / 2 + 2.5, L - 8, 3, z + 25.1, glass);
+    flat(b, L / 2 - 5, 0, 5, Wd - 6, z + 25.1, glass);
+    box(-L * 0.15, 20, Wd * 0.5, 25, 29, '#dee2e6', '#adb5bd');
+    flat(b, L / 2 - 1, Wd * 0.3, 2, 5, z + 10, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.3, 2, 5, z + 10, '#ffe066');
+    return true;
+  }
+  if (dk === 'truck' && !b.wide) { // the baker's truck: a cream box with a baguette on the roof, a blue cab (not the oversize convoy)
+    const cab = b.kind === 'player' ? col : paint('#3b5bdb');
+    box(-L * 0.15, L * 0.68, Wd, 3, 34, col, shade(col, 0.9));
+    flat(b, -L * 0.15, Wd / 2 - 3, L * 0.64, 4, z + 34.1, '#a8742a'); flat(b, -L * 0.15, -Wd / 2 + 3, L * 0.64, 4, z + 34.1, '#a8742a');
+    flatTurned(b, -L * 0.15, 0, L * 0.5, 7, 0.12, z + 34.3, '#d9a441'); // the baguette
+    for (const o of [-0.16, -0.04, 0.08]) flatTurned(b, -L * 0.15 + L * o * 1.4, 0, 2, 7, 0.9, z + 34.5, '#b07a2a'); // its cuts
+    box(L * 0.36, L * 0.24, Wd - 2, 3, 24, cab, cab);
+    box(L * 0.39, L * 0.12, Wd - 4, 14, 24, cab, glass);
+    flat(b, L / 2 - 1, Wd * 0.32, 2, 5, z + 12, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.32, 2, 5, z + 12, '#ffe066');
+    return true;
+  }
+  if (dk === 'ambulance') { // white, blue bands, the blue star of life
+    box(-L * 0.12, L * 0.74, Wd, 3, 32, col, col);
+    flat(b, -L * 0.12, Wd / 2 - 2, L * 0.72, 3, z + 32.1, '#1c4ed8'); flat(b, -L * 0.12, -Wd / 2 + 2, L * 0.72, 3, z + 32.1, '#1c4ed8');
+    for (const a of [0, Math.PI / 3, -Math.PI / 3]) flatTurned(b, -L * 0.15, 0, 15, 4.5, a, z + 32.2, '#1c4ed8');
+    box(L * 0.37, L * 0.26, Wd - 2, 3, 22, col, col);
+    box(L * 0.4, L * 0.12, Wd - 4, 12, 22, col, glass);
+    flat(b, L * 0.4, 0, L * 0.2, 3, z + 22.1, '#ff922b'); // an orange band on the cab
+    siren(b, L * 0.2, Wd * 0.7, 32);
+    return true;
+  }
+  if (dk === 'van') { // the yellow van, with a blue band
+    box(0, L, Wd, 3, 14, col, col);
+    box(-L * 0.06, L * 0.86, Wd - 2, 14, 27, col, shade(col, 0.85));
+    flat(b, -L * 0.08, 0, L * 0.74, Wd - 6, z + 27.1, shade(col, 1.08));
+    flat(b, L * 0.36, 0, 5, Wd - 6, z + 27.1, glass);
+    flat(b, -L * 0.06, Wd / 2 - 1.5, L * 0.8, 3, z + 14.1, '#1f4fbf'); flat(b, -L * 0.06, -Wd / 2 + 1.5, L * 0.8, 3, z + 14.1, '#1f4fbf');
+    flat(b, L / 2 - 1.5, Wd * 0.3, 2, 5, z + 10, '#fff3bf'); flat(b, L / 2 - 1.5, -Wd * 0.3, 2, 5, z + 10, '#fff3bf');
+    return true;
+  }
+  if (dk === 'trailer') { // the big rig's trailer, in the three colours
+    const side = wreck ? col : mix('#f1f3f5', '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
+    box(0, L, Wd, 5, 36, side, wreck ? col : '#dfe3e8');
+    flat(b, L / 3, 0, L / 3 - 2, Wd - 4, z + 36.1, '#1f4fbf'); flat(b, -L / 3, 0, L / 3 - 2, Wd - 4, z + 36.1, '#e03131');
+    return true;
+  }
+  return false;
+}
 function drawVehicle(b: Loose) {
   const f = Math.min(1, b.dmg / b.value), wreck = f >= 1;
   const col = wreck ? '#3a3533' : mix(b.color, '#2a2230', f * 0.55);
@@ -1449,12 +1557,11 @@ function drawVehicle(b: Loose) {
   const glass = '#22305a', dark = '#1d1a26';
   const box = (ox: Loose, len: Loose, wid: Loose, h0: Loose, h1: Loose, top: Loose, side: Loose, oy: Loose = 0) => prism(rect(b, ox, oy, len, wid), z + h0, z + h1, top, side);
   const dk = b.kind === 'player' ? MODELS[b.model || 'sport'].draw : b.kind; // what it looks like
-  if (dk === 'hay') { // a straw bale with its two strings
+  if (country === 'fr' && drawFrench(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the French way */ }
+  else if (dk === 'hay') { // a straw bale with its two strings
     box(0, L, Wd, 0, 20, wreck ? '#b08a3a' : '#f2c94c', '#c99a2e');
     flat(b, -L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a'); flat(b, L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a');
-    return;
-  }
-  if (dk === 'moto') {
+  } else if (dk === 'moto') {
     box(0, L, Wd * 0.55, 3, 8, '#2b2b33', '#16161c');
     flat(b, L / 2 - 2, 0, 3, Wd * 0.5, z + 8, '#ffe066');
     box(-1, 9, Wd, 8, 15, b.rider || '#2f80ff', b.rider || '#2f80ff'); // rider's jacket
@@ -2180,7 +2287,7 @@ function goHome() {
 function enterCountry() {
   const c = COUNTRIES[countryIdx];
   if (!c.ready) { homeMsg = 'Bientôt disponible !'; homeMsgT = 2; tone(180, 0.2, 'triangle', 0.2); return; }
-  country = c.id; daily = false; reset(); scene = 'title'; tone(660, 0.12, 'square', 0.15);
+  country = c.id; applyCountryModels(country); daily = false; reset(); scene = 'title'; tone(660, 0.12, 'square', 0.15);
 }
 
 const scenes: Loose = {
@@ -2189,7 +2296,8 @@ const scenes: Loose = {
     draw() {
       clear('#e9d8a6');
       cam.x = 0; cam.y = 0; cam.zoom = 1.35; camDraw.x = 0; camDraw.y = 0; VP = [W / 2, H * 0.5];
-      const list = [['car', '#2f80ff'], ['taxi', '#ffd21f'], ['moto', '#26262e'], ['police', '#f8f9fa'], ['bus', '#ff8a00'], ['truck', '#3d7bff'], ['tanker', '#e03131'], ['ambulance', '#f8f9fa'], ['fire', '#e8202a']];
+      const fr = country === 'fr'; // the colours the traffic has in this country
+      const list = [['car', fr ? '#4d79c7' : '#2f80ff'], ['taxi', fr ? '#2b2b33' : '#ffd21f'], ['moto', '#26262e'], ['police', '#f8f9fa'], ['bus', fr ? '#f1f3f5' : '#ff8a00'], ['truck', fr ? '#f3e3c3' : '#3d7bff'], ['tanker', '#e03131'], ['ambulance', '#f8f9fa'], ['fire', '#e8202a']];
       const xs = [-420, -350, -285, -225, -150, -40, 70, 170, 270];
       list.forEach(([k, c]: Loose, i: Loose) => {
         const b = mkBody(k, xs[i], -150, -Math.PI / 2, c); if (k === 'moto') b.rider = '#2f80ff'; b.id = i;
@@ -2646,6 +2754,7 @@ install({
   },
 });
 
+applyCountryModels(country);
 if (params.get('level')) levelIdx = Math.max(0, Math.min(LEVELS.length - 1, Number(params.get('level')) - 1));
 reset();
 scene = params.get('scene') || (NATIVE ? 'boot' : 'countries'); // the app opens on its picture; the web page goes straight to the countries

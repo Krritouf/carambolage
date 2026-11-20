@@ -37,6 +37,7 @@ const EN: Record<string, string> = {
   'Entrée : jouer': 'Enter: play', 'Gauche / Droite ou molette : tourner la roue': 'Left / Right or wheel: turn the wheel',
   'O : réglages': 'O: settings', 'Verrouillé': 'Locked',
   // the countries
+  'Berlinette': 'Coupé', 'Camionnette jaune': 'Yellow van', 'Camion du boulanger': "Baker's truck", 'Routier': 'Big rig',
   'CHOISIS TON PAYS': 'PICK YOUR COUNTRY', 'France': 'France', 'Royaume-Uni': 'United Kingdom', 'Japon': 'Japan',
   'États-Unis': 'United States', 'Brésil': 'Brazil', 'BIENTÔT': 'SOON', 'Bientôt disponible !': 'Coming soon!',
   'Entrée ou clic : choisir': 'Enter or click: choose', 'Gauche / Droite : changer de pays': 'Left / Right: change country',

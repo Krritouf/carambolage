@@ -7,16 +7,19 @@
 import { CONFIG, LEVELS_BY, tune } from './config';
 import { crunch, engineSound, isMuted, setMuted, startAudio, tone } from './audio';
 import { rng, setSeed, vr } from './game/random';
-import { finalScore, fmt, impactDamage, levelTargets, priceFor, starsAt } from './game/rules';
+import { finalScore, fmt, impactDamage, levelTargets, money as moneyIn, priceFor, starsAt } from './game/rules';
 import { countriesFromSave, SAVE_VERSION } from './game/save';
 import type { Loose } from './game/types';
 import { clock, install, manual, params, seedFrom } from './hook';
-import { defaultLang, setLang, tr } from './i18n';
+import { defaultLang, getLang, setLang, tr } from './i18n';
 import { NATIVE, exitApp, nativeVibrate, onBack } from './native';
 import splashUrl from '../assets/splash.png'; // the app's opening picture (tools/brand/art.html)
 // the country being played and its levels (LEVELS); each country keeps its own progress (loadCountry)
 let country = 'fr', LEVELS: Loose[] = LEVELS_BY.fr;
 const PREFIX: Loose = { fr: '', uk: 'uk_' }; // a country's keys in data/config.json: uk_threshold_3...
+const CURRENCY: Loose = { fr: '€', uk: '£' }; // each country's money
+/** An amount in the country's money, written the way the player's language writes it (1 000 £, £1,000). */
+const money = (n: number) => moneyIn(n, CURRENCY[country] || '€', getLang());
 
 // ---- Built to be checked ----------------------------------------------------------------
 const STEP = 1 / 60;            // simulation step in seconds; motion is per second, never per frame
@@ -230,7 +233,7 @@ const SINGULAR: Loose = { car: 'voiture', taxi: 'taxi', moto: 'moto', bus: 'bus'
 const PLURAL: Loose = { car: 'voitures', taxi: 'taxis', moto: 'motos', bus: 'bus', truck: 'camions', tanker: 'citernes', police: 'voitures de police', ambulance: 'ambulances', fire: 'camions de pompiers' };
 function chalLabel(c: Loose) {
   return c.type === 'destroy' ? `Détruis ${c.n} ${c.n > 1 ? PLURAL[c.kind] : SINGULAR[c.kind]}` : c.type === 'blasts' ? `Fais sauter ${c.n} citerne${c.n > 1 ? 's' : ''}`
-    : c.type === 'hits' ? `Touche ${c.n} véhicules` : `Score de ${fmt(c.n)} €`;
+    : c.type === 'hits' ? `Touche ${c.n} véhicules` : `Score de ${money(c.n)}`;
 }
 function chalProgress(c: Loose, live: Loose) {
   const st = state;
@@ -1051,7 +1054,7 @@ function updatePlay(dt: Loose) {
     const f = S.dmg / S.value; S.smokeT = (S.smokeT || 0) - sdt;
     if (f > 0.4 && S.smokeT <= 0) { S.smokeT = S.ruined ? 0.07 : 0.25; addPart(S.ruined ? 'fire' : 'smoke', S.x + (vr() - 0.5) * S.hl, S.y + (vr() - 0.5) * S.hw, S.h + 4, (vr() - 0.5) * 20, (vr() - 0.5) * 20, 30 + vr() * 40, 0.8 + vr() * 0.8); }
     S.popT = (S.popT || 0) - dt;
-    if (S.pend >= 300 && S.popT <= 0) { st.floats.push({ x: S.x, y: S.y, txt: '+' + fmt(S.pend) + ' €', t: 0, color: '#ffc83d' }); S.pend = 0; S.popT = 0.6; }
+    if (S.pend >= 300 && S.popT <= 0) { st.floats.push({ x: S.x, y: S.y, txt: '+' + money(S.pend), t: 0, color: '#ffc83d' }); S.pend = 0; S.popT = 0.6; }
   }
   // the magnet works by itself after the impact
   if (st.magnetT > 0) {
@@ -1104,7 +1107,7 @@ function updatePlay(dt: Loose) {
     if (u.taken || st.phase === 'intro' || p.z > 20) continue; // a car sliding out of control still picks up what it runs over
     if (Math.hypot(p.x - u.x, p.y - u.y) < 30) {
       u.taken = true;
-      if (u.kind === 'points') { st.bonus += tune.bonus_points; st.floats.push({ x: u.x, y: u.y, txt: '+' + fmt(tune.bonus_points) + ' €', t: 0, color: '#ffd21f' }); }
+      if (u.kind === 'points') { st.bonus += tune.bonus_points; st.floats.push({ x: u.x, y: u.y, txt: '+' + money(tune.bonus_points), t: 0, color: '#ffd21f' }); }
       if (u.kind === 'boost') {
         st.boostT = tune.boost_time;
         const fx = Math.cos(p.a), fy = Math.sin(p.a); p.vx += fx * tune.boost_kick; p.vy += fy * tune.boost_kick;
@@ -1125,7 +1128,7 @@ function updatePlay(dt: Loose) {
       if (sp < 12) { b.leak = false; addOil(b.x, b.y, tune.oil_radius * 2.3, b.id); }
     }
     if (b.fuse > 0) { b.fuse -= sdt; if (b.fuse <= 0 && !b.exploded) { b.exploded = true; st.blasts.push(b); } }
-    if (b.pend >= 150 && b.pendT <= 0) { let fy = b.y; for (const f of st.floats) if (f.t < 0.5 && Math.abs(f.x - b.x) < 90 && Math.abs(f.y - fy) < 26) fy = f.y - 28; st.floats.push({ x: b.x, y: fy, txt: '+' + fmt(b.pend) + ' €', t: 0, color: '#fff' }); b.pend = 0; b.pendT = 0.7; }
+    if (b.pend >= 150 && b.pendT <= 0) { let fy = b.y; for (const f of st.floats) if (f.t < 0.5 && Math.abs(f.x - b.x) < 90 && Math.abs(f.y - fy) < 26) fy = f.y - 28; st.floats.push({ x: b.x, y: fy, txt: '+' + money(b.pend), t: 0, color: '#fff' }); b.pend = 0; b.pendT = 0.7; }
     const f = b.dmg / b.value;
     b.smokeT -= sdt;
     if (f > 0.45 && b.smokeT <= 0) {
@@ -1333,7 +1336,7 @@ function jurassicCombo(tr: Loose, fm: Loose) {
   });
   st.farmers = null;
   st.bonus += tune.combo_bonus;
-  st.floats.push({ x: tr.x, y: tr.y - 60, txt: 'COMBO JURASSIQUE ! +' + fmt(tune.combo_bonus) + ' €', t: 0, color: '#b4e33d', big: true });
+  st.floats.push({ x: tr.x, y: tr.y - 60, txt: 'COMBO JURASSIQUE ! +' + money(tune.combo_bonus), t: 0, color: '#b4e33d', big: true });
   st.shake = 26; roar(); crunch(1, true); buzz(tune.vibe_blast);
   events.push({ type: 'combo', t: st.t });
 }
@@ -1495,7 +1498,7 @@ function craneLand(c: Loose) {
     b.inv = true; loosen(b); hurt(b, c.crushDmg, b.x, b.y);
   }
   for (const S of st.shops) if (Math.abs(S.x - x0) < S.hl + 10 && Math.min(y0, y1) < S.y + S.hw && Math.max(y0, y1) > S.y - S.hw) shopHurt(S, tune.crane_shop_damage);
-  st.damage += c.value; st.floats.push({ x: x0, y: (y0 + y1) / 2, txt: (c.monument ? MONUMENT_NAME[c.monument] : 'LA GRUE') + ' ! +' + fmt(c.value) + ' €', t: 0, color: '#ffc83d', big: true });
+  st.damage += c.value; st.floats.push({ x: x0, y: (y0 + y1) / 2, txt: (c.monument ? MONUMENT_NAME[c.monument] : 'LA GRUE') + ' ! +' + money(c.value), t: 0, color: '#ffc83d', big: true });
   for (let i = 0; i < 40; i++) { const yy = y0 + (y1 - y0) * vr(), an = vr() * Math.PI * 2, sp = 60 + vr() * 200; addPart(i % 2 ? 'spark' : 'smoke', x0 + (vr() - 0.5) * 20, yy, 10, Math.cos(an) * sp, Math.sin(an) * sp, 40 + vr() * 120, 0.4 + vr() * 0.6); }
   st.shake = 26; crunch(1, true);
   const wall: Loose = { static: true, kind: 'crane_down', ref: c, x: x0, y: (y0 + y1) / 2, a: 0, hl: c.monument ? 16 : 8, hw: Math.abs(y1 - y0) / 2, h: 14, height: 14, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
@@ -2032,7 +2035,7 @@ function drawBuilding(S: Loose) {
       const c = P(S.x, S.y - 8, S.h), z = cam.zoom;
       shopIcon(S.shop, c[0], c[1], 1.3 * z);
       text(SHOPS[S.shop].name.toUpperCase(), c[0], c[1] + 30 * z, Math.max(9, Math.round(14 * z)), '#1b1530', 'center', 'bold');
-      text(fmt(S.value - S.dmg) + ' €', c[0], c[1] + 48 * z, Math.max(9, Math.round(13 * z)), '#1b1530', 'center', 'bold');
+      text(money(S.value - S.dmg), c[0], c[1] + 48 * z, Math.max(9, Math.round(13 * z)), '#1b1530', 'center', 'bold');
       if (S.dmg / S.value > 0.25) { // cracks across the roof
         ctx.strokeStyle = 'rgba(20,15,30,0.7)'; ctx.lineWidth = 2 * z; ctx.beginPath();
         const a = P(S.x - S.hl * 0.6, S.y - S.hw * 0.3, S.h), b2 = P(S.x - S.hl * 0.1, S.y + S.hw * 0.1, S.h), d = P(S.x + S.hl * 0.5, S.y - S.hw * 0.2, S.h);
@@ -2205,7 +2208,7 @@ function drawPickup(u: Loose) {
   if (u.kind === 'boost') { // two chevrons pointing up the street
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 * z; ctx.lineJoin = 'round';
     for (const o of [-4, 3]) { ctx.beginPath(); ctx.moveTo(c[0] - 7 * z, c[1] + (o + 5) * z); ctx.lineTo(c[0], c[1] + o * z - 2 * z); ctx.lineTo(c[0] + 7 * z, c[1] + (o + 5) * z); ctx.stroke(); }
-  } else text(u.kind === 'points' ? '€' : '×2', c[0], c[1] + 1, Math.round(15 * z), '#fff', 'center', 'bold', 0);
+  } else text(u.kind === 'points' ? CURRENCY[country] || '€' : '×2', c[0], c[1] + 1, Math.round(15 * z), '#fff', 'center', 'bold', 0);
 }
 const FIRE_COLS = ['#a8201a', '#ff4a1c', '#ff9a1f', '#ffe066', '#fffbe0']; // tips to core
 function drawParts(top: Loose) {
@@ -2338,11 +2341,11 @@ function drawHUD() {
   text((daily ? today() : st.lv.name.toUpperCase()) + (st.lv.rain && !/pluie/i.test(st.lv.name) ? ' · PLUIE' : '') + (st.lv.night && !/nuit/i.test(st.lv.name) ? ' · NUIT' : '') + (st.lv.fog && !/brouillard/i.test(st.lv.name) ? ' · BROUILLARD' : '') + (st.lv.ice && !/verglas|blizzard/i.test(st.lv.name) ? ' · VERGLAS' : ''), 34, 53, 19, '#fff', 'left');
   panel(W - 380, 14, 364, 104);
   text('DÉGÂTS', W - 360, 34, 16, '#ff9fb2', 'left');
-  text(fmt(st.damage) + ' €', W - 32, 44, 34, '#fff', 'right', 'bold', 0);
+  text(money(st.damage), W - 32, 44, 34, '#fff', 'right', 'bold', 0);
   const pr = Math.min(1, st.score / th);
   ctx.fillStyle = '#3b3160'; ctx.fillRect(W - 360, 74, 320, 10);
   ctx.fillStyle = pr >= 1 ? '#19c37d' : '#ff5e7a'; ctx.fillRect(W - 360, 74, 320 * pr, 10);
-  text(`Objectif ${fmt(th)} €`, W - 360, 100, 15, '#d0c8f0', 'left', 'bold');
+  text(`Objectif ${money(th)}`, W - 360, 100, 15, '#d0c8f0', 'left', 'bold');
   text(`Bonus +${fmt(st.bonus)}   ×${st.mult}`, W - 32, 100, 15, '#ffd21f', 'right', 'bold');
   const ch = daily ? [] : (st.lv.challenges || []);
   if (ch.length && st.phase !== 'intro') { // the level's challenges, live
@@ -2372,14 +2375,14 @@ function drawHUD() {
     const hh = 108 + (ch.length ? 30 + ch.length * 26 : 0);
     panel(W / 2 - 330, H / 2 - 100, 660, hh, 'rgba(27,21,48,0.9)');
     text(daily ? 'CARAMBOLAGE DU JOUR' : `NIVEAU ${levelIdx + 1} — ${st.lv.name.toUpperCase()}`, W / 2, H / 2 - 66, 30, '#ffc83d');
-    text(`Objectif ${fmt(th)} €` + (st.lv.rain ? ' · route mouillée, ça glisse' : '') + (st.lv.night ? ' · de nuit' : '') + (st.lv.fog ? ' · brouillard' : '') + (st.lv.ice ? ' · verglas' : '') + (st.lv.median ? ' · barrière centrale' : ''), W / 2, H / 2 - 28, 19, '#fff', 'center', 'bold');
+    text(`Objectif ${money(th)}` + (st.lv.rain ? ' · route mouillée, ça glisse' : '') + (st.lv.night ? ' · de nuit' : '') + (st.lv.fog ? ' · brouillard' : '') + (st.lv.ice ? ' · verglas' : '') + (st.lv.median ? ' · barrière centrale' : ''), W / 2, H / 2 - 28, 19, '#fff', 'center', 'bold');
     if (ch.length) {
       text('DÉFIS', W / 2, H / 2 + 6, 15, '#ff9fb2');
       ch.forEach((c: Loose, i: Loose) => {
         const ok = done[levelIdx + ':' + i], y = H / 2 + 32 + i * 26;
         check(W / 2 - 250, y, ok ? '#19c37d' : '#5c5470');
         text(chalLabel(c), W / 2 - 232, y, 16, '#fff', 'left', 'bold');
-        text('+' + fmt(c.reward) + ' €' + (ok ? ' (réussi)' : ''), W / 2 + 270, y, 16, ok ? '#19c37d' : '#ffc83d', 'right', 'bold');
+        text('+' + money(c.reward) + (ok ? ' (réussi)' : ''), W / 2 + 270, y, 16, ok ? '#19c37d' : '#ffc83d', 'right', 'bold');
       });
     }
   } else if (!st.crashed && st.t < tune.intro_time + 2.5) {
@@ -2607,7 +2610,7 @@ function drawWheelCard(i: Loose, k: Loose) {
   const tags = [lv.rain && 'pluie', lv.night && 'nuit', lv.fog && 'brouillard', lv.ice && 'verglas', lv.median && 'autoroute', lv.ramp && 'tremplin'].filter(Boolean).join(' · ');
   if (ok && tags) text(tags, mx, r.y + 88 * sc, Math.round(14 * sc), '#a89fc8', 'center', 'bold');
   for (let s2 = 0; s2 < 3; s2++) star(mx - 30 * sc + s2 * 30 * sc, r.y + 116 * sc, 12 * sc, s2 < nst ? '#ffc83d' : '#3b3160');
-  if (ok) text(best[i] ? 'Record ' + fmt(best[i]) + ' €' : 'Objectif ' + fmt(TH_OF(i)) + ' €', mx, r.y + 146 * sc, Math.round(14 * sc), '#d0c8f0', 'center', 'bold');
+  if (ok) text(best[i] ? 'Record ' + money(best[i]) : 'Objectif ' + money(TH_OF(i)), mx, r.y + 146 * sc, Math.round(14 * sc), '#d0c8f0', 'center', 'bold');
   else padlock(mx, r.y + 140 * sc, sc, '#8a80a8');
   ctx.globalAlpha = 1;
 }
@@ -2800,7 +2803,7 @@ const scenes: Loose = {
       if (TOUCH) return; // the phone gets buttons instead (drawTouch)
       text(`Entrée : jouer   ·   Gauche / Droite ou molette : tourner la roue   ·   ${totalStars()} étoiles sur ${LEVELS.length * 3}`, W / 2, 592, 20, '#fff', 'center', 'bold', 5);
       const dRec = dailyRec.date === today() ? dailyRec.score : 0;
-      text(`U : garage (crédit ${fmt(credit())} €)   ·   D : carambolage du jour (record ${fmt(dRec)} €)   ·   O : réglages`, W / 2, 632, 19, '#ffc83d', 'center', 'bold', 4);
+      text(`U : garage (crédit ${money(credit())})   ·   D : carambolage du jour (record ${money(dRec)})   ·   O : réglages`, W / 2, 632, 19, '#ffc83d', 'center', 'bold', 4);
     },
   },
   garage: {
@@ -2838,7 +2841,7 @@ const scenes: Loose = {
       drawWorld();
       ctx.fillStyle = 'rgba(27,21,48,0.6)'; ctx.fillRect(0, 0, W, H);
       ctx.save(); ctx.translate(W / 2, 52); ctx.rotate(-0.03); text('LE GARAGE', 0, 0, 52, '#ffc83d', 'center', 'bold italic', 10); ctx.restore();
-      text(`Crédit : ${fmt(credit())} €`, W / 2, 102, 23, '#fff', 'center', 'bold', 5);
+      text(`Crédit : ${money(credit())}`, W / 2, 102, 23, '#fff', 'center', 'bold', 5);
       text(garageTab < 2 ? `Pour ton véhicule au volant : ${MODELS[up.car].name.toUpperCase()} · prix ×${priceK()} · un autre véhicule repart de zéro`
         : `Les véhicules se débloquent avec tes étoiles : tu en as ${totalStars()} sur ${LEVELS.length * 3}`, W / 2, 127, 14, '#ff9fb2', 'center', 'bold');
       TABS.forEach((t: Loose, i: Loose) => {
@@ -2866,7 +2869,7 @@ const scenes: Loose = {
       const T = TABS[garageTab];
       if (!T.cars) tabItems(T).forEach((id: Loose, i: Loose) => {
         const g = GARAGE_BY[id], lv = G()[g.id] || 0, maxed = lv >= g.max, locked = g.needs && !G()[g.needs];
-        row(i, (x: Loose, y: Loose) => g.icon(x, y, 0.95), g.name, g.desc(lv), maxed ? 'INSTALLÉ' : locked ? GARAGE_BY[g.needs].name.toUpperCase() + ' REQUIS' : fmt(priceOf(g, lv)) + ' €',
+        row(i, (x: Loose, y: Loose) => g.icon(x, y, 0.95), g.name, g.desc(lv), maxed ? 'INSTALLÉ' : locked ? GARAGE_BY[g.needs].name.toUpperCase() + ' REQUIS' : money(priceOf(g, lv)),
           maxed ? '#19c37d' : locked ? '#a89fc8' : credit() >= priceOf(g, lv) ? '#ffc83d' : '#ff5e7a', [g.max, lv]);
       });
       else CARS.forEach((id: Loose, i: Loose) => {
@@ -2983,27 +2986,27 @@ const scenes: Loose = {
       ctx.fillStyle = 'rgba(27,21,48,0.45)'; ctx.fillRect(0, 0, W, H);
       panel(W / 2 - 340, 50, 680, 590, 'rgba(27,21,48,0.93)');
       text(st.endReason.toUpperCase(), W / 2, 86, 28, '#ffc83d', 'center', 'bold italic');
-      const rows = [['Dégâts', fmt(st.damage) + ' €'], ['Véhicules touchés', String(st.hitCount)], ['Bonus', '+' + fmt(st.bonus) + ' €'],
+      const rows = [['Dégâts', money(st.damage)], ['Véhicules touchés', String(st.hitCount)], ['Bonus', '+' + money(st.bonus)],
         ['Multiplicateur', '×' + st.mult + (st.insK > 1 ? `   assurance ×${st.insK}` : '')]];
       rows.forEach(([a, b]: Loose, i: Loose) => { text(a, W / 2 - 270, 130 + i * 34, 21, '#d0c8f0', 'left', 'bold'); text(b, W / 2 + 270, 130 + i * 34, 22, '#fff', 'right', 'bold'); });
       ctx.fillStyle = '#ffc83d'; ctx.fillRect(W / 2 - 270, 260, 540, 3);
       text('SCORE', W / 2 - 270, 292, 26, '#ffc83d', 'left', 'bold');
-      text(fmt(st.final) + ' €', W / 2 + 270, 292, 36, '#fff', 'right', 'bold');
+      text(money(st.final), W / 2 + 270, 292, 36, '#fff', 'right', 'bold');
       for (let k = 0; k < 3; k++) star(W / 2 - 52 + k * 52, 340, 21, k < st.stars ? '#ffc83d' : '#3b3160');
-      text(`Objectif ${fmt(th)} €   ·   2 étoiles ${fmt(targetsNow()[1])} €   ·   3 étoiles ${fmt(targetsNow()[2])} €`, W / 2, 380, 16, '#d0c8f0', 'center', 'bold');
-      text(`Meilleur ${fmt(bestNow())} €${st.newBest ? '   NOUVEAU RECORD !' : ''}`, W / 2, 402, 16, st.newBest ? '#ffc83d' : '#d0c8f0', 'center', 'bold');
+      text(`Objectif ${money(th)}   ·   2 étoiles ${money(targetsNow()[1])}   ·   3 étoiles ${money(targetsNow()[2])}`, W / 2, 380, 16, '#d0c8f0', 'center', 'bold');
+      text(`Meilleur ${money(bestNow())}${st.newBest ? '   NOUVEAU RECORD !' : ''}`, W / 2, 402, 16, st.newBest ? '#ffc83d' : '#d0c8f0', 'center', 'bold');
       st.chal.forEach((r: Loose, i: Loose) => {
         const y = 436 + i * 26;
         check(W / 2 - 252, y, r.ok || r.was ? '#19c37d' : '#5c5470');
         text(chalLabel(r.c), W / 2 - 234, y, 16, r.ok ? '#fff' : '#a89fc8', 'left', 'bold');
-        text(r.fresh ? `DÉFI RÉUSSI +${fmt(r.c.reward)} €` : r.was ? 'déjà réussi' : r.c.type === 'score' ? 'raté' : `${Math.min(chalProgress(r.c, false), r.c.n)}/${r.c.n}`,
+        text(r.fresh ? `DÉFI RÉUSSI +${money(r.c.reward)}` : r.was ? 'déjà réussi' : r.c.type === 'score' ? 'raté' : `${Math.min(chalProgress(r.c, false), r.c.n)}/${r.c.n}`,
           W / 2 + 270, y, 16, r.fresh ? '#19c37d' : '#a89fc8', 'right', 'bold');
       });
       if (daily) text(`Carambolage du jour : le record d'aujourd'hui (${today()}) compte dans ton crédit`, W / 2, 450, 16, '#ff9fb2', 'center', 'bold');
       text(st.gained, W / 2, 540, 34, st.passed ? '#19c37d' : '#ff5e7a', 'center', 'bold italic', 6);
       const next = daily || !st.passed ? 'Entrée : réessayer' : levelIdx < LEVELS.length - 1 ? 'Entrée : niveau suivant' : 'Tous les niveaux réussis ! Entrée : menu';
       if (!TOUCH) text(next + '   ·   R : rejouer   ·   V : revoir le replay   ·   Échap : menu', W / 2, 584, 18, '#fff', 'center', 'bold');
-      text(`Crédit pour le garage : ${fmt(credit())} €`, W / 2, 614, 17, '#ffc83d', 'center', 'bold');
+      text(`Crédit pour le garage : ${money(credit())}`, W / 2, 614, 17, '#ffc83d', 'center', 'bold');
     },
   },
   replay: { // the pile-up again: slow at first, then fast; Enter skips
@@ -3037,7 +3040,7 @@ const scenes: Loose = {
       ctx.fillStyle = '#0b0818'; ctx.fillRect(0, 0, W, 54); ctx.fillRect(0, H - 54, W, 54);
       text('REPLAY', 30, 27, 28, '#ff5e7a', 'left', 'bold italic');
       text(st.rp.t < tune.replay_slow_time ? 'RALENTI' : 'ACCÉLÉRÉ', 172, 27, 18, '#ffc83d', 'left', 'bold');
-      text(fmt(st.final) + ' €', W - 30, 27, 26, '#fff', 'right', 'bold');
+      text(money(st.final), W - 30, 27, 26, '#fff', 'right', 'bold');
       if (!TOUCH) text('Entrée : passer', W / 2, H - 27, 18, '#d0c8f0', 'center', 'bold');
     },
   },
@@ -3100,7 +3103,7 @@ function drawTouch() {
     }
     btns.sort((a: Loose, b: Loose) => (a.z || 0) - (b.z || 0)); // the facing card wins a tap on an overlap
     button(W / 2 - 440, 590, 210, 66, 'JOUER', 'Enter', { size: 28, bg: 'rgba(25,195,125,0.85)' });
-    button(W / 2 - 218, 590, 210, 66, `GARAGE ${fmt(credit())} €`, 'KeyU', { size: 17 });
+    button(W / 2 - 218, 590, 210, 66, `GARAGE ${money(credit())}`, 'KeyU', { size: 17 });
     button(W / 2 + 4, 590, 220, 66, 'CARAMBOLAGE DU JOUR', 'KeyD', { size: 14, bg: 'rgba(160,20,90,0.85)' });
     button(W / 2 + 236, 590, 204, 66, 'RÉGLAGES', 'KeyO', { size: 18 });
     if (fsAPI() && !isFull()) button(W - 372, 24, 256, 58, 'PLEIN ÉCRAN', 'Fullscreen', { size: 20 });

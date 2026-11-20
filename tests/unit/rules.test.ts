@@ -1,7 +1,7 @@
 // Vitest: the scoring rules in src/game/, run in Node with no browser.
 import { describe, expect, it } from 'vitest';
 import config from '../../data/config.json';
-import { finalScore, fmt, impactDamage, levelTargets, priceFor, starsAt } from '../../src/game/rules';
+import { finalScore, fmt, impactDamage, levelTargets, money, priceFor, starsAt } from '../../src/game/rules';
 import { rng, setSeed } from '../../src/game/random';
 
 
@@ -10,6 +10,18 @@ describe('rng', () => {
     setSeed(7); const first = [rng(), rng(), rng()];
     setSeed(7); expect([rng(), rng(), rng()]).toEqual(first);
     expect(first.every(n => n >= 0 && n < 1)).toBe(true);
+  });
+});
+
+describe('money', () => {
+  it('puts the sign after in French, thousands split by spaces', () => {
+    expect(money(1234567, '£', 'fr')).toBe('1 234 567 £');
+    expect(money(950, '€', 'fr')).toBe('950 €');
+  });
+  it('puts the sign before in English, thousands split by commas', () => {
+    expect(money(1234567, '£', 'en')).toBe('£1,234,567');
+    expect(money(950.4, '€', 'en')).toBe('€950');
+    expect(money(-2500, '£', 'en')).toBe('-£2,500');
   });
 });
 

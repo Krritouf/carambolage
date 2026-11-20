@@ -5,6 +5,16 @@ export function fmt(n: number): string {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
+/**
+ * An amount of money as the player reads it: in French the sign after, thousands split by spaces
+ * (12 345 €, 12 345 £); in English the sign before, thousands split by commas (€12,345, £12,345).
+ */
+export function money(n: number, symbol: string, lang: string): string {
+  if (lang !== 'en') return fmt(n) + ' ' + symbol;
+  const r = Math.round(n);
+  return (r < 0 ? '-' : '') + symbol + String(Math.abs(r)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 /** Damage in euros one impact does: impulse above half the threshold, times the euros per impulse. */
 export function impactDamage(impulse: number, threshold: number, scale: number): number {
   return (impulse - threshold * 0.5) * scale;

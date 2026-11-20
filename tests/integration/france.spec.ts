@@ -32,3 +32,39 @@ test('the Eiffel Tower falls across the boulevard and scores its value', async (
   expect(r.said).toBe(true);
   expect(r.gained).toBeGreaterThan(0);
 });
+
+test('the angry farmers drive in from the left, shove the traffic and drop hay', async ({ page }) => {
+  // a save with the farmers bought on the sports car
+  await page.addInitScript(() => localStorage.setItem('carambolage', JSON.stringify({ lv: 2, unlocked: 19, up: { cars: ['sport'], car: 'sport', gear: { sport: { farmers: 1 } } } })));
+  await openLevel(page, 9);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    g.press('KeyC'); g.step(1, false);
+    const started = !!st.farmers, fromLeft = st.farmers ? st.farmers.x < 0 : false, pileup = st.crashed;
+    let n = 0, maxHay = 0;
+    while (st.farmers && g.scene === 'play' && n++ < 3000) { g.step(1, false); maxHay = Math.max(maxHay, st.bodies.filter((b: any) => b.kind === 'hay').length); }
+    return { started, fromLeft, pileup, crossed: !st.farmers || st.farmers.x > 0, maxHay, damage: st.damage };
+  });
+  expect(r).toMatchObject({ started: true, fromLeft: true, pileup: true, crossed: true });
+  expect(r.maxHay).toBeGreaterThan(0);
+  expect(r.damage).toBeGreaterThan(0);
+});
+
+test('the convoy and its hay bales leave the buildings alone', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('carambolage', JSON.stringify({ lv: 2, unlocked: 19, up: { cars: ['sport'], car: 'sport', gear: { sport: { farmers: 1 } } } })));
+  await openLevel(page, 9); // a level with shops and cranes
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    st.bodies = st.bodies.filter((b: any) => b === st.player); for (const l of st.lanes) l.timer = 1e9; // no traffic to shove into them
+    g.press('KeyC'); g.step(1, false);
+    let n = 0; while (st.farmers && g.scene === 'play' && n++ < 3000) g.step(1, false);
+    return { shopsHurt: st.shops.filter((S: any) => S.dmg > 0).length, cranesDown: st.cranes.filter((c: any) => c.falling).length };
+  });
+  expect(r).toEqual({ shopsHurt: 0, cranesDown: 0 });
+});
+
+test('without the gadget bought, C does nothing', async ({ page }) => {
+  await openLevel(page, 9);
+  const started = await page.evaluate(() => { const g = window.game!; g.press('KeyC'); g.step(1, false); return !!(g.state as any).farmers; });
+  expect(started).toBe(false);
+});

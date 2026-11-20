@@ -23,7 +23,7 @@ const PIXEL = false;
 const FONT = '"Trebuchet MS", "Arial Black", Verdana, sans-serif';
 const TITLE = 'CARAMBOLAGE';
 const CONTROLS = ['Flèches ou ZQSD : accélérer, freiner, tourner', 'Au premier choc, tu perds le contrôle !',
-  'R : rejouer · P : pause · M : son · gadgets du garage : Espace, F, T'];
+  'R : rejouer · P : pause · M : son · gadgets du garage : Espace, F, T, C'];
 const TOUCH_CONTROLS = ['Touches GAUCHE / DROITE : tourner (la voiture accélère seule)', 'Au premier choc, tu perds le contrôle !',
   'Gadgets sous les touches · REJOUER et MENU en bas à droite']; // the title's lines on a phone
 const CHEAP = params.get('render') === 'cheap';
@@ -188,6 +188,7 @@ const KINDS: Loose = {
   ambulance: { name: 'Ambulance', l: 56, w: 25, h: 33 },
   fire: { name: 'Pompiers', l: 104, w: 30, h: 34 },
   trailer: { name: 'Remorque', l: 112, w: 30, h: 36 },
+  hay: { name: 'Botte de foin', l: 28, w: 22, h: 20 }, // dropped by the angry farmers' tractors
   bus: { name: 'Bus', l: 112, w: 30, h: 30 },
   truck: { name: 'Camion', l: 92, w: 30, h: 34 },
   tanker: { name: 'Camion-citerne', l: 96, w: 28, h: 30 },
@@ -230,7 +231,7 @@ function chalProgress(c: Loose, live: Loose) {
 let best: number[] = LEVELS.map(() => 0), unlocked = 1;
 // the garage: vehicles owned, the one at the wheel, and each vehicle's own upgrades and gadgets (gear[car][item] = level)
 let up: Loose = { cars: ['sport'], car: 'sport', gear: {} }, spent = 0;
-const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
+const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, farmers: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
 function G() { // what the vehicle at the wheel has, every item at 0 until bought
   const g = up.gear[up.car] || (up.gear[up.car] = {});
   for (const k in GEAR0) if (typeof g[k] !== 'number') g[k] = 0;
@@ -360,7 +361,7 @@ function reset() {
     phase: 'intro', introT: tune.intro_time, timeLeft: tune.approach_time,
     crashed: false, crashT: 0, crashX: 0, crashY: 0, slowT: 0, countdown: 0, bannerT: 0,
     bodies: [], blocks: [], props: [], lanes: [], pickups: [], parts: [], floats: [], skids: [], blasts: [],
-    shake: 0, nextId: 1, trex: null, trexUsed: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
+    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
     nitroUsed: false, nitroT: 0, oilUsed: false, oilDropT: 0, oilLX: 0, oilLY: 0, jumpsLeft: 0, magnetT: 0, chal: [], stars: 0, insK: 1, rockets: [], rocketsLeft: 0, touchedOnce: false, trailer: null, oils: [], oilGrid: new Map(), scorch: [], controlT: 0, dynUsed: false, passed: false, final: 0, endReason: '',
   };
   state = st;
@@ -560,9 +561,9 @@ function impact(A: Loose, B: Loose, j: Loose, c: Loose, fall: Loose) {
   }
   const dmg = impactDamage(jd, tune.hit_threshold, tune.damage_scale);
   { // a shop or a crane in the impact
-    const S = A.static ? A : B.static ? B : null;
-    if (S && S.shop) shopHurt(S, dmg * tune.shop_damage_k);
-    if (S && S.kind === 'crane') startCraneFall(S.ref);
+    const S = A.static ? A : B.static ? B : null, hay = A.kind === 'hay' || B.kind === 'hay'; // the farmers' bales spare the buildings
+    if (S && S.shop && !hay) shopHurt(S, dmg * tune.shop_damage_k);
+    if (S && S.kind === 'crane' && !hay) startCraneFall(S.ref);
   }
   hurt(A, dmg * (B.static ? 0.6 : 1), c.p[0], c.p[1]); hurt(B, dmg * (A.static ? 0.6 : 1), c.p[0], c.p[1]);
   for (const b of [A, B]) {
@@ -911,7 +912,15 @@ function updatePlay(dt: Loose) {
     st.floats.push({ x: p.x, y: p.y, txt: 'APPEL DU JURASSIQUE !', t: 0, color: '#b4e33d', big: true });
     roar(); events.push({ type: 'trex', t: st.t });
   }
+  // the angry farmers (C, France): a convoy of tractors comes out of the left-hand tunnel
+  if (G().farmers && country === 'fr' && !st.farmersUsed && pressed('KeyC') && (st.phase === 'drive' || st.phase === 'crash')) {
+    st.farmersUsed = true; startPileup(-EXT, 0);
+    st.farmers = { x: -EXT - tune.tunnel_depth - 60, y: 0, t: 0, hornT: 0, hayT: 0.8, hay: 0 };
+    st.floats.push({ x: p.x, y: p.y, txt: 'AGRICULTEURS PAS CONTENTS !', t: 0, color: '#ffa94d', big: true });
+    honk(); events.push({ type: 'farmers', t: st.t });
+  }
   if (st.trex) stepTrex(st.trex, sdt);
+  if (st.farmers) stepFarmers(st.farmers, sdt);
   for (const c of st.cranes) if (c.falling && !c.fallen) stepCrane(c, sdt);
   for (const S of st.shops) { // damaged shops smoke, ruined ones burn
     const f = S.dmg / S.value; S.smokeT = (S.smokeT || 0) - sdt;
@@ -1017,7 +1026,7 @@ function updatePlay(dt: Loose) {
     if (st.recTick % 2 === 0 && st.replay.length < 700) {
       const fr: Loose[] = []; for (const b of st.bodies) if (Math.abs(b.x - st.crashX) < 1500 && Math.abs(b.y - st.crashY) < 900) fr.push(snap(b));
       st.replay.push({ bodies: fr, fx: st.fxPending.splice(0), oilSeq: st.oilSeq, skidSeq: st.skidSeq, scorchN: st.scorch.length,
-        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
+        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t } : null, farmers: st.farmers ? { x: st.farmers.x, y: st.farmers.y, t: st.farmers.t } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
     }
   }
   // the countdown from the first impact; the damage is counted when it reaches zero
@@ -1136,6 +1145,79 @@ function drawTrex(tr: Loose) {
   flat(b, 66, 11, 6, 5, 90.2, '#ffe066'); flat(b, 66, -11, 6, 5, 90.2, '#ffe066'); // the eyes
   flat(b, 66, 11, 2, 3, 90.4, '#1d1a26'); flat(b, 66, -11, 2, 3, 90.4, '#1d1a26');
   box(40, 12, 6, 50, 56, gl, gd, 22); box(40, 12, 6, 50, 56, gl, gd, -22); // the little arms
+}
+// ---- The angry farmers (France's gadget) ----------------------------------------------------
+// A convoy of tractors drives in from the left-hand tunnel along the middle of the boulevard,
+// shoving every vehicle aside and hurting it, and drops hay bales that roll into the traffic.
+// Unlike the T-Rex, it leaves the buildings and the cranes alone.
+function honk() { tone(392, 0.22, 'square', 0.14); tone(330, 0.3, 'square', 0.14, 0.22); }
+function stepFarmers(fm: Loose, dt: number) {
+  const st = state, n = tune.farmers_count, gap = tune.farmers_gap, hl = tune.farmers_len / 2, hw = tune.farmers_width / 2;
+  fm.t += dt; fm.x += tune.farmers_speed * dt; // fm.x is the lead tractor; the others follow at gap
+  const tail = fm.x - (n - 1) * gap;
+  if (tail > EXT + tune.tunnel_depth + 200) { st.farmers = null; return; }
+  fm.hornT -= dt; if (fm.hornT <= 0) { fm.hornT = 1.1; honk(); }
+  // the last tractor's trailer drops a hay bale now and then
+  fm.hayT -= dt;
+  if (fm.hayT <= 0 && fm.hay < tune.farmers_bales && tail > -EXT) {
+    fm.hayT = tune.farmers_bale_every; fm.hay++;
+    const b = mkBody('hay', tail - hl - 24, fm.y + (rng() - 0.5) * 16, rng() * Math.PI, '#f2c94c');
+    b.ai = false; b.loose = true; b.inv = true; b.touched = true; b.id = st.nextId++;
+    b.vx = tune.farmers_speed * 0.4; b.vy = (rng() < 0.5 ? -1 : 1) * (60 + rng() * 140); b.w = (rng() - 0.5) * 8; b.vz = 80;
+    st.bodies.push(b);
+  }
+  // everything in the convoy's path is shoved aside
+  for (const b of st.bodies) {
+    if (b.z > 60 || b.kind === 'hay') continue;
+    if (b.x < tail - hl - b.hl * 0.6 || b.x > fm.x + hl + b.hl * 0.6 || Math.abs(b.y - fm.y) > hw + b.hw) continue;
+    const side = b.y >= fm.y ? 1 : -1;
+    b.vy = side * Math.max(Math.abs(b.vy), tune.farmers_push); b.vx += tune.farmers_speed * 0.6 * dt * 10; b.vz = Math.max(b.vz, 70);
+    b.w += (rng() - 0.5) * 3;
+    if (isMine(b)) { if (b.control) { crash(b.x, b.y); b.control = false; b.loose = true; st.controlT = 0; } continue; }
+    b.inv = true; loosen(b); hurt(b, tune.farmers_damage * dt, b.x, b.y);
+    if (!b.leak) { b.leak = true; b.leakX = b.x; b.leakY = b.y; }
+  }
+}
+/** One tractor, facing +x at x, y: green or red, big back wheels, a cab, an exhaust; the lead one flies the flag. */
+function drawTractor(x: number, y: number, col: string, lead: boolean, t: number) {
+  const b: Loose = { x, y, a: 0 }, dk = shade(col, 0.72), glass = '#22305a';
+  const box = (ox: number, len: number, wid: number, h0: number, h1: number, top: string, side: string, oy = 0) => prism(rect(b, ox, oy, len, wid), h0, h1, top, side);
+  ctx.globalAlpha = 0.3; poly(rect(b, 0, 0, tune.farmers_len, tune.farmers_width).map((q: Loose) => P(q[0] + 8, q[1] + 10, 0)), '#120b2a'); ctx.globalAlpha = 1;
+  const hop = Math.abs(Math.sin(t * 9 + x)) * 1.5; // it bumps along
+  box(-16, 22, 10, 0, 22, '#1d1a26', '#1d1a26', 18); box(-16, 22, 10, 0, 22, '#1d1a26', '#1d1a26', -18); // the back wheels
+  box(16, 14, 8, 0, 13, '#1d1a26', '#1d1a26', 15); box(16, 14, 8, 0, 13, '#1d1a26', '#1d1a26', -15); // the front ones
+  flat(b, -16, 22, 8, 4, 22.2, '#ffc83d'); flat(b, -16, -22, 8, 4, 22.2, '#ffc83d'); // hubs
+  box(10, 30, 20, 8 + hop, 20 + hop, col, dk); // the bonnet
+  box(-12, 22, 26, 8 + hop, 40 + hop, col, glass); // the cab
+  flat(b, -12, 0, 22, 26, 40.2 + hop, shade(col, 1.15)); // its roof
+  box(18, 4, 4, 20 + hop, 32 + hop, '#495057', '#343a40', 6); // the exhaust
+  if (lead) { // a French flag on a pole
+    const pole = [x - 20, y - 10, 40 + hop], top = [x - 20, y - 10, 62 + hop];
+    beam(pole, top, 2, '#dee2e6');
+    const wave = Math.sin(t * 6) * 3;
+    for (const [i, c] of [[0, '#1f4fbf'], [1, '#f8f9fa'], [2, '#e03131']] as Loose) prism([[x - 20 - i * 7, y - 10], [x - 27 - i * 7, y - 10 + wave * 0.3], [x - 27 - i * 7, y - 9 + wave * 0.3], [x - 20 - i * 7, y - 9]], 52 + hop, 62 + hop, c, c);
+  }
+}
+function drawFarmers(fm: Loose) {
+  const n = tune.farmers_count;
+  for (let i = n - 1; i >= 0; i--) {
+    const x = fm.x - i * tune.farmers_gap;
+    if (x < -EXT - tune.tunnel_depth - 80 || x > EXT + tune.tunnel_depth + 80) continue;
+    drawTractor(x, fm.y, i % 2 ? '#e03131' : '#2f9e44', i === 0, fm.t);
+    if (i === n - 1) { // the last one tows the hay
+      const hx = x - tune.farmers_len / 2 - 26, tb: Loose = { x: hx, y: fm.y, a: 0 };
+      prism(rect(tb, 0, 0, 40, 30), 6, 12, '#8a5a2b', '#6b4420');
+      if (fm.hay < tune.farmers_bales) prism(rect(tb, 0, 0, 34, 26), 12, 30, '#f2c94c', '#c99a2e');
+    }
+  }
+}
+function farmersIcon(x: number, y: number, k: number) { // a tractor in profile
+  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+  poly([[-18, -4], [16, -4], [20, 6], [-18, 6]], '#2f9e44'); poly([[-16, -24], [2, -24], [2, -4], [-16, -4]], '#2f9e44');
+  poly([[-13, -21], [-1, -21], [-1, -10], [-13, -10]], '#a5d8ff'); poly([[10, -16], [13, -16], [13, -4], [10, -4]], '#495057');
+  ctx.fillStyle = '#1d1a26'; ctx.beginPath(); ctx.arc(-10, 8, 12, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(15, 12, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffc83d'; ctx.beginPath(); ctx.arc(-10, 8, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(15, 12, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 function trexIcon(x: number, y: number, k: number) { // a T-Rex head in profile, jaws open
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
@@ -1367,6 +1449,11 @@ function drawVehicle(b: Loose) {
   const glass = '#22305a', dark = '#1d1a26';
   const box = (ox: Loose, len: Loose, wid: Loose, h0: Loose, h1: Loose, top: Loose, side: Loose, oy: Loose = 0) => prism(rect(b, ox, oy, len, wid), z + h0, z + h1, top, side);
   const dk = b.kind === 'player' ? MODELS[b.model || 'sport'].draw : b.kind; // what it looks like
+  if (dk === 'hay') { // a straw bale with its two strings
+    box(0, L, Wd, 0, 20, wreck ? '#b08a3a' : '#f2c94c', '#c99a2e');
+    flat(b, -L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a'); flat(b, L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a');
+    return;
+  }
   if (dk === 'moto') {
     box(0, L, Wd * 0.55, 3, 8, '#2b2b33', '#16161c');
     flat(b, L / 2 - 2, 0, 3, Wd * 0.5, z + 8, '#ffe066');
@@ -1727,6 +1814,7 @@ function drawWorld() {
   for (const b of air) drawVehicle(b);
   for (const r of st.rockets || []) drawRocket(r);
   if (st.trex) drawTrex(st.trex);
+  if (st.farmers) drawFarmers(st.farmers);
   drawParts(true);
   if (NIGHT) { // the dark, then headlight beams added on top
     ctx.fillStyle = 'rgba(8,6,32,0.6)'; ctx.fillRect(0, 0, W, H);
@@ -1841,6 +1929,7 @@ function drawHUD() {
   if (p.gear.dynamite && st.dynLeft > 0) gearHud.push([dynIcon, 'ESPACE : DYNAMITE ×' + st.dynLeft, '#ff9fb2']);
   if (st.rocketsLeft > 0) gearHud.push([rocketIcon, 'F : ROQUETTE ×' + st.rocketsLeft, '#9fd3ff']);
   if (G().trex && !st.trexUsed) gearHud.push([trexIcon, 'T : APPEL DU JURASSIQUE', '#b4e33d']);
+  if (G().farmers && country === 'fr' && !st.farmersUsed) gearHud.push([farmersIcon, 'C : AGRICULTEURS PAS CONTENTS', '#ffa94d']);
   if (st.phase !== 'intro' && !TOUCH) gearHud.forEach(([ic, label, c]: Loose, i: Loose) => {
     const y = 130 + i * 44;
     panel(W - 236, y, 220, 38); ic(W - 206, y + 19, 0.7); text(label, W - 112, y + 19, 15, c, 'center', 'bold');
@@ -1944,16 +2033,20 @@ const GARAGE = [
     desc: () => `+${tune.rocket2_extra} roquettes par course` },
   { id: 'trex', name: 'Appel du jurassique', max: 1, icon: trexIcon, cost: () => tune.trex_cost,
     desc: () => 'T : un T-Rex traverse le boulevard, écrase les véhicules et ébranle les commerces (lance le compte à rebours)' },
+  { id: 'farmers', name: 'Agriculteurs pas contents', max: 1, icon: farmersIcon, cost: () => tune.farmers_cost, country: 'fr',
+    desc: () => 'C : des tracteurs déboulent par la gauche, bousculent tout et sèment du foin, sans toucher aux bâtiments' },
 ];
 let garageSel = 0, garageMsg = '', garageMsgT = 0, garageTab = 0;
 // the garage's rows share 420 px of height, 68 px each at most
-const tabLen = () => TABS[garageTab].cars ? CARS.length : TABS[garageTab].items.length;
+// a tab's items in the country being played: an item with a country (the farmers) shows only there
+const tabItems = (T: Loose): string[] => T.items.filter((id: string) => !GARAGE_BY[id].country || GARAGE_BY[id].country === country);
+const tabLen = () => TABS[garageTab].cars ? CARS.length : tabItems(TABS[garageTab]).length;
 const rowH = () => Math.min(68, Math.floor(426 / tabLen()));
 const rowY = (i: number) => 200 + i * rowH();
 const GARAGE_BY = Object.fromEntries(GARAGE.map((g: Loose) => [g.id, g]));
 const TABS: Loose = [
   { name: 'AMÉLIORATIONS', items: ['engine', 'bullbar', 'armor', 'extratime', 'extratime2', 'insurance', 'magnet'] },
-  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex'] },
+  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex', 'farmers'] }, // an item with a country shows only in it
   { name: 'VÉHICULES', cars: true },
 ];
 const carStars = (id: Loose) => id === 'sport' ? 0 : tune['my_stars_' + id]; // stars it takes to unlock a vehicle
@@ -2230,7 +2323,7 @@ const scenes: Loose = {
       if (pressed('ArrowLeft') || pressed('KeyQ') || pressed('KeyA')) tab = (garageTab + TABS.length - 1) % TABS.length;
       for (let i = 0; i < TABS.length; i++) if (pressed('Tab' + i)) tab = i;
       if (tab !== garageTab) { garageTab = tab; garageSel = 0; }
-      const T = TABS[garageTab], n = T.cars ? CARS.length : T.items.length;
+      const T = TABS[garageTab], n = T.cars ? CARS.length : tabItems(T).length;
       if (pressed('ArrowUp') || pressed('KeyW') || pressed('KeyZ')) garageSel = (garageSel + n - 1) % n;
       if (pressed('ArrowDown') || pressed('KeyS')) garageSel = (garageSel + 1) % n;
       for (let i = 0; i < n; i++) if (pressed('Row' + i)) { if (garageSel === i) hit.add('Enter'); else { garageSel = i; garageMsg = 'Touche encore pour valider'; garageMsgT = 1.5; } }
@@ -2238,7 +2331,7 @@ const scenes: Loose = {
       const ok = () => { tone(660, 0.1, 'square', 0.2); tone(990, 0.18, 'square', 0.18, 0.08); }, no = () => tone(180, 0.2, 'triangle', 0.2);
       if (pressed('Enter') || pressed('Space')) {
         if (!T.cars) {
-          const g = GARAGE_BY[T.items[garageSel]], lv = G()[g.id] || 0;
+          const g = GARAGE_BY[tabItems(T)[garageSel]], lv = G()[g.id] || 0;
           if (lv >= g.max) { garageMsg = 'Déjà au maximum'; }
           else if (g.needs && !G()[g.needs]) { garageMsg = `Il faut d'abord : ${GARAGE_BY[g.needs].name}`; no(); }
           else if (credit() < priceOf(g, lv)) { garageMsg = 'Pas assez de crédit : fais plus de dégâts !'; no(); }
@@ -2283,7 +2376,7 @@ const scenes: Loose = {
         text(right, W / 2 + 400, y + 21, 19, rightCol, 'right', 'bold');
       };
       const T = TABS[garageTab];
-      if (!T.cars) T.items.forEach((id: Loose, i: Loose) => {
+      if (!T.cars) tabItems(T).forEach((id: Loose, i: Loose) => {
         const g = GARAGE_BY[id], lv = G()[g.id] || 0, maxed = lv >= g.max, locked = g.needs && !G()[g.needs];
         row(i, (x: Loose, y: Loose) => g.icon(x, y, 0.95), g.name, g.desc(lv), maxed ? 'INSTALLÉ' : locked ? GARAGE_BY[g.needs].name.toUpperCase() + ' REQUIS' : fmt(priceOf(g, lv)) + ' €',
           maxed ? '#19c37d' : locked ? '#a89fc8' : credit() >= priceOf(g, lv) ? '#ffc83d' : '#ff5e7a', [g.max, lv]);
@@ -2446,11 +2539,11 @@ const scenes: Loose = {
       const st = state, f = st.replay[st.rp.idx] || st.replay[0], live = st.bodies, oils = st.oils, skids = st.skids, scorch = st.scorch;
       // the road as it was at that moment: only the oil, skid marks and scorches made so far
       st.bodies = f.bodies; st.oils = oils.filter((o: Loose) => o.seq <= f.oilSeq); st.skids = skids.filter((k: Loose) => k[4] <= f.skidSeq); st.scorch = scorch.slice(0, f.scorchN);
-      const trex = st.trex, thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
-      st.trex = f.trex; st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
+      const trex = st.trex, farmers = st.farmers, thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
+      st.trex = f.trex; st.farmers = f.farmers || null; st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
       st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = f.shops[i]; });
       try { drawWorld(); } finally {
-        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex;
+        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex; st.farmers = farmers;
         st.cranes.forEach((c: Loose, i: number) => { [c.theta, c.falling] = thetas[i]; }); st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = shops[i]; });
       }
       ctx.fillStyle = '#0b0818'; ctx.fillRect(0, 0, W, 54); ctx.fillRect(0, H - 54, W, 54);
@@ -2501,7 +2594,9 @@ function drawTouch() {
       let ly = gy;
       if (st.player.gear.dynamite && st.dynLeft > 0) { gadget(16, ly, 'DYNAMITE ' + st.dynLeft, 'Space', dynIcon, 'rgba(160,20,40,0.85)'); ly += gh + 8; }
       if (st.rocketsLeft > 0) gadget(16, ly, 'ROQUETTE ' + st.rocketsLeft, 'KeyF', rocketIcon, 'rgba(20,70,160,0.85)');
-      if (G().trex && !st.trexUsed) gadget(W - 206, gy, 'T-REX', 'KeyT', trexIcon, 'rgba(60,120,30,0.85)');
+      let ry = gy;
+      if (G().trex && !st.trexUsed) { gadget(W - 206, ry, 'T-REX', 'KeyT', trexIcon, 'rgba(60,120,30,0.85)'); ry += gh + 8; }
+      if (G().farmers && country === 'fr' && !st.farmersUsed) gadget(W - 206, ry, 'TRACTEURS', 'KeyC', farmersIcon, 'rgba(170,90,20,0.85)');
     }
   }); else if (scene === 'title') {
     for (let i = 0; i < LEVELS.length; i++) { // tap the facing card to play, a side card to turn the wheel to it
@@ -2515,7 +2610,7 @@ function drawTouch() {
     button(W / 2 + 236, 590, 204, 66, 'RÉGLAGES', 'KeyO', { size: 18 });
     if (fsAPI() && !isFull()) button(W - 372, 24, 256, 58, 'PLEIN ÉCRAN', 'Fullscreen', { size: 20 });
   } else if (scene === 'garage') {
-    const n = TABS[garageTab].cars ? CARS.length : TABS[garageTab].items.length;
+    const n = TABS[garageTab].cars ? CARS.length : tabItems(TABS[garageTab]).length;
     for (let i = 0; i < n; i++) btns.push({ x: W / 2 - 420, y: rowY(i), w: 840, h: rowH() - 6, code: 'Row' + i, hold: false });
     button(W / 2 - 110, 652, 220, 54, 'RETOUR', 'Escape', { size: 22 });
   } else if (scene === 'results') {

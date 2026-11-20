@@ -210,7 +210,8 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 
 - `farmers_cost`: € in the garage (the sports car's price; x my_price_* for the others)
 - `farmers_speed`: px/s the convoy drives in from the left-hand tunnel
-- `farmers_count`, `farmers_gap`: tractors in the convoy, px between them
+- `farmers_count`, `farmers_gap`: tractors in each row, px between them
+- `farmers_rows`, `farmers_row_gap`: rows of tractors side by side, px between their middles
 - `farmers_len`, `farmers_width`: px each tractor's footprint (what it shoves)
 - `farmers_push`: px/s a vehicle is shoved sideways; `farmers_damage`: € a second to a vehicle in its path
 - `farmers_bales`, `farmers_bale_every`: hay bales the last tractor drops, s between them

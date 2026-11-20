@@ -1165,16 +1165,17 @@ function drawTrex(tr: Loose) {
 // Unlike the T-Rex, it leaves the buildings and the cranes alone.
 function honk() { tone(392, 0.22, 'square', 0.14); tone(330, 0.3, 'square', 0.14, 0.22); }
 function stepFarmers(fm: Loose, dt: number) {
-  const st = state, n = tune.farmers_count, gap = tune.farmers_gap, hl = tune.farmers_len / 2, hw = tune.farmers_width / 2;
+  const st = state, n = tune.farmers_count, gap = tune.farmers_gap, hl = tune.farmers_len / 2;
+  const rows = farmerRows(fm), hw = tune.farmers_width / 2 + (tune.farmers_rows - 1) * tune.farmers_row_gap / 2; // the whole convoy's half width
   fm.t += dt; fm.x += tune.farmers_speed * dt; // fm.x is the lead tractor; the others follow at gap
   const tail = fm.x - (n - 1) * gap;
   if (tail > EXT + tune.tunnel_depth + 200) { st.farmers = null; return; }
   fm.hornT -= dt; if (fm.hornT <= 0) { fm.hornT = 1.1; honk(); }
-  // the last tractor's trailer drops a hay bale now and then
+  // the last tractors' trailers drop a hay bale now and then, one row then the other
   fm.hayT -= dt;
   if (fm.hayT <= 0 && fm.hay < tune.farmers_bales && tail > -EXT) {
     fm.hayT = tune.farmers_bale_every; fm.hay++;
-    const b = mkBody('hay', tail - hl - 24, fm.y + (rng() - 0.5) * 16, rng() * Math.PI, '#f2c94c');
+    const b = mkBody('hay', tail - hl - 24, rows[fm.hay % rows.length] + (rng() - 0.5) * 16, rng() * Math.PI, '#f2c94c');
     b.ai = false; b.loose = true; b.inv = true; b.touched = true; b.id = st.nextId++;
     b.vx = tune.farmers_speed * 0.4; b.vy = (rng() < 0.5 ? -1 : 1) * (60 + rng() * 140); b.w = (rng() - 0.5) * 8; b.vz = 80;
     st.bodies.push(b);
@@ -1211,18 +1212,24 @@ function drawTractor(x: number, y: number, col: string, lead: boolean, t: number
     for (const [i, c] of [[0, '#1f4fbf'], [1, '#f8f9fa'], [2, '#e03131']] as Loose) prism([[x - 20 - i * 7, y - 10], [x - 27 - i * 7, y - 10 + wave * 0.3], [x - 27 - i * 7, y - 9 + wave * 0.3], [x - 20 - i * 7, y - 9]], 52 + hop, 62 + hop, c, c);
   }
 }
+/** The y of each row of tractors, side by side across the boulevard's middle. */
+function farmerRows(fm: Loose): number[] {
+  const n = tune.farmers_rows, out: number[] = [];
+  for (let r = 0; r < n; r++) out.push(fm.y + (r - (n - 1) / 2) * tune.farmers_row_gap);
+  return out;
+}
 function drawFarmers(fm: Loose) {
   const n = tune.farmers_count;
-  for (let i = n - 1; i >= 0; i--) {
-    const x = fm.x - i * tune.farmers_gap;
+  farmerRows(fm).forEach((y: number, r: number) => { for (let i = n - 1; i >= 0; i--) { // the far row first
+    const x = fm.x - i * tune.farmers_gap + (r % 2) * tune.farmers_gap * 0.3; // the rows a little out of step
     if (x < -EXT - tune.tunnel_depth - 80 || x > EXT + tune.tunnel_depth + 80) continue;
-    drawTractor(x, fm.y, i % 2 ? '#e03131' : '#2f9e44', i === 0, fm.t);
-    if (i === n - 1) { // the last one tows the hay
-      const hx = x - tune.farmers_len / 2 - 26, tb: Loose = { x: hx, y: fm.y, a: 0 };
+    drawTractor(x, y, (i + r) % 2 ? '#e03131' : '#2f9e44', i === 0 && r === 0, fm.t + r);
+    if (i === n - 1) { // the last one of each row tows the hay
+      const hx = x - tune.farmers_len / 2 - 26, tb: Loose = { x: hx, y, a: 0 };
       prism(rect(tb, 0, 0, 40, 30), 6, 12, '#8a5a2b', '#6b4420');
       if (fm.hay < tune.farmers_bales) prism(rect(tb, 0, 0, 34, 26), 12, 30, '#f2c94c', '#c99a2e');
     }
-  }
+  } });
 }
 function farmersIcon(x: number, y: number, k: number) { // a tractor in profile
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
@@ -1920,8 +1927,8 @@ function drawWorld() {
   air.sort((a: Loose, b: Loose) => a.z - b.z);
   for (const b of air) drawVehicle(b);
   for (const r of st.rockets || []) drawRocket(r);
-  if (st.trex) drawTrex(st.trex);
   if (st.farmers) drawFarmers(st.farmers);
+  if (st.trex) drawTrex(st.trex); // after the tractors: the T-Rex, far taller, steps over them
   drawParts(true);
   if (NIGHT) { // the dark, then headlight beams added on top
     ctx.fillStyle = 'rgba(8,6,32,0.6)'; ctx.fillRect(0, 0, W, H);

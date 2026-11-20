@@ -203,6 +203,8 @@
   "farmers_speed": { "value": 210, "min": 40, "max": 600, "step": 5 },
   "farmers_count": { "value": 5, "min": 1, "max": 10, "step": 1 },
   "farmers_gap": { "value": 80, "min": 50, "max": 200, "step": 5 },
+  "farmers_rows": { "value": 2, "min": 1, "max": 4, "step": 1 },
+  "farmers_row_gap": { "value": 52, "min": 30, "max": 120, "step": 2 },
   "farmers_len": { "value": 56, "min": 30, "max": 120, "step": 2 },
   "farmers_width": { "value": 46, "min": 20, "max": 120, "step": 2 },
   "farmers_push": { "value": 300, "min": 0, "max": 1200, "step": 10 },

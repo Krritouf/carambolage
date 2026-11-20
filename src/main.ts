@@ -373,9 +373,14 @@ function reset() {
       const S = front.splice(Math.floor(rng() * front.length), 1)[0];
       st.blocks.splice(st.blocks.indexOf(S), 1);
       const dir = S.y > 0 ? -1 : 1, edge = S.y > 0 ? S.y - S.hw : S.y + S.hw; // it leans over the road
-      const c: Loose = { x: S.x, y: edge - dir * 26, dir, theta: 0, w: 0, falling: false, fallen: false };
+      // in France the first one is the Eiffel Tower: it falls the same way, longer and wider
+      const eiffel = country === 'fr' && i === 0;
+      const c: Loose = { x: S.x, y: edge - dir * (eiffel ? 40 : 26), dir, theta: 0, w: 0, falling: false, fallen: false, eiffel,
+        len: eiffel ? tune.eiffel_height : tune.crane_height + tune.crane_jib * 0.2, crushW: eiffel ? tune.eiffel_crush_width : tune.crane_crush_width,
+        crushDmg: eiffel ? tune.eiffel_crush_damage : tune.crane_crush_damage, value: eiffel ? tune.eiffel_value : tune.crane_value };
       st.cranes.push(c); st.lots.push([S.x - S.hl, S.y - S.hw, S.hl * 2, S.hw * 2]);
-      st.props.push({ static: true, kind: 'crane', ref: c, x: c.x, y: c.y, a: 0, hl: 10, hw: 10, h: tune.crane_height, height: tune.crane_height, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 });
+      const foot = eiffel ? 30 : 10, tall = eiffel ? tune.eiffel_height : tune.crane_height;
+      st.props.push({ static: true, kind: 'crane', ref: c, x: c.x, y: c.y, a: 0, hl: foot, hw: foot, h: tall, height: tall, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 });
     }
     if (lv.shops) for (const S of front) {
       if (rng() > tune.shop_share) continue;
@@ -1174,18 +1179,18 @@ function stepCrane(c: Loose, dt: number) {
 // the crane hits the ground: it crushes what lies under it and becomes a wall across the road
 function craneLand(c: Loose) {
   buzz(tune.vibe_blast);
-  const st = state, L = tune.crane_height + tune.crane_jib * 0.2, x0 = c.x, y0 = c.y, y1 = c.y + c.dir * L;
+  const st = state, L = c.len, x0 = c.x, y0 = c.y, y1 = c.y + c.dir * L;
   for (const b of st.bodies) {
-    if (b.y < Math.min(y0, y1) - b.hw || b.y > Math.max(y0, y1) + b.hw || Math.abs(b.x - x0) > tune.crane_crush_width + b.hw) continue;
+    if (b.y < Math.min(y0, y1) - b.hw || b.y > Math.max(y0, y1) + b.hw || Math.abs(b.x - x0) > c.crushW + b.hw) continue;
     b.vx += (b.x >= x0 ? 1 : -1) * 260; b.vz = Math.max(b.vz, 160);
     if (isMine(b)) { if (b.control) { crash(b.x, b.y); b.control = false; b.loose = true; st.controlT = 0; } continue; }
-    b.inv = true; loosen(b); hurt(b, tune.crane_crush_damage, b.x, b.y);
+    b.inv = true; loosen(b); hurt(b, c.crushDmg, b.x, b.y);
   }
   for (const S of st.shops) if (Math.abs(S.x - x0) < S.hl + 10 && Math.min(y0, y1) < S.y + S.hw && Math.max(y0, y1) > S.y - S.hw) shopHurt(S, tune.crane_shop_damage);
-  st.damage += tune.crane_value; st.floats.push({ x: x0, y: (y0 + y1) / 2, txt: 'LA GRUE ! +' + fmt(tune.crane_value) + ' €', t: 0, color: '#ffc83d', big: true });
+  st.damage += c.value; st.floats.push({ x: x0, y: (y0 + y1) / 2, txt: (c.eiffel ? 'LA TOUR EIFFEL ! +' : 'LA GRUE ! +') + fmt(c.value) + ' €', t: 0, color: '#ffc83d', big: true });
   for (let i = 0; i < 40; i++) { const yy = y0 + (y1 - y0) * vr(), an = vr() * Math.PI * 2, sp = 60 + vr() * 200; addPart(i % 2 ? 'spark' : 'smoke', x0 + (vr() - 0.5) * 20, yy, 10, Math.cos(an) * sp, Math.sin(an) * sp, 40 + vr() * 120, 0.4 + vr() * 0.6); }
   st.shake = 26; crunch(1, true);
-  const wall: Loose = { static: true, kind: 'crane_down', x: x0, y: (y0 + y1) / 2, a: 0, hl: 8, hw: Math.abs(y1 - y0) / 2, h: 14, height: 14, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
+  const wall: Loose = { static: true, kind: 'crane_down', ref: c, x: x0, y: (y0 + y1) / 2, a: 0, hl: c.eiffel ? 16 : 8, hw: Math.abs(y1 - y0) / 2, h: 14, height: 14, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
   st.props.push(wall); if (st.statics) st.statics.push(wall);
 }
 // a line of girder between two 3D points, drawn as a flat band facing the screen
@@ -1213,6 +1218,44 @@ function drawCrane(c: Loose) {
     prism([[tip[0] - 5, tip[1] - 5], [tip[0] + 5, tip[1] - 5], [tip[0] + 5, tip[1] + 5], [tip[0] - 5, tip[1] + 5]], 30, 40, '#e03131', '#a61e1e');
   }
   beam(base, [c.x, c.y, 3], 26, '#495057');
+}
+// the Eiffel Tower (France's crane): four bronze legs tapering to a spire, two platforms, the
+// arches at its feet. It stands and falls like a crane: c.theta tips it over the road.
+function drawEiffel(c: Loose) {
+  const Hm = tune.eiffel_height, th = c.theta, cs = Math.cos(th), sn = Math.sin(th);
+  const at = (h: number, ox: number, oy = 0) => [c.x + ox, c.y + c.dir * (h * sn + oy * cs), Math.max(0, h * cs - oy * sn)];
+  const half = (h: number) => { const u = h / Hm; return 64 * Math.pow(1 - u, 2.2) + 4; }; // the legs' curve
+  const dark = '#6b4f36', mid = '#8c6a48', light = '#a8835a';
+  // the two pairs of legs, the far pair first
+  for (const oy of [14, -14]) {
+    const col = oy > 0 ? dark : mid;
+    for (const side of [-1, 1]) {
+      const n = 10;
+      for (let i = 0; i < n; i++) {
+        const h0 = Hm * 0.62 * i / n, h1 = Hm * 0.62 * (i + 1) / n, d0 = oy * (1 - h0 / Hm), d1 = oy * (1 - h1 / Hm);
+        beam(at(h0, side * half(h0), d0), at(h1, side * half(h1), d1), 11 - i * 0.6, col);
+      }
+    }
+  }
+  // the lattice between the legs: an X in each section of the base
+  for (let i = 0; i < 4; i++) {
+    const h0 = Hm * 0.62 * i / 4, h1 = Hm * 0.62 * (i + 1) / 4;
+    beam(at(h0, -half(h0)), at(h1, half(h1)), 3, dark); beam(at(h0, half(h0)), at(h1, -half(h1)), 3, dark);
+  }
+  // the arch between the feet
+  const arch = 9;
+  for (let i = 0; i < arch; i++) {
+    const a0 = Math.PI * i / arch, a1 = Math.PI * (i + 1) / arch, w0 = half(0) * 0.8, rise = Hm * 0.1;
+    beam(at(18 + Math.sin(a0) * rise, -Math.cos(a0) * w0), at(18 + Math.sin(a1) * rise, -Math.cos(a1) * w0), 4, light);
+  }
+  // the spire above the second platform
+  beam(at(Hm * 0.62, -half(Hm * 0.62)), at(Hm * 0.93, -3), 5, mid); beam(at(Hm * 0.62, half(Hm * 0.62)), at(Hm * 0.93, 3), 5, mid);
+  for (let i = 0; i < 4; i++) { const h = Hm * (0.66 + i * 0.07); beam(at(h, -half(h) - 1), at(h, half(h) + 1), 2, dark); }
+  beam(at(Hm * 0.93, 0), at(Hm, 0), 3, dark); // the antenna
+  // the platforms: the first, wide; the second; the top
+  const deck = (h: number, w: number, t: number) => { beam(at(h, -w), at(h, w), t, light); beam(at(h + t * 0.6, -w * 0.9), at(h + t * 0.6, w * 0.9), 2, dark); };
+  deck(Hm * 0.2, half(Hm * 0.2) + 6, 8); deck(Hm * 0.4, half(Hm * 0.4) + 4, 6); deck(Hm * 0.9, 6, 5);
+  if (!c.fallen) beam([c.x - 40, c.y, 0], [c.x + 40, c.y, 0], 18, '#495057'); // the base
 }
 function shopIcon(type: string, x: number, y: number, k: number) { // drawn on each shop's roof
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
@@ -1579,6 +1622,7 @@ function drawRamp() {
 }
 function drawBarrier(S: Loose) {
   if (S.kind === 'bound' || S.kind === 'tunnel') return; // invisible walls (the tunnels are drawn over the city)
+  if (S.ref && S.ref.eiffel) return; // the Eiffel Tower's collider, standing or fallen: the tower draws itself
   if (S.kind === 'median') { // a long concrete barrier with reflectors
     prism([[S.x - S.hl, S.y - S.hw], [S.x + S.hl, S.y - S.hw], [S.x + S.hl, S.y + S.hw], [S.x - S.hl, S.y + S.hw]], 0, S.h, '#ced4da', '#adb5bd');
     const x0 = Math.floor((camDraw.x - W / cam.zoom) / 80) * 80;
@@ -1676,7 +1720,7 @@ function drawWorld() {
   const d = (S: Loose) => { const p = P(S.x, S.y, 0); return (p[0] - VP[0]) ** 2 + (p[1] - VP[1]) ** 2; };
   blocks.sort((a: Loose, b: Loose) => d(b) - d(a));
   for (const S of blocks) drawBuilding(S);
-  for (const c of st.cranes) drawCrane(c);
+  for (const c of st.cranes) c.eiffel ? drawEiffel(c) : drawCrane(c);
   drawTunnels();
   for (const b of air) { drawShadow(b); }
   air.sort((a: Loose, b: Loose) => a.z - b.z);
@@ -2497,6 +2541,7 @@ function timer() { if (document.visibilityState === 'visible' && clock.now() - l
 install({
   get scene() { return scene; },
   get state() { return state; },
+  get cam() { return cam; },
   press(code: Loose) { hit.add(code); },
   hold(code: Loose, on: Loose) { on ? down.add(code) : down.delete(code); },
   get events() { return events; },

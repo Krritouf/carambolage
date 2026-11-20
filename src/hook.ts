@@ -24,6 +24,8 @@ export interface GameHook {
   hold(code: string, on: boolean): void;
   /** Runs n steps of the game, then draws unless draw is false. */
   step(n?: number, draw?: boolean): void;
+  /** The camera (world x, y and zoom): a check may move it, then step(0) draws from there. */
+  readonly cam?: { x: number; y: number; zoom: number };
   /** The core loop's log: the loop() steps (act, result, reward). A check empties it after each step. */
   readonly events?: unknown[];
 }

@@ -136,6 +136,7 @@ const PATTERNS: Rule[] = [
   [/^AIMANT : (.+) s$/, m => `MAGNET: ${m[1]} s`],
   [/^(.+) DÉTRUITE !$/, m => `${tr(m[1])} DESTROYED!`],
   [/^LA GRUE ! \+(.+) €$/, m => `THE CRANE! +${m[1]} €`],
+  [/^LA TOUR EIFFEL ! \+(.+) €$/, m => `THE EIFFEL TOWER! +${m[1]} €`],
   [/^×(\S+)   assurance ×(.+)$/, m => `×${m[1]}   insurance ×${m[2]}`],
   [/^Carambolage du jour : le record d'aujourd'hui \((.+)\) compte dans ton crédit$/, m => `Daily pile-up: today's best (${m[1]}) counts in your credit`],
   [/^Crédit pour le garage : (.+) €$/, m => `Garage credit: ${m[1]} €`],

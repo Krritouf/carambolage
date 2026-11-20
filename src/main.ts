@@ -184,6 +184,7 @@ const PALETTE = ['#ff5e7a', '#2ec4b6', '#ffc83d', '#7b5cff', '#ff8fd0', '#19c37d
 const CAR_COLORS = ['#2f80ff', '#12b886', '#9b5de5', '#f1f3f5', '#ff922b', '#15aabf', '#e64980', '#82c91e'];
 // France's cars: as many colours as CAR_COLORS, so a seed draws the same traffic in either
 const CAR_COLORS_FR = ['#4d79c7', '#f1f3f5', '#c92a2a', '#f3d27a', '#8fbfa0', '#9aa0a6', '#e8590c', '#3b3a4a'];
+const CAR_COLORS_UK = ['#1e5631', '#c92a2a', '#1f3a8a', '#f1f3f5', '#adb5bd', '#212529', '#d4a017', '#efe6cf']; // racing green, red, navy, white, silver, black, mustard, cream
 const KINDS: Loose = {
   player: { name: 'Ta voiture', l: 46, w: 23, h: 20 },
   car: { name: 'Voiture', l: 42, w: 21, h: 20 },
@@ -297,6 +298,8 @@ const MODELS_BASE = Object.fromEntries(CARS.map(id => [id, { name: MODELS[id].na
 const COUNTRY_MODELS: Loose = {
   fr: { sport: { name: 'Berlinette', color: '#1f4fbf' }, van: { name: 'Camionnette jaune', color: '#ffd21f' }, ambulance: { name: 'Ambulance', color: '#f8f9fa' },
     truck: { name: 'Camion du boulanger', color: '#c92a2a' }, semi: { name: 'Routier', color: '#1f4fbf' } },
+  uk: { sport: { name: 'Petite anglaise', color: '#c92a2a' }, van: { name: 'Fourgon rouge', color: '#d6222a' }, ambulance: { name: 'Ambulance', color: '#ffd43b' },
+    truck: { name: 'Camion de livraison', color: '#1e5631' }, semi: { name: 'Routier', color: '#1f3a8a' } },
 };
 /** Paints and names the garage's vehicles the way a country has them. */
 function applyCountryModels(id: string) {
@@ -304,13 +307,17 @@ function applyCountryModels(id: string) {
 }
 const wetK = () => state.lv.ice ? tune.ice_grip : state.lv.rain ? tune.rain_grip : 1; // grip and braking on a wet or icy road
 // the shops on the boulevard from level 10: name, roof colour (values and weights in config)
-const SHOPS: Loose = {
+const SHOPS: Loose = { // m: a masculine name ("le pub"), for "DÉTRUIT"
+  pub: { name: 'Pub', color: '#8a5a3c', m: true },
+  salon: { name: 'Salon de thé', color: '#f4b8c8' },
   boulangerie: { name: 'Boulangerie', color: '#f4c27a' },
   boucherie: { name: 'Boucherie', color: '#ff8787' },
   bijouterie: { name: 'Bijouterie', color: '#b197fc' },
   banque: { name: 'Banque', color: '#adb5bd' },
   labo: { name: 'Laboratoire', color: '#63e6be' },
 };
+// each country's five shops, in the same order and weights (the pub and the tea room take the bakery's and the butcher's)
+const SHOP_KINDS: Loose = { fr: ['boulangerie', 'boucherie', 'bijouterie', 'banque', 'labo'], uk: ['pub', 'salon', 'bijouterie', 'banque', 'labo'] };
 const isMine = (b: Loose) => b.kind === 'player' || b.kind === 'trailer';
 // the player's vehicle (and its trailer) for a model, facing angle a
 function mkPlayerBodies(model: Loose, x: Loose, y: Loose, a: Loose) {
@@ -414,7 +421,7 @@ function reset() {
     }
     if (lv.shops) for (const S of front) {
       if (rng() > tune.shop_share) continue;
-      const kinds = Object.keys(SHOPS); let tot = 0; for (const k of kinds) tot += tune['shop_w_' + k];
+      const kinds = SHOP_KINDS[country] || SHOP_KINDS.fr; let tot = 0; for (const k of kinds) tot += tune['shop_w_' + k];
       let r = rng() * tot, kind = kinds[0]; for (const k of kinds) { r -= tune['shop_w_' + k]; if (r <= 0) { kind = k; break; } }
       S.shop = kind; S.value = tune['value_' + kind]; S.dmg = 0; S.color = SHOPS[kind].color; S.h = Math.min(S.h, 110); S.height = S.h; S.ac = null;
       st.shops.push(S);
@@ -469,9 +476,12 @@ function pickKind(mix: Loose) {
 function spawnOn(ln: Loose, x: Loose) {
   if (state.bodies.length >= tune.max_bodies) return false; // the road is full: no more traffic out of the tunnels
   const kind = pickKind(state.lv.mix);
-  const fr = country === 'fr', cars = fr ? CAR_COLORS_FR : CAR_COLORS; // France: a Paris taxi, a green bus, the baker's truck
-  const color = kind === 'police' || kind === 'ambulance' ? '#f8f9fa' : kind === 'fire' ? '#e8202a' : kind === 'taxi' ? (fr ? '#2b2b33' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : '#ff8a00') : kind === 'moto' ? '#26262e'
-    : kind === 'truck' ? (fr ? '#f3e3c3' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
+  // the country's paint: France has a Paris taxi, a green bus, the baker's truck; the United Kingdom
+  // a black cab, a red double-decker, a yellow ambulance (the same random draws in every country)
+  const fr = country === 'fr', uk = country === 'uk', cars = fr ? CAR_COLORS_FR : uk ? CAR_COLORS_UK : CAR_COLORS;
+  const color = kind === 'police' ? '#f8f9fa' : kind === 'ambulance' ? (uk ? '#ffd43b' : '#f8f9fa') : kind === 'fire' ? '#e8202a'
+    : kind === 'taxi' ? (fr ? '#2b2b33' : uk ? '#1d1d22' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : uk ? '#d6222a' : '#ff8a00') : kind === 'moto' ? '#26262e'
+    : kind === 'truck' ? (fr ? '#f3e3c3' : uk ? '#1e5631' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
   const b = mkBody(kind, x, ln.y, ln.dir > 0 ? 0 : Math.PI, color);
   for (const o of state.bodies) if (Math.abs(o.y - ln.y) < 20 && Math.abs(o.x - x) < o.hl + b.hl + 30) return false;
   b.lane = ln; b.cruise = tune['speed_' + kind] * (0.9 + rng() * 0.2) * (state.lv.speedMul || 1);
@@ -1374,7 +1384,7 @@ function shopHurt(S: Loose, amount: number) {
   if (S.dmg >= S.value) {
     S.ruined = true; S.h = Math.max(24, S.h * 0.3); S.height = S.h;
     state.destroyed['shop_' + S.shop] = (state.destroyed['shop_' + S.shop] || 0) + 1;
-    state.floats.push({ x: S.x, y: S.y, txt: SHOPS[S.shop].name.toUpperCase() + ' DÉTRUITE !', t: 0, color: '#ff9fb2', big: true });
+    state.floats.push({ x: S.x, y: S.y, txt: SHOPS[S.shop].name.toUpperCase() + (SHOPS[S.shop].m ? ' DÉTRUIT !' : ' DÉTRUITE !'), t: 0, color: '#ff9fb2', big: true });
     crunch(0.8, true); state.shake = Math.min(26, state.shake + 10);
     if (S.shop === 'labo') state.blasts.push(S);
   }
@@ -1479,7 +1489,9 @@ function drawEiffel(c: Loose) {
 }
 function shopIcon(type: string, x: number, y: number, k: number) { // drawn on each shop's roof
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  if (type === 'boulangerie') { poly([[-18, 4], [-12, -6], [12, -8], [18, 2], [12, 8], [-12, 8]], '#e0a85a'); for (const o of [-8, 0, 8]) poly([[o - 3, -5], [o + 1, -6], [o + 3, 4], [o - 1, 5]], '#b97a2e'); }
+  if (type === 'pub') { poly([[-10, -12], [8, -12], [8, 12], [-10, 12]], '#f2a541'); poly([[-10, -16], [8, -16], [8, -10], [-10, -10]], '#f8f9fa'); poly([[8, -6], [16, -6], [16, 6], [8, 6], [8, 3], [13, 3], [13, -3], [8, -3]], '#f2a541'); } // a pint
+  else if (type === 'salon') { poly([[-14, -6], [10, -6], [8, 10], [-12, 10]], '#f8f9fa'); poly([[10, -2], [17, -4], [16, 2], [10, 4]], '#f8f9fa'); poly([[-4, -12], [2, -12], [2, -6], [-4, -6]], '#d6336c'); } // a teapot
+  else if (type === 'boulangerie') { poly([[-18, 4], [-12, -6], [12, -8], [18, 2], [12, 8], [-12, 8]], '#e0a85a'); for (const o of [-8, 0, 8]) poly([[o - 3, -5], [o + 1, -6], [o + 3, 4], [o - 1, 5]], '#b97a2e'); }
   else if (type === 'boucherie') { poly([[-16, -6], [6, -10], [16, -2], [12, 8], [-10, 10], [-18, 2]], '#d6336c'); poly([[-6, -2], [0, -4], [4, 2], [-2, 4]], '#fff0f6'); }
   else if (type === 'bijouterie') { poly([[-8, -4], [8, -4], [12, 2], [0, 14], [-12, 2]], '#74c0fc'); poly([[-8, -4], [8, -4], [0, -12]], '#ffd43b'); poly([[-4, -4], [4, -4], [0, 6]], '#d0ebff'); }
   else if (type === 'banque') { poly([[-18, -4], [0, -14], [18, -4]], '#dee2e6'); for (const o of [-12, -4, 4, 12]) poly([[o - 2, -4], [o + 2, -4], [o + 2, 8], [o - 2, 8]], '#f8f9fa'); poly([[-18, 8], [18, 8], [18, 12], [-18, 12]], '#dee2e6'); }
@@ -1675,6 +1687,74 @@ function drawFrench(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: 
   }
   return false;
 }
+// ---- The United Kingdom's vehicles: the same bodies, drawn the British way ------------------------
+/** A band of squares down each side, two colours taking turns (the police and ambulance checks). */
+function checks(b: Loose, L: number, Wd: number, h: number, c1: string, c2: string) {
+  const n = 8, seg = L * 0.9 / n;
+  for (let i = 0; i < n; i++) for (const side of [1, -1]) flat(b, -L * 0.45 + (i + 0.5) * seg, side * (Wd / 2 - 2.5), seg, 3.5, h, i % 2 ? c1 : c2);
+}
+/** Draws a vehicle the British way; false for a kind the United Kingdom draws like everyone else. */
+function drawBritish(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean): boolean {
+  const lights = (h: number) => {
+    flat(b, L / 2 - 2, Wd * 0.3, 3, 5, z + h, '#fff3bf'); flat(b, L / 2 - 2, -Wd * 0.3, 3, 5, z + h, '#fff3bf');
+    flat(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e'); flat(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e');
+  };
+  if (dk === 'car' && b.id % 2 === 0) { // the little British car: short, rounded, a white roof
+    box(0, L * 0.86, Wd, 3, 11, col, col);
+    box(-L * 0.04, L * 0.5, Wd * 0.86, 11, 19, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.46, Wd * 0.8, z + 19.1, wreck ? col : '#f1f3f5');
+    lights(11);
+    return true;
+  }
+  if (dk === 'taxi') { // the black cab: tall and rounded, the yellow TAXI light at the front of the roof
+    box(0, L, Wd, 3, 12, col, col);
+    box(-L * 0.08, L * 0.6, Wd * 0.88, 12, 25, glass, glass);
+    flat(b, -L * 0.08, 0, L * 0.56, Wd * 0.8, z + 25.1, shade(col, 1.25));
+    box(L * 0.16, 5, 11, 25, 28, '#ffd43b', '#e0a800');
+    lights(12);
+    return true;
+  }
+  if (dk === 'police') { // white with blue and yellow checks, the blue light bar
+    box(0, L, Wd, 3, 11, col, col);
+    box(-L * 0.04, L * 0.52, Wd * 0.86, 11, 20, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.48, Wd * 0.8, z + 20.1, shade(col, 1.08));
+    if (!wreck) checks(b, L, Wd, z + 11.1, '#1c4ed8', '#ffd43b');
+    lights(11); siren(b, -2, Wd * 0.75, 20);
+    return true;
+  }
+  if (dk === 'ambulance') { // yellow, green and yellow checks, blue lights
+    box(-L * 0.12, L * 0.74, Wd, 3, 32, col, col);
+    if (!wreck) checks(b, L * 0.74, Wd, z + 14, '#2b8a3e', '#ffd43b');
+    flat(b, -L * 0.15, 0, 14, 4.5, z + 32.2, '#2b8a3e'); flat(b, -L * 0.15, 0, 4.5, 14, z + 32.2, '#2b8a3e');
+    box(L * 0.37, L * 0.26, Wd - 2, 3, 22, col, col);
+    box(L * 0.4, L * 0.12, Wd - 4, 12, 22, col, glass);
+    siren(b, L * 0.2, Wd * 0.7, 32);
+    return true;
+  }
+  if (dk === 'bus') { // the red double-decker: two rows of windows, a tall roof
+    box(0, L, Wd, 2, 12, col, col);
+    box(0, L - 2, Wd - 2, 12, 22, col, glass); // the lower deck's windows
+    box(0, L - 2, Wd - 2, 22, 27, col, col);
+    box(0, L - 2, Wd - 2, 27, 37, col, glass); // the upper deck's
+    box(0, L - 2, Wd - 2, 37, 40, col, col);
+    flat(b, 0, 0, L - 6, Wd - 6, z + 40.1, shade(col, 1.1));
+    flat(b, L / 2 - 4, 0, 5, Wd - 6, z + 40.2, glass);
+    flat(b, L / 2 - 1, Wd * 0.3, 2, 5, z + 9, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.3, 2, 5, z + 9, '#ffe066');
+    return true;
+  }
+  if (dk === 'trailer') { // the big rig's trailer: the flag's crosses on its roof
+    const side = wreck ? col : mix('#f1f3f5', '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
+    box(0, L, Wd, 5, 36, side, wreck ? col : '#dfe3e8');
+    if (!wreck) {
+      flat(b, 0, 0, L - 4, Wd - 4, z + 36.1, '#1f3a8a');
+      flatTurned(b, 0, 0, L * 0.9, 4, Math.atan2(Wd - 4, L - 4), z + 36.2, '#f8f9fa'); flatTurned(b, 0, 0, L * 0.9, 4, -Math.atan2(Wd - 4, L - 4), z + 36.2, '#f8f9fa');
+      flat(b, 0, 0, L - 4, 7, z + 36.3, '#f8f9fa'); flat(b, 0, 0, 10, Wd - 4, z + 36.3, '#f8f9fa');
+      flat(b, 0, 0, L - 4, 3.5, z + 36.4, '#e03131'); flat(b, 0, 0, 5, Wd - 4, z + 36.4, '#e03131');
+    }
+    return true;
+  }
+  return false;
+}
 function drawVehicle(b: Loose) {
   const f = Math.min(1, b.dmg / b.value), wreck = f >= 1;
   const col = wreck ? '#3a3533' : mix(b.color, '#2a2230', f * 0.55);
@@ -1683,6 +1763,7 @@ function drawVehicle(b: Loose) {
   const box = (ox: Loose, len: Loose, wid: Loose, h0: Loose, h1: Loose, top: Loose, side: Loose, oy: Loose = 0) => prism(rect(b, ox, oy, len, wid), z + h0, z + h1, top, side);
   const dk = b.kind === 'player' ? MODELS[b.model || 'sport'].draw : b.kind; // what it looks like
   if (country === 'fr' && drawFrench(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the French way */ }
+  else if (country === 'uk' && drawBritish(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the British way */ }
   else if (dk === 'hay') { // a straw bale with its two strings
     box(0, L, Wd, 0, 20, wreck ? '#b08a3a' : '#f2c94c', '#c99a2e');
     flat(b, -L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a'); flat(b, L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a');
@@ -2480,7 +2561,8 @@ const scenes: Loose = {
       clear('#e9d8a6');
       cam.x = 0; cam.y = 0; cam.zoom = 1.35; camDraw.x = 0; camDraw.y = 0; VP = [W / 2, H * 0.5];
       const fr = country === 'fr'; // the colours the traffic has in this country
-      const list = [['car', fr ? '#4d79c7' : '#2f80ff'], ['taxi', fr ? '#2b2b33' : '#ffd21f'], ['moto', '#26262e'], ['police', '#f8f9fa'], ['bus', fr ? '#f1f3f5' : '#ff8a00'], ['truck', fr ? '#f3e3c3' : '#3d7bff'], ['tanker', '#e03131'], ['ambulance', '#f8f9fa'], ['fire', '#e8202a']];
+      const uk = country === 'uk';
+      const list = [['car', fr ? '#4d79c7' : uk ? '#1e5631' : '#2f80ff'], ['taxi', fr ? '#2b2b33' : uk ? '#1d1d22' : '#ffd21f'], ['moto', '#26262e'], ['police', '#f8f9fa'], ['bus', fr ? '#f1f3f5' : uk ? '#d6222a' : '#ff8a00'], ['truck', fr ? '#f3e3c3' : uk ? '#1e5631' : '#3d7bff'], ['tanker', '#e03131'], ['ambulance', uk ? '#ffd43b' : '#f8f9fa'], ['fire', '#e8202a']];
       const xs = [-420, -350, -285, -225, -150, -40, 70, 170, 270];
       list.forEach(([k, c]: Loose, i: Loose) => {
         const b = mkBody(k, xs[i], -150, -Math.PI / 2, c); if (k === 'moto') b.rider = '#2f80ff'; b.id = i;

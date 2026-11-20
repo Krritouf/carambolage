@@ -235,3 +235,5 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 - `uk_threshold_N`, `uk_star2_N`, `uk_star3_N` (N = 1 to 20): the UK levels' 1, 2 and 3-star scores. Its levels
   (data/levels-uk.json) follow France's level for level, so its scores start as France's; level 20 is
   12 % above France's 19. To measure again with the autopilot.
+- `value_pub`, `value_salon`, `shop_w_pub`, `shop_w_salon`: London's pub and tea room, which take the bakery's
+  and the butcher's place (and value, and weight) in the United Kingdom

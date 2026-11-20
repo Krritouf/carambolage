@@ -40,6 +40,7 @@ const EN: Record<string, string> = {
   'Berlinette': 'Coupé', 'Camionnette jaune': 'Yellow van', 'Camion du boulanger': "Baker's truck", 'Routier': 'Big rig',
   'CHOISIS TON PAYS': 'PICK YOUR COUNTRY',
   'avec une étoile': 'with a star',
+  'Pub': 'Pub', 'PUB': 'PUB', 'Salon de thé': 'Tea room', 'SALON DE THÉ': 'TEA ROOM', 'Petite anglaise': 'Little British car', 'Fourgon rouge': 'Red van', 'Camion de livraison': 'Delivery lorry',
   // the United Kingdom's levels
   'Piccadilly': 'Piccadilly', 'Oxford Street': 'Oxford Street', 'Le pont de Londres': 'London Bridge', "L'heure de pointe à la City": 'Rush hour in the City',
   'Pluie sur Soho': 'Rain over Soho', 'Le convoi de Camden': 'The Camden convoy', 'Chaos à Trafalgar': 'Chaos at Trafalgar', 'Nuit à Westminster': 'Night at Westminster',
@@ -150,6 +151,7 @@ const PATTERNS: Rule[] = [
   [/^VOLANT : (.+) s$/, m => `WHEEL: ${m[1]} s`],
   [/^AIMANT : (.+) s$/, m => `MAGNET: ${m[1]} s`],
   [/^(.+) DÉTRUITE !$/, m => `${tr(m[1])} DESTROYED!`],
+  [/^(.+) DÉTRUIT !$/, m => `${tr(m[1])} DESTROYED!`],
   [/^LA GRUE ! \+(.+) €$/, m => `THE CRANE! +${m[1]} €`],
   [/^LA TOUR EIFFEL ! \+(.+) €$/, m => `THE EIFFEL TOWER! +${m[1]} €`],
   [/^COMBO JURASSIQUE ! \+(.+) €$/, m => `JURASSIC COMBO! +${m[1]} €`],

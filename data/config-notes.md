@@ -86,6 +86,7 @@ holds no comments. The values themselves are in `data/config.json`.
 - `my_price_truck`: x the garage prices while you drive it
 - `my_stars_semi`: stars to unlock it
 - `my_price_semi`: x the garage prices while you drive it
+- `my_dmg_van`, `my_dmg_ambulance`, `my_dmg_truck`, `my_dmg_semi`: x the damage that scores while you drive it (the sports car: x1)
 - `mass_trailer`: the semi's trailer
 - `value_trailer`: only shown as dents, never scored
 
@@ -135,8 +136,15 @@ holds no comments. The values themselves are in `data/config.json`.
 - `threshold_17`: € to clear level 17
 - `threshold_18`: € to clear level 18
 - `threshold_19`: € to clear level 19
-- `star2`: x the objective for 2 stars
-- `star3`: x the objective for 3 stars
+- `star2`: x the objective for 2 stars, for a level with no `star2_N` (the daily)
+- `star3`: x the objective for 3 stars, for a level with no `star3_N` (the daily)
+- `star2_1` to `star2_19`: € for 2 stars on that level
+- `star3_1` to `star3_19`: € for 3 stars on that level
+
+The thresholds, 2- and 3-star scores, garage prices and `my_price_*` are worked out by
+`tools/balance/propose.mjs --write` from the autopilot's runs (tools/balance/): 1 star passable
+with the bare car, 3 stars at 90 % of the kit a player has three levels later, and everything for
+every vehicle costing the 3-star sum of levels 1-15.
 - `daily_base`: € per lane for the daily's objective
 - `spawn_scale`: x on every lane's spawn gap
 

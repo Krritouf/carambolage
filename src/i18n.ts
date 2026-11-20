@@ -143,8 +143,8 @@ const PATTERNS: Rule[] = [
   [/^(.+) : c'est parti !$/, m => `${tr(m[1])}: let's go!`],
   [/^(.+) débloqué !$/, m => `${tr(m[1])} unlocked!`],
   [/^Il te faut (\d+) étoiles pour ce véhicule \(tu en as (\d+)\)$/, m => `You need ${m[1]} stars for this vehicle (you have ${m[2]})`],
-  [/^Poids (\S+) · vitesse ×(\S+) · virage ×(\S+) · (.+?)(?: · (\d+) équipements?)?$/, m =>
-    `Weight ${m[1]} · speed ×${m[2]} · steering ×${m[3]} · ${tr(m[4])}${m[5] !== undefined ? ` · ${m[5]} item${m[5] === '1' ? '' : 's'}` : ''}`],
+  [/^Dégâts ×(\S+) · poids (\S+) · vitesse ×(\S+) · virage ×(\S+) · (.+?)(?: · (\d+) équipements?)?$/, m =>
+    `Damage ×${m[1]} · weight ${m[2]} · speed ×${m[3]} · steering ×${m[4]} · ${tr(m[5])}${m[6] !== undefined ? ` · ${m[6]} item${m[6] === '1' ? '' : 's'}` : ''}`],
   [/^\+(\d+) % de vitesse et d'accélération par niveau \(niveau (\d+)\/(\d+)\)$/, m => `+${m[1]}% speed and acceleration a level (level ${m[2]}/${m[3]})`],
   [/^Tu gardes le volant (\S+) s après le premier choc$/, m => `You keep the wheel ${m[1]} s after the first impact`],
   [/^\+(\S+) s de volant après le premier choc, en plus du pare-buffle$/, m => `+${m[1]} s at the wheel after the first impact, on top of the bull bar`],

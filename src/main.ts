@@ -8,6 +8,7 @@ import { CONFIG, LEVELS, tune } from './config';
 import { crunch, engineSound, isMuted, setMuted, startAudio, tone } from './audio';
 import { rng, setSeed, vr } from './game/random';
 import { finalScore, fmt, impactDamage, levelTargets, priceFor, starsAt } from './game/rules';
+import { LEVELS_VERSION, migrateLevels } from './game/save';
 import type { Loose } from './game/types';
 import { clock, install, manual, params, seedFrom } from './hook';
 import { defaultLang, setLang, tr } from './i18n';
@@ -238,8 +239,11 @@ function G() { // what the vehicle at the wheel has, every item at 0 until bough
 let done: Loose = {}, dailyRec: Loose = { date: '', score: 0 }, dailyBank = 0; // challenges won (level:index), today's best, credit won on dailies // the garage: bought with the sum of best scores
 try {
   const s = JSON.parse(localStorage.getItem('carambolage') || '{}');
-  if (Array.isArray(s.best)) best = LEVELS.map((_: Loose, i: Loose) => s.best[i] || 0);
-  if (s.unlocked) unlocked = Math.min(LEVELS.length, s.unlocked);
+  // a save from before the levels' new order (src/game/save.ts) follows its levels there
+  const prog = { best: Array.isArray(s.best) ? s.best : [], done: s.done || {}, unlocked: s.unlocked || 1 };
+  const moved = (s.lv || 1) < LEVELS_VERSION ? migrateLevels(prog) : prog;
+  if (Array.isArray(s.best)) best = LEVELS.map((_: Loose, i: Loose) => moved.best[i] || 0);
+  if (s.unlocked) unlocked = Math.min(LEVELS.length, moved.unlocked);
   if (s.up) {
     up = Object.assign(up, s.up);
     if (!up.gear) up.gear = {};
@@ -254,13 +258,13 @@ try {
     const g = up.gear[car];
     if (g && g[k]) { spent -= priceFor(tune[k + '_cost'], tune['my_price_' + car] || 1); delete g[k]; }
   }
-  if (s.done) done = s.done;
+  if (s.done) done = moved.done;
   if (s.daily) dailyRec = s.daily;
   if (s.dailyBank) dailyBank = s.dailyBank;
 } catch (e) { /* storage blocked: play without saves */ }
 const credit = () => best.reduce((a: Loose, b: Loose) => a + b, 0) + challengeBank() + dailyBank - spent;
 function challengeBank() { let t = 0; LEVELS.forEach((lv: Loose, i: Loose) => (lv.challenges || []).forEach((c: Loose, ci: Loose) => { if (done[i + ':' + ci]) t += c.reward; })); return t; }
-function save() { try { localStorage.setItem('carambolage', JSON.stringify({ best, unlocked, up, spent, done, daily: dailyRec, dailyBank })); } catch (e) { /* ignore */ } }
+function save() { try { localStorage.setItem('carambolage', JSON.stringify({ lv: LEVELS_VERSION, best, unlocked, up, spent, done, daily: dailyRec, dailyBank })); } catch (e) { /* ignore */ } }
 
 // What the player can drive. Sizes in px; mass, speed and turning from config (my_*), the sports car from mass_player.
 const MODELS: Loose = {
@@ -518,7 +522,8 @@ function hurt(b: Loose, amount: Loose, px: Loose, py: Loose) {
   if (isMine(b) || got <= 0 || !b.inv) return; // only what the player set off scores
   if (!b.touched) { b.touched = true; state.hitCount++; }
   if (before < b.value && b.dmg >= b.value) state.destroyed[b.kind] = (state.destroyed[b.kind] || 0) + 1;
-  state.damage += got; b.pend += got;
+  const paid = got * carDmgK(); // the vehicle at the wheel scores more (my_dmg_*); the wreck itself takes only got
+  state.damage += paid; b.pend += paid;
   if (b.kind === 'tanker' && b.dmg >= b.value && !b.exploded) { b.exploded = true; state.blasts.push(b); }
 }
 function impact(A: Loose, B: Loose, j: Loose, c: Loose, fall: Loose) {
@@ -1140,7 +1145,7 @@ function shopHurt(S: Loose, amount: number) {
   amount *= S.value / tune.value_boulangerie; // the same share of the building for every shop: the bakery's pace, each shop's price
   const before = S.dmg; S.dmg = Math.min(S.value, S.dmg + amount);
   const got = S.dmg - before; if (got <= 0) return;
-  state.damage += got; S.pend = (S.pend || 0) + got;
+  state.damage += got * carDmgK(); S.pend = (S.pend || 0) + got * carDmgK();
   if (S.dmg >= S.value) {
     S.ruined = true; S.h = Math.max(24, S.h * 0.3); S.height = S.h;
     state.destroyed['shop_' + S.shop] = (state.destroyed['shop_' + S.shop] || 0) + 1;
@@ -1910,12 +1915,13 @@ const TABS: Loose = [
 const carStars = (id: Loose) => id === 'sport' ? 0 : tune['my_stars_' + id]; // stars it takes to unlock a vehicle
 const totalStars = () => LEVELS.reduce((a: Loose, lv: Loose, i: Loose) => a + levelStars(i), 0);
 const priceK = () => tune['my_price_' + up.car] || 1; // a better vehicle pays more for each item
+const carDmgK = (id: string = up.car) => id === 'sport' ? 1 : tune['my_dmg_' + id] || 1; // a bigger vehicle's damage scores more
 const priceOf = (g: Loose, lv: number) => priceFor(g.cost(lv), priceK());
 function carDesc(id: Loose) {
   const n: number = (Object.values(up.gear[id] || {}) as number[]).reduce((a: Loose, b: Loose) => a + (b || 0), 0);
   const m = id === 'sport' ? tune.mass_player : tune['my_mass_' + id], sp = id === 'sport' ? 1 : tune['my_speed_' + id], st = id === 'sport' ? 1 : tune['my_steer_' + id];
   const extra = ({ sport: 'légère et vive', van: 'un peu plus lourd', ambulance: 'avec gyrophare', truck: 'lourd : il pousse fort', semi: 'la remorque balaie tout en portefeuille' } as Loose)[id];
-  return `Poids ${m.toFixed(1)} · vitesse ×${sp.toFixed(2)} · virage ×${st.toFixed(2)} · ${extra}` + (up.cars.includes(id) ? ` · ${n} équipement${n > 1 ? 's' : ''}` : '');
+  return `Dégâts ×${carDmgK(id).toFixed(2)} · poids ${m.toFixed(1)} · vitesse ×${sp.toFixed(2)} · virage ×${st.toFixed(2)} · ${extra}` + (up.cars.includes(id) ? ` · ${n} équipement${n > 1 ? 's' : ''}` : '');
 }
 // draws a player's model at a screen point (the garage's thumbnails)
 function drawModelAt(id: Loose, sx: Loose, sy: Loose, fitW: Loose) {

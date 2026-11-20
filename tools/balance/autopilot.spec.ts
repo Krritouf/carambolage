@@ -102,7 +102,8 @@ for (const setupName of SETUP_NAMES) for (const level of LEVELS) {
       await expect.poll(() => page.evaluate(() => typeof (window as any).game?.step)).toBe('function');
       rows.push({ seed, ...(await page.evaluate(drive, { seed, dynR: tune.dynamite_radius }) as object) });
     }
-    mkdirSync(resolve('tools/balance/results'), { recursive: true });
-    writeFileSync(resolve(`tools/balance/results/${setupName}-${level}.json`), JSON.stringify(rows));
+    const out = process.env.BALANCE_OUT || 'tools/balance/results'; // another folder keeps a check from overwriting the reference runs
+    mkdirSync(resolve(out), { recursive: true });
+    writeFileSync(resolve(`${out}/${setupName}-${level}.json`), JSON.stringify(rows));
   });
 }

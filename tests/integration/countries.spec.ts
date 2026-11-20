@@ -39,14 +39,20 @@ async function openWithSave(page: Page, save: unknown): Promise<void> {
 }
 const pickUk = (page: Page) => page.evaluate(() => { const g = window.game!; g.press('ArrowRight'); g.step(1, false); g.press('Enter'); g.step(1, false); return g.scene; });
 
-test('the United Kingdom stays locked until France\'s level 19 has a star', async ({ page }) => {
-  await openWithSave(page, { lv: 3, countries: { fr: { best: [], unlocked: 19 } } });
+test('the United Kingdom stays locked until France\'s last level has a star', async ({ page }) => {
+  await openWithSave(page, { lv: 3, countries: { fr: { best: [], unlocked: 20 } } });
   expect(await pickUk(page)).toBe('countries');
 });
 
-test('a star on France\'s level 19 opens the United Kingdom: 20 levels and a progress of its own', async ({ page }) => {
-  const frBest = Array(19).fill(0); frBest[18] = 20000000; frBest[0] = 50000;
-  await openWithSave(page, { lv: 3, countries: { fr: { best: frBest, unlocked: 19, spent: 0 } } });
+test('a star on France\'s level 19 is not enough: the United Kingdom waits for the last level, 20', async ({ page }) => {
+  const frBest = Array(20).fill(0); frBest[18] = 20000000; // level 19 has its stars, level 20 none
+  await openWithSave(page, { lv: 3, countries: { fr: { best: frBest, unlocked: 20 } } });
+  expect(await pickUk(page)).toBe('countries');
+});
+
+test('a star on France\'s last level opens the United Kingdom: 20 levels and a progress of its own', async ({ page }) => {
+  const frBest = Array(20).fill(0); frBest[19] = 20000000; frBest[0] = 50000;
+  await openWithSave(page, { lv: 3, countries: { fr: { best: frBest, unlocked: 20, spent: 0 } } });
   expect(await pickUk(page)).toBe('title');
   const r = await page.evaluate(() => {
     const g = window.game!, st = g.state as any;
@@ -62,7 +68,7 @@ test('a star on France\'s level 19 opens the United Kingdom: 20 levels and a pro
   const saved = await page.evaluate(() => { (window.game as any).press('Escape'); window.game!.step(1, false); return JSON.parse(localStorage.getItem('carambolage') || '{}'); });
   expect(saved.lv).toBe(3);
   if (saved.countries.uk) expect(saved.countries.uk.best.every((b: number) => !b)).toBe(true);
-  expect(saved.countries.fr.best[18]).toBe(20000000);
+  expect(saved.countries.fr.best[19]).toBe(20000000);
 });
 
 test("a save from before the countries becomes France's: its open levels stay open", async ({ page }) => {

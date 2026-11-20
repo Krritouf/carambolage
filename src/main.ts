@@ -2681,14 +2681,14 @@ function drawWheelCard(i: Loose, k: Loose) {
 // ---- The countries: the home screen picks one, then its levels' wheel ---------------------
 // Only France is ready: its 19 levels are the game's. The others show as "soon".
 const COUNTRIES: Loose[] = [
-  { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: true, after: 'fr', afterLevel: 19 },
+  { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: true, after: 'fr' },
   { id: 'jp', name: 'Japon', ready: false }, { id: 'us', name: 'États-Unis', ready: false }, { id: 'br', name: 'Brésil', ready: false },
 ];
 let countryIdx = 0, homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
 /** A country is open once the one before it has a star on its last level (France always is). */
 function countryOpen(c: Loose): boolean {
   if (!c.after) return true;
-  const last = c.afterLevel || LEVELS_BY[c.after].length, b = (progressOf(c.after).best || [])[last - 1] || 0;
+  const last = LEVELS_BY[c.after].length, b = (progressOf(c.after).best || [])[last - 1] || 0;
   return starsAt(b, levelTargets(last, tune, PREFIX[c.after])) >= 1;
 }
 /** A country's flag, flat, in the box x, y, w, h. */
@@ -2724,7 +2724,7 @@ function goHome() {
 function enterCountry() {
   const c = COUNTRIES[countryIdx];
   if (!c.ready) { homeMsg = 'Bientôt disponible !'; homeMsgT = 2; tone(180, 0.2, 'triangle', 0.2); return; }
-  if (!countryOpen(c)) { homeMsg = `Finis le niveau ${c.afterLevel || LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name} avec au moins une étoile`; homeMsgT = 2.5; tone(180, 0.2, 'triangle', 0.2); return; }
+  if (!countryOpen(c)) { homeMsg = `Finis le niveau ${LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name} avec au moins une étoile`; homeMsgT = 2.5; tone(180, 0.2, 'triangle', 0.2); return; }
   if (c.id !== country) { storeCountry(); loadCountry(c.id); levelIdx = Math.max(0, unlocked - 1); wheelPos = levelIdx; }
   applyCountryModels(country); daily = false; reset(); scene = 'title'; tone(660, 0.12, 'square', 0.15);
 }
@@ -2811,7 +2811,7 @@ const scenes: Loose = {
           text(`${LEVELS_BY[c.id].length} niveaux`, mx, r.y + 250, 15, '#d0c8f0', 'center', 'bold');
         } else if (c.ready) { // ready but still locked: what opens it
           padlock(mx, r.y + 190, 1, '#8a80a8');
-          text(`Niveau ${c.afterLevel || LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name}`, mx, r.y + 232, 14, '#ffc83d', 'center', 'bold');
+          text(`Niveau ${LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name}`, mx, r.y + 232, 14, '#ffc83d', 'center', 'bold');
           text('avec une étoile', mx, r.y + 252, 14, '#ffc83d', 'center', 'bold');
         } else {
           padlock(mx, r.y + 196, 1, '#8a80a8');

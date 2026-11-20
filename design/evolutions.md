@@ -50,7 +50,9 @@ Retenu en priorité :
 - **La boule de pétanque géante** (gadget) : elle dévale le boulevard et fait un carreau dans les voitures.
 - **Le rond-point** — **fait (2026-11-20)** : le niveau 20 de France, la place de l'Étoile, avec l'Arc de Triomphe
   sur l'îlot (destructible, gros bonus). Spécialité française (pas au Royaume-Uni). Idée d'origine :
-  certains niveaux remplacent le carrefour par un rond-point. La circulation tourne,
+  certains niveaux remplacent le carrefour par un rond-point.
+  **À faire plus tard** (demandé le 2026-11-20) : passer aussi en rond-point quelques autres niveaux de France
+  (leurs seuils seront à remesurer). La circulation tourne,
   les angles de choc changent, le carambolage se propage en cercle. Change le gameplay, pas que le décor.
 
 En complément :

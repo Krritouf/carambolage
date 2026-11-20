@@ -16,9 +16,9 @@ async function open(page: Page, query: string): Promise<string[]> {
   return errors;
 }
 
-test('boots to the title screen with no errors @boot', async ({ page }) => {
+test('boots to the countries screen with no errors @boot', async ({ page }) => {
   const errors = await open(page, 'manual=1');
-  expect(await page.evaluate(() => window.game!.scene)).toBe('title');
+  expect(await page.evaluate(() => window.game!.scene)).toBe('countries');
   const size = await page.locator('#game').boundingBox();
   expect(size && size.width > 0 && size.height > 0).toBe(true);
   expect(errors).toEqual([]);
@@ -31,7 +31,8 @@ test('the car drives up the street, and the same seed repeats the run exactly', 
     return page.evaluate(() => {
       const g = window.game!;
       type Run = { player: { x: number; y: number }; bodies: { x: number; y: number }[]; t: number; phase: string };
-      g.press('Enter'); g.step();
+      g.press('Enter'); g.step(); // France: its levels' wheel
+      g.press('Enter'); g.step(); // level 1
       const y0 = (g.state as Run).player.y;
       g.hold('ArrowUp', true); g.step(150); g.hold('ArrowUp', false);
       const s = g.state as Run;
@@ -45,7 +46,7 @@ test('the car drives up the street, and the same seed repeats the run exactly', 
   expect(await run()).toEqual(first);
 });
 
-test('the gear on the title opens the settings, and a click on a row changes it', async ({ page }) => {
+test('the gear on the home screen opens the settings, and a click on a row changes it', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await open(page, 'lang=fr');
   await page.waitForTimeout(300);

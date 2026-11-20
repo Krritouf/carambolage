@@ -95,7 +95,7 @@ addEventListener('keydown', (e: Loose) => {
   if (e.code === 'Space' || e.code.startsWith('Arrow') || e.code === 'Tab' || e.code === 'Backspace') e.preventDefault();
 });
 // the phone's back button in the app: leave from the title, pause in play, otherwise back out like Esc
-onBack(() => { if (scene === 'title') exitApp(); else hit.add('Escape'); });
+onBack(() => { if (scene === 'countries') exitApp(); else hit.add('Escape'); });
 addEventListener('keyup', (e: Loose) => down.delete(e.code));
 addEventListener('pointerdown', () => { startAudio(); try { window.focus(); } catch (e) { /* ignore */ } }); // a click gives the keys back to the game
 // A phone or tablet: on-screen buttons drawn on the canvas, the car accelerates by itself
@@ -2003,6 +2003,49 @@ function drawWheelCard(i: Loose, k: Loose) {
 }
 
 // ---- Scenes ------------------------------------------------------------------------------
+// ---- The countries: the home screen picks one, then its levels' wheel ---------------------
+// Only France is ready: its 19 levels are the game's. The others show as "soon".
+const COUNTRIES: Loose[] = [
+  { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: false },
+  { id: 'jp', name: 'Japon', ready: false }, { id: 'us', name: 'États-Unis', ready: false }, { id: 'br', name: 'Brésil', ready: false },
+];
+let countryIdx = 0, country = 'fr', homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
+/** A country's flag, flat, in the box x, y, w, h. */
+function flag(id: string, x: number, y: number, w: number, h: number) {
+  const r = (cx: number, cy: number, cw: number, chh: number, c: string) => { ctx.fillStyle = c; ctx.fillRect(x + cx * w, y + cy * h, cw * w, chh * h); };
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  if (id === 'fr') { r(0, 0, 1 / 3, 1, '#1f4fbf'); r(1 / 3, 0, 1 / 3, 1, '#f8f9fa'); r(2 / 3, 0, 1 / 3, 1, '#e03131'); }
+  else if (id === 'uk') {
+    r(0, 0, 1, 1, '#1f3a8a');
+    ctx.lineCap = 'butt';
+    for (const [lw, c] of [[h * 0.22, '#f8f9fa'], [h * 0.09, '#e03131']] as Loose) { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y + h); ctx.moveTo(x + w, y); ctx.lineTo(x, y + h); ctx.stroke(); }
+    r(0, 0.36, 1, 0.28, '#f8f9fa'); r(0.42, 0, 0.16, 1, '#f8f9fa'); r(0, 0.42, 1, 0.16, '#e03131'); r(0.455, 0, 0.09, 1, '#e03131');
+  } else if (id === 'jp') { r(0, 0, 1, 1, '#f8f9fa'); ctx.fillStyle = '#d6223a'; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, h * 0.3, 0, Math.PI * 2); ctx.fill(); }
+  else if (id === 'us') {
+    for (let i = 0; i < 7; i++) r(0, i * 2 / 13, 1, 1 / 13, '#c92a2a');
+    for (let i = 0; i < 6; i++) r(0, (i * 2 + 1) / 13, 1, 1 / 13, '#f8f9fa');
+    r(0, 0, 0.42, 7 / 13, '#1f3a8a');
+    ctx.fillStyle = '#f8f9fa'; for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { ctx.beginPath(); ctx.arc(x + w * (0.06 + i * 0.1), y + h * (0.09 + j * 0.17), h * 0.025, 0, Math.PI * 2); ctx.fill(); }
+  } else if (id === 'br') {
+    r(0, 0, 1, 1, '#1e9e4a');
+    ctx.fillStyle = '#ffd21f'; ctx.beginPath(); ctx.moveTo(x + w * 0.5, y + h * 0.1); ctx.lineTo(x + w * 0.92, y + h * 0.5); ctx.lineTo(x + w * 0.5, y + h * 0.9); ctx.lineTo(x + w * 0.08, y + h * 0.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1f3a8a'; ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, h * 0.22, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#1b1530'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+}
+const countryRect = (i: number) => { const w = 196, gap = 18, x0 = (W - COUNTRIES.length * w - (COUNTRIES.length - 1) * gap) / 2; return { x: x0 + i * (w + gap), y: 222, w, h: 280 }; };
+/** The home screen: the first level's crossroads behind, the countries in front. */
+function goHome() {
+  const keep = levelIdx; levelIdx = 0; daily = false; reset(); levelIdx = keep; scene = 'countries';
+}
+/** Into a country: its levels' wheel. */
+function enterCountry() {
+  const c = COUNTRIES[countryIdx];
+  if (!c.ready) { homeMsg = 'Bientôt disponible !'; homeMsgT = 2; tone(180, 0.2, 'triangle', 0.2); return; }
+  country = c.id; daily = false; reset(); scene = 'title'; tone(660, 0.12, 'square', 0.15);
+}
+
 const scenes: Loose = {
   figures: {
     update(dt: Loose) { state.t += dt; },
@@ -2050,6 +2093,48 @@ const scenes: Loose = {
       text('Garage', 560 + 5 * 64, 702, 16, '#1b1530');
     },
   },
+  countries: { // the home screen: pick the country
+    update(dt: Loose) {
+      const prev = countryIdx;
+      if (pressed('ArrowRight')) countryIdx = Math.min(COUNTRIES.length - 1, countryIdx + 1);
+      if (pressed('ArrowLeft')) countryIdx = Math.max(0, countryIdx - 1);
+      for (let i = 0; i < COUNTRIES.length; i++) if (pressed('Country' + i)) { countryIdx = i; return enterCountry(); }
+      if (countryIdx !== prev) tone(520 + countryIdx * 30, 0.06, 'square', 0.08);
+      homeMsgT -= dt;
+      if (pressed('Enter') || pressed('Space')) return enterCountry();
+      if (pressed('KeyO')) { setSel = 0; settingsBack = 'countries'; scene = 'settings'; return; }
+      scenes.title.idle(dt);
+    },
+    draw() {
+      drawWorld();
+      ctx.fillStyle = 'rgba(27,21,48,0.55)'; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.translate(W / 2, 92); ctx.rotate(-0.04);
+      text(TITLE, 0, 0, 80, '#ffc83d', 'center', 'bold italic', 12); ctx.restore();
+      text('Un seul choc. Le plus gros carambolage possible.', W / 2, 152, 20, '#fff');
+      text('CHOISIS TON PAYS', W / 2, 192, 24, '#ffc83d', 'center', 'bold italic', 5);
+      COUNTRIES.forEach((c: Loose, i: number) => {
+        const r = countryRect(i), sel = i === countryIdx, mx = r.x + r.w / 2;
+        panel(r.x, r.y, r.w, r.h, sel ? 'rgba(90,70,30,0.97)' : c.ready ? 'rgba(27,21,48,0.94)' : 'rgba(27,21,48,0.8)');
+        if (sel) { ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 3; ctx.strokeRect(r.x + 8, r.y + 3, r.w - 16, r.h - 6); }
+        flag(c.id, mx - 66, r.y + 30, 132, 88);
+        if (!c.ready) { ctx.fillStyle = 'rgba(27,21,48,0.6)'; ctx.fillRect(mx - 66, r.y + 30, 132, 88); }
+        text(c.name, mx, r.y + 148, c.name.length > 10 ? 21 : 26, c.ready ? '#fff' : '#8a80a8', 'center', 'bold');
+        if (c.ready) {
+          for (let s2 = 0; s2 < 3; s2++) star(mx - 30 + s2 * 30, r.y + 190, 12, '#ffc83d');
+          text(`${totalStars()} / ${LEVELS.length * 3}`, mx, r.y + 222, 18, '#fff', 'center', 'bold');
+          text(`${LEVELS.length} niveaux`, mx, r.y + 250, 15, '#d0c8f0', 'center', 'bold');
+        } else {
+          padlock(mx, r.y + 196, 1, '#8a80a8');
+          text('BIENTÔT', mx, r.y + 244, 18, '#ffc83d', 'center', 'bold italic');
+        }
+        btns.push({ x: r.x * UI, y: r.y * UI, w: r.w * UI, h: r.h * UI, code: 'Country' + i, hold: false, mouse: true });
+      });
+      button(W - 96, 16, 80, 76, '', 'KeyO', { mouse: true, icon: (cx: number, cy: number) => gearIcon(cx, cy, 26) }); // the settings
+      if (homeMsgT > 0) text(homeMsg, W / 2, 540, 22, '#ff5e7a', 'center', 'bold', 5);
+      if (TOUCH) return;
+      text('Entrée ou clic : choisir   ·   Gauche / Droite : changer de pays   ·   O : réglages', W / 2, 610, 20, '#fff', 'center', 'bold', 5);
+    },
+  },
   title: {
     update(dt: Loose) {
       const prev = levelIdx;
@@ -2065,7 +2150,8 @@ const scenes: Loose = {
         titleMsg = `Verrouillé : réussis d'abord le niveau ${unlocked}`; titleMsgT = 2; tone(180, 0.2, 'triangle', 0.2);
       }
       if (pressed('KeyU') || pressed('KeyG')) { garageSel = 0; garageMsgT = 0; scene = 'garage'; return; }
-      if (pressed('KeyO')) { setSel = 0; scene = 'settings'; return; }
+      if (pressed('KeyO')) { setSel = 0; settingsBack = 'title'; scene = 'settings'; return; }
+      if (pressed('Escape') || pressed('Backspace')) return goHome(); // back to the countries
       scenes.title.idle(dt);
     },
     idle(dt: Loose) {
@@ -2084,6 +2170,7 @@ const scenes: Loose = {
       (TOUCH ? TOUCH_CONTROLS : CONTROLS).forEach((c: Loose, i: Loose) => text(c, W / 2, 194 + i * 30, 17, i === 1 ? '#ff9fb2' : '#fff', 'center', 'bold'));
       drawWheel();
       button(W - 96, 16, 80, 76, '', 'KeyO', { mouse: true, icon: (cx: number, cy: number) => gearIcon(cx, cy, 26) }); // the settings
+      button(16, 16, 196, 76, '', 'Escape', { mouse: true, icon: (cx: number, cy: number) => { text('◀', cx - 74, cy, 22, '#ffc83d'); flag(country, cx - 56, cy - 18, 54, 36); text(COUNTRIES.find((c: Loose) => c.id === country).name, cx + 36, cy, 18, '#fff', 'center', 'bold'); } }); // back to the countries
       if (titleMsgT > 0) text(titleMsg, W / 2, 552, 20, '#ff5e7a', 'center', 'bold', 5);
       if (TOUCH) return; // the phone gets buttons instead (drawTouch)
       text(`Entrée : jouer   ·   Gauche / Droite ou molette : tourner la roue   ·   ${totalStars()} étoiles sur ${LEVELS.length * 3}`, W / 2, 592, 20, '#fff', 'center', 'bold', 5);
@@ -2190,7 +2277,7 @@ const scenes: Loose = {
         scenes.title.idle(dt);
         return;
       }
-      if (pressed('Escape') || pressed('KeyO') || pressed('Backspace')) { scene = 'title'; return; }
+      if (pressed('Escape') || pressed('KeyO') || pressed('Backspace')) { scene = settingsBack; return; }
       if (pressed('ArrowUp') || pressed('KeyW') || pressed('KeyZ')) setSel = (setSel + n - 1) % n;
       if (pressed('ArrowDown') || pressed('KeyS')) setSel = (setSel + 1) % n;
       for (let i = 0; i < n; i++) if (pressed('Set' + i)) { setSel = i; hit.add('Enter'); }
@@ -2234,7 +2321,7 @@ const scenes: Loose = {
   boot: { // the app's opening picture: a moment, or until a tap or a key
     update(dt: Loose) {
       bootT += dt;
-      if (bootT > tune.boot_time || hit.size > 0) { hit.clear(); scene = 'title'; return; }
+      if (bootT > tune.boot_time || hit.size > 0) { hit.clear(); goHome(); return; }
       scenes.title.idle(dt);
     },
     draw() {
@@ -2421,7 +2508,7 @@ install({
 
 if (params.get('level')) levelIdx = Math.max(0, Math.min(LEVELS.length - 1, Number(params.get('level')) - 1));
 reset();
-scene = params.get('scene') || (NATIVE ? 'boot' : 'title'); // the app opens on its picture; the web page goes straight to the title
+scene = params.get('scene') || (NATIVE ? 'boot' : 'countries'); // the app opens on its picture; the web page goes straight to the countries
 if (scene === 'play' && params.get('drive') !== null) state.phase = 'drive';
 last = clock.now();
 if (manual) drawFrame();

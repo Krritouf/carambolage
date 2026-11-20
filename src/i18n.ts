@@ -32,6 +32,10 @@ const EN: Record<string, string> = {
   'Gadgets sous les touches · REJOUER et MENU en bas à droite': 'Gadgets under the buttons · RETRY and MENU bottom right',
   'Entrée : jouer': 'Enter: play', 'Gauche / Droite ou molette : tourner la roue': 'Left / Right or wheel: turn the wheel',
   'O : réglages': 'O: settings', 'Verrouillé': 'Locked',
+  // the countries
+  'CHOISIS TON PAYS': 'PICK YOUR COUNTRY', 'France': 'France', 'Royaume-Uni': 'United Kingdom', 'Japon': 'Japan',
+  'États-Unis': 'United States', 'Brésil': 'Brazil', 'BIENTÔT': 'SOON', 'Bientôt disponible !': 'Coming soon!',
+  'Entrée ou clic : choisir': 'Enter or click: choose', 'Gauche / Droite : changer de pays': 'Left / Right: change country',
   'JOUER': 'PLAY', 'PLEIN ÉCRAN': 'FULL SCREEN', 'RÉGLAGES': 'SETTINGS', "Tourne ton téléphone à l'horizontale": 'Turn your phone sideways',
   // settings
   'Son': 'Sound', 'Activé': 'On', 'Désactivé': 'Off', 'Vibrations': 'Vibration', 'Activées': 'On', 'Désactivées': 'Off',
@@ -106,6 +110,7 @@ const NOUN: Record<string, string> = {
 type Rule = [RegExp, (m: RegExpMatchArray) => string];
 /** Sentences with numbers or names in them. */
 const PATTERNS: Rule[] = [
+  [/^(\d+) niveaux$/, m => `${m[1]} levels`],
   [/^NIVEAU (\d+)$/, m => `LEVEL ${m[1]}`],
   [/^NIVEAU (\d+) — (.+)$/, m => `LEVEL ${m[1]} — ${tr(m[2])}`],
   [/^Objectif (.+) €$/, m => `Goal ${m[1]} €`],

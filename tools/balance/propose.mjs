@@ -15,17 +15,19 @@
 //     (my_price_*, set here); everything for every vehicle costs
 //     the sum of the 3-star scores of levels 1-15
 // The runs (tools/balance/results/<setup>-<n>.json) were made with the levels' old order:
-// LEVEL_ORDER maps each position now to its old number.
+// RUNS_ORDER maps each position to the level number the runs were made with: the runs from
+// before 2026-11-20's reorder used the old numbers; the runs since use the positions (identity).
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const WRITE = process.argv.includes('--write');
 const MARGIN = 0.9, AHEAD = 3, LAST_FULL = 15;
-const LEVEL_ORDER = [1, 2, 3, 4, 7, 5, 6, 8, 11, 15, 12, 10, 9, 14, 16, 17, 13, 18, 19]; // src/game/save.ts
+const OLD_ORDER = [1, 2, 3, 4, 7, 5, 6, 8, 11, 15, 12, 10, 9, 14, 16, 17, 13, 18, 19]; // src/game/save.ts, for runs made before the reorder
+const RUNS_ORDER = process.argv.includes('--old-runs') ? OLD_ORDER : OLD_ORDER.map((_, i) => i + 1);
 const FIXED_T1 = { 3: 150000 }; // the ramp level: the autopilot handles the ramp badly; set by hand, to check in play
 const DMG = { van: 1.15, ambulance: 1.3, truck: 1.5, semi: 1.75 };
 const config = JSON.parse(readFileSync('data/config.json', 'utf8'));
 const levels = JSON.parse(readFileSync('data/levels.json', 'utf8'));
-const runs = (setup, pos) => JSON.parse(readFileSync(`tools/balance/results/${setup}-${LEVEL_ORDER[pos - 1]}.json`, 'utf8')).filter(r => r.crashed).map(r => r.final);
+const runs = (setup, pos) => JSON.parse(readFileSync(`tools/balance/results/${setup}-${RUNS_ORDER[pos - 1]}.json`, 'utf8')).filter(r => r.crashed).map(r => r.final);
 const q = (xs, p) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 // the kit a player has by a position, and its median score on a level
 const kitAt = pos => pos <= 3 ? 'bare' : pos === 4 ? 'starter' : pos <= 6 ? 'dyn' : pos <= 9 ? 'mid' : pos <= 11 ? 'full'
@@ -36,14 +38,14 @@ const M = n => n >= 1e6 ? (n / 1e6).toFixed(2).replace('.', ',') + ' M' : Math.r
 
 const N = levels.length, rows = [];
 for (let p = 1; p <= N; p++) {
-  const bare = runs('bare', p), oldN = LEVEL_ORDER[p - 1];
+  const bare = runs('bare', p), oldN = p;
   const t1 = FIXED_T1[p] ?? round(MARGIN * q(bare, 0.25));
   const kit = p <= 2 ? 'bare p75' : kitAt(Math.min(N, p + AHEAD));
   const ref = p <= 2 ? q(bare, 0.75) : kitMedian(kit, p);
   const t3 = Math.max(round(MARGIN * ref), round(t1 * 1.5));
   const t2 = round(Math.sqrt(t1 * t3));
-  const old = config['threshold_' + oldN].value;
-  rows.push({ p, oldN, name: levels[p - 1].name, old: [old, old * config.star2.value, old * config.star3.value], t: [t1, t2, t3], kit });
+  const old = [config['threshold_' + p].value, (config['star2_' + p] || {}).value ?? config['threshold_' + p].value * config.star2.value, (config['star3_' + p] || {}).value ?? config['threshold_' + p].value * config.star3.value];
+  rows.push({ p, oldN, name: levels[p - 1].name, old, t: [t1, t2, t3], kit });
 }
 console.log('pos (old)  name                    old 1*/2*/3*                  new 1*/2*/3*                    3* needs');
 for (const r of rows) console.log(String(r.p).padStart(3), `(${r.oldN})`.padStart(5), ' ', r.name.padEnd(22), r.old.map(M).join(' / ').padEnd(30), r.t.map(M).join(' / ').padEnd(30), r.kit);

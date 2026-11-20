@@ -83,6 +83,7 @@ function drive(arg: { seed: number; dynR: number }): unknown {
       if (near >= 4 || st.countdown < 1.5) g.press('Space');
     }
     if (st.crashed && !st.trexUsed) g.press('KeyT');
+    if (st.crashed && !st.farmersUsed) g.press('KeyC'); // the farmers (France): with the T-Rex, the Jurassic combo
     g.step(1, false);
   }
   for (const k of KEYS) g.hold(k, false);

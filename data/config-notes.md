@@ -226,3 +226,6 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 
 - `parts_max`: particles (smoke, fire, sparks, debris) on screen at most; new ones are skipped beyond it
 - `floats_max`: floating texts (+€) at once; beyond it the oldest small ones go, the big banners stay
+- `max_bodies`: vehicles on the map at most; beyond it no more traffic comes out of the tunnels
+- `max_steps`: physics steps a frame at most; a device that can't keep up runs the game a little slower
+  instead of falling further behind (the countdown runs on the game's time)

@@ -451,6 +451,7 @@ function pickKind(mix: Loose) {
   return 'car';
 }
 function spawnOn(ln: Loose, x: Loose) {
+  if (state.bodies.length >= tune.max_bodies) return false; // the road is full: no more traffic out of the tunnels
   const kind = pickKind(state.lv.mix);
   const fr = country === 'fr', cars = fr ? CAR_COLORS_FR : CAR_COLORS; // France: a Paris taxi, a green bus, the baker's truck
   const color = kind === 'police' || kind === 'ambulance' ? '#f8f9fa' : kind === 'fire' ? '#e8202a' : kind === 'taxi' ? (fr ? '#2b2b33' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : '#ff8a00') : kind === 'moto' ? '#26262e'
@@ -469,25 +470,39 @@ function corners(b: Loose) {
   return [[b.x + c * hl - s * hw, b.y + s * hl + c * hw], [b.x + c * hl + s * hw, b.y + s * hl - c * hw],
     [b.x - c * hl + s * hw, b.y - s * hl - c * hw], [b.x - c * hl - s * hw, b.y - s * hl + c * hw]];
 }
+// the corners of the two boxes being tested, kept between calls: sat runs tens of thousands of
+// times a second in a big pile-up, so it allocates nothing until it finds a contact
+const SAT_A = new Float64Array(8), SAT_B = new Float64Array(8);
+function cornersInto(b: Loose, out: Float64Array) { // the same corners, in the same order, as corners()
+  const c = Math.cos(b.a), s = Math.sin(b.a), hl = b.hl, hw = b.hw;
+  out[0] = b.x + c * hl - s * hw; out[1] = b.y + s * hl + c * hw; out[2] = b.x + c * hl + s * hw; out[3] = b.y + s * hl - c * hw;
+  out[4] = b.x - c * hl + s * hw; out[5] = b.y - s * hl - c * hw; out[6] = b.x - c * hl - s * hw; out[7] = b.y - s * hl + c * hw;
+}
+/** Separating axes between two boxes: null apart, else the contact normal (A to B), its depth and the contact point. */
 function sat(A: Loose, B: Loose) {
-  const ca = corners(A), cb = corners(B);
-  const axes = [[Math.cos(A.a), Math.sin(A.a)], [-Math.sin(A.a), Math.cos(A.a)], [Math.cos(B.a), Math.sin(B.a)], [-Math.sin(B.a), Math.cos(B.a)]];
-  let best = Infinity, bn: Loose = null, bi = 0;
-  for (let i = 0; i < 4; i++) {
-    const ax = axes[i][0], ay = axes[i][1];
+  const ca = SAT_A, cb = SAT_B; cornersInto(A, ca); cornersInto(B, cb);
+  const cA = Math.cos(A.a), sA = Math.sin(A.a), cB = Math.cos(B.a), sB = Math.sin(B.a);
+  let best = Infinity, bx = 0, by = 0, bi = 0;
+  for (let i = 0; i < 4; i++) { // the axes: A's length and width, then B's
+    const ax = i === 0 ? cA : i === 1 ? -sA : i === 2 ? cB : -sB, ay = i === 0 ? sA : i === 1 ? cA : i === 2 ? sB : cB;
     let amin = Infinity, amax = -Infinity, bmin = Infinity, bmax = -Infinity;
-    for (const p of ca) { const d = p[0] * ax + p[1] * ay; if (d < amin) amin = d; if (d > amax) amax = d; }
-    for (const p of cb) { const d = p[0] * ax + p[1] * ay; if (d < bmin) bmin = d; if (d > bmax) bmax = d; }
+    for (let k = 0; k < 8; k += 2) { const d = ca[k] * ax + ca[k + 1] * ay; if (d < amin) amin = d; if (d > amax) amax = d; }
+    for (let k = 0; k < 8; k += 2) { const d = cb[k] * ax + cb[k + 1] * ay; if (d < bmin) bmin = d; if (d > bmax) bmax = d; }
     const o = Math.min(amax - bmin, bmax - amin);
     if (o <= 0) return null;
-    if (o < best) { best = o; bn = [ax, ay]; bi = i; }
+    if (o < best) { best = o; bx = ax; by = ay; bi = i; }
   }
-  if ((B.x - A.x) * bn[0] + (B.y - A.y) * bn[1] < 0) bn = [-bn[0], -bn[1]];
-  const pts = bi < 2 ? cb : ca, sgn = bi < 2 ? 1 : -1; // deepest corner(s) along the normal
-  const sorted = pts.map((q: Loose) => [q, sgn * (q[0] * bn[0] + q[1] * bn[1])]).sort((u: Loose, v: Loose) => u[1] - v[1]);
-  let p = sorted[0][0];
-  if (sorted[1][1] - sorted[0][1] < 3) p = [(p[0] + sorted[1][0][0]) / 2, (p[1] + sorted[1][0][1]) / 2];
-  return { n: bn, depth: best, p };
+  if ((B.x - A.x) * bx + (B.y - A.y) * by < 0) { bx = -bx; by = -by; }
+  // the deepest corner along the normal, or the middle of the two deepest when they are level
+  const pts = bi < 2 ? cb : ca, sgn = bi < 2 ? 1 : -1;
+  let i0 = -1, v0 = Infinity, i1 = -1, v1 = Infinity; // the two smallest, the earlier corner first on a tie
+  for (let k = 0; k < 4; k++) {
+    const v = sgn * (pts[2 * k] * bx + pts[2 * k + 1] * by);
+    if (v < v0) { i1 = i0; v1 = v0; i0 = k; v0 = v; } else if (v < v1) { i1 = k; v1 = v; }
+  }
+  let px = pts[2 * i0], py = pts[2 * i0 + 1];
+  if (v1 - v0 < 3) { px = (px + pts[2 * i1]) / 2; py = (py + pts[2 * i1 + 1]) / 2; }
+  return { n: [bx, by], depth: best, p: [px, py] };
 }
 function resolve(A: Loose, B: Loose, c: Loose) {
   const nx = c.n[0], ny = c.n[1], px = c.p[0], py = c.p[1];
@@ -2818,9 +2833,15 @@ let last: Loose, acc = 0, ALPHA = 1;
 function tick() {
   const now = clock.now();
   acc += Math.min(now - last, 0.25); last = now;
-  while (acc >= STEP) { step(); acc -= STEP; }
+  const t0 = SHOW_FPS ? performance.now() : 0; let steps = 0;
+  // at most max_steps steps a frame: when the device can't keep up the game slows a little instead of
+  // piling up steps that make the next frame slower still (the countdown runs on the game's time)
+  while (acc >= STEP && steps < tune.max_steps) { step(); acc -= STEP; steps++; }
+  if (acc >= STEP) acc = STEP * 0.99; // the time it could not catch up is let go
   ALPHA = acc / STEP;
+  const t1 = SHOW_FPS ? performance.now() : 0;
   drawFrame();
+  if (SHOW_FPS) { const k = 0.1; fpsSim += (t1 - t0 - fpsSim) * k; fpsDraw += (performance.now() - t1 - fpsDraw) * k; fpsSteps += (steps - fpsSteps) * k; }
 }
 // on a phone, draw the HUD and the play buttons bigger: scale the canvas and shrink W, H to match
 function withUI(fn: Loose) {
@@ -2886,7 +2907,7 @@ function drawTouch() {
 function drawFrame() { btns.length = 0; scenes[scene].draw(); drawTouch(); if (SHOW_FPS) drawFps(); }
 // the frames-a-second counter, for testing only: ?fps in the address, or window.SHOW_FPS set by a test page
 const SHOW_FPS = params.get('fps') !== null || !!(window as Loose).SHOW_FPS;
-let fpsShown = 0, fpsFrames = 0, fpsT0 = 0;
+let fpsShown = 0, fpsFrames = 0, fpsT0 = 0, fpsSim = 0, fpsDraw = 0, fpsSteps = 0; // averaged: ms of physics and of drawing a frame, physics steps a frame
 function countFps() {
   const now = performance.now(); fpsFrames++;
   if (!fpsT0) fpsT0 = now;
@@ -2894,8 +2915,10 @@ function countFps() {
 }
 function drawFps() {
   const c = fpsShown >= 55 ? '#19c37d' : fpsShown >= 30 ? '#ffa94d' : '#ff5e7a';
-  ctx.fillStyle = 'rgba(14,10,28,0.8)'; ctx.fillRect(W / 2 - 70, 6, 140, 34);
-  text(`${fpsShown} images/s`, W / 2, 24, 20, c, 'center', 'bold');
+  ctx.fillStyle = 'rgba(14,10,28,0.8)'; ctx.fillRect(W / 2 - 230, 6, 460, 56);
+  text(`${fpsShown} images/s`, W / 2, 22, 18, c, 'center', 'bold');
+  const veh = state && state.bodies ? state.bodies.length : 0;
+  text(`calcul ${fpsSim.toFixed(0)} ms (${fpsSteps.toFixed(1)} pas) · dessin ${fpsDraw.toFixed(0)} ms · ${veh} véhicules`, W / 2, 46, 16, '#fff', 'center', 'bold');
 }
 function frame() { tick(); if (SHOW_FPS) countFps(); requestAnimationFrame(frame); }
 function timer() { if (document.visibilityState === 'visible' && clock.now() - last > 0.1) tick(); }

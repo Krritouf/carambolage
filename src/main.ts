@@ -689,6 +689,11 @@ function boomFx(x: Loose, y: Loose, R: Loose) {
 function wideLoad(b: Loose) { b.wide = true; b.hl *= 1.45; b.hw *= 1.35; b.height = 40; b.m *= 2.2; b.invM = 1 / b.m; b.invI /= 5.7; b.value *= 2.3; b.color = '#ffc83d'; }
 function giantTanker(b: Loose) { b.giant = true; b.hl *= 1.5; b.hw *= 1.4; b.height = 42; b.m *= 2; b.invM = 1 / b.m; b.invI /= 6.4; b.value = tune.value_giant; }
 function startEvent(type: Loose) {
+  if (type === 'tea') { // the United Kingdom: all the traffic stops dead for tea, then sets off again at once
+    state.teaT = tune.tea_time; state.eventBanner = { txt: "L'HEURE DU THÉ !", t: 3 };
+    tone(660, 0.3, 'triangle', 0.15); tone(880, 0.4, 'triangle', 0.12, 0.25); events.push({ type: 'event', what: type, t: state.t });
+    return;
+  }
   const st = state, ln = st.lanes[Math.floor(rng() * st.lanes.length)], x0 = -ln.dir * tune.event_dist;
   st.bodies = st.bodies.filter((b: Loose) => isMine(b) || b.loose || Math.abs(b.y - ln.y) > 20 || Math.abs(b.x - x0) > 560);
   const col: Loose = { police: '#f8f9fa', truck: '#3d7bff', tanker: '#e03131', car: '#ff2d95' };
@@ -748,6 +753,7 @@ function driveAI(b: Loose, dt: Loose) {
   b.braking = gap < need;
   // a chase car pulls out to overtake an intact vehicle in its way
   if (b.chase && b.braking && !gapWreck) { const alt = overtakeLane(b); if (alt) { b.lane = alt; b.braking = false; } }
+  if (state.teaT > 0) { b.braking = true; gapWreck = false; } // tea time: every driver stops, then they all set off together
   // after the first impact drivers stare at the crash: they brake late and weakly for a wreck, so they pile in;
   // behind an intact vehicle they brake as usual, so no accident starts far from the pile-up
   if (b.braking) s = Math.max(0, s - tune.traffic_brake * (state.crashed && gapWreck ? tune.wreck_brake : 1) * wetK() * dt);
@@ -1062,6 +1068,7 @@ function updatePlay(dt: Loose) {
     st.eventDone = true; startEvent(st.lv.events[Math.floor(rng() * st.lv.events.length)]);
   }
   if (st.eventBanner && st.eventBanner.t > 0) st.eventBanner.t -= dt;
+  if (st.teaT > 0) st.teaT -= sdt;
   // the rocket launcher: F (or the ROQUETTE button) fires one straight ahead
   if (st.rocketsLeft > 0 && (pressed('KeyF') || pressed('KeyE')) && (st.phase === 'drive' || st.phase === 'crash')) {
     st.rocketsLeft--;

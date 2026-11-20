@@ -55,3 +55,23 @@ test('the loch monster is the United Kingdom\'s: in France, C with it bought doe
   await expect.poll(() => page.evaluate(() => typeof window.game?.step)).toBe('function');
   expect(await page.evaluate(() => { const g = window.game!; g.press('KeyC'); g.step(1, false); return !!(g.state as any).nessie; })).toBe(false);
 });
+
+test('at tea time all the traffic stops, then sets off again', async ({ page }) => {
+  await openUkLevel(page, 4);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any, ai = () => st.bodies.filter((b: any) => b.ai);
+    st.lv = Object.assign({}, st.lv, { events: ['tea'] }); // this run's surprise: tea time
+    g.hold('ArrowUp', true);
+    let n = 0; while (!st.eventDone && n++ < 1200) g.step(1, false);
+    g.hold('ArrowUp', false); st.player.vx = st.player.vy = 0; st.player.control = false; // the car waits, out of the way
+    const said = st.eventBanner && st.eventBanner.txt;
+    g.step(150, false); // 2.5 s into tea time
+    const stopped = ai().filter((b: any) => Math.hypot(b.vx, b.vy) < 15).length / ai().length;
+    g.step(150, false); // tea is over
+    const moving = ai().filter((b: any) => Math.hypot(b.vx, b.vy) > 60).length / ai().length;
+    return { said, stopped, moving };
+  });
+  expect(r.said).toBe("L'HEURE DU THÉ !");
+  expect(r.stopped).toBeGreaterThan(0.9);
+  expect(r.moving).toBeGreaterThan(0.6);
+});

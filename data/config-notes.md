@@ -247,3 +247,4 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 - `nessie_len`, `nessie_width`: px its body reaches from the middle of the crossroads, px wide
 - `nessie_push`, `nessie_lift`: px/s a vehicle it meets is thrown aside and up
 - `nessie_damage`: € a second to a vehicle in its sweep
+- `tea_time`: s the traffic stays stopped at tea time (a United Kingdom event, levels 4 on)

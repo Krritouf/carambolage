@@ -1945,7 +1945,17 @@ const SETTINGS_ROWS: Loose[] = [
     on: () => settings.vibrate, change: () => { settings.vibrate = !settings.vibrate; buzz(80); } },
   { label: 'Langue', value: () => settings.lang === 'fr' ? 'Français' : 'English', on: () => true,
     change: () => { settings.lang = settings.lang === 'fr' ? 'en' : 'fr'; } },
+  { label: 'Sauvegarde', note: 'Effacer les scores, le garage et les niveaux', value: () => 'Effacer', on: () => false, action: true,
+    change: () => { resetAsk = true; resetYes = false; } },
 ];
+let resetAsk = false, resetYes = false; // the "erase the save?" box is open; Yes is the chosen answer (No by default)
+/** Erases the save: scores, levels, garage, challenges and dailies. The settings (sound, language) stay. */
+function eraseSave(): void {
+  best = LEVELS.map(() => 0); unlocked = 1; levelIdx = 0; wheelPos = 0;
+  up = { cars: ['sport'], car: 'sport', gear: {} }; spent = 0;
+  done = {}; dailyRec = { date: '', score: 0 }; dailyBank = 0;
+  try { localStorage.removeItem('carambolage'); } catch (e) { /* storage blocked */ }
+}
 const setRowStep = () => Math.min(120, Math.floor(390 / SETTINGS_ROWS.length));
 // the wheel: the chosen level faces you, its neighbours turn away along the rim
 function wheelRect(k: Loose) {
@@ -2162,12 +2172,23 @@ const scenes: Loose = {
   settings: { // the settings screen: SETTINGS_ROWS, one row each
     update(dt: Loose) {
       const n = SETTINGS_ROWS.length;
+      if (titleMsgT > 0) titleMsgT -= dt;
+      if (resetAsk) { // the warning box: Yes erases the save, No (or Escape) closes it and keeps everything
+        if (pressed('ArrowLeft') || pressed('ArrowRight')) resetYes = !resetYes;
+        const yes = pressed('ResetYes') || pressed('KeyY') || (resetYes && (pressed('Enter') || pressed('Space')));
+        const no = pressed('ResetNo') || pressed('KeyN') || pressed('Escape') || pressed('Backspace') || (!resetYes && (pressed('Enter') || pressed('Space')));
+        if (yes) { eraseSave(); resetAsk = false; titleMsg = 'Sauvegarde effacée'; titleMsgT = 2.5; tone(330, 0.2, 'square', 0.15); }
+        else if (no) resetAsk = false;
+        scenes.title.idle(dt);
+        return;
+      }
       if (pressed('Escape') || pressed('KeyO') || pressed('Backspace')) { scene = 'title'; return; }
       if (pressed('ArrowUp') || pressed('KeyW') || pressed('KeyZ')) setSel = (setSel + n - 1) % n;
       if (pressed('ArrowDown') || pressed('KeyS')) setSel = (setSel + 1) % n;
       for (let i = 0; i < n; i++) if (pressed('Set' + i)) { setSel = i; hit.add('Enter'); }
-      if (pressed('Enter') || pressed('Space') || pressed('ArrowLeft') || pressed('ArrowRight')) {
-        SETTINGS_ROWS[setSel].change(); applySettings(); saveSettings();
+      const row = SETTINGS_ROWS[setSel];
+      if (pressed('Enter') || pressed('Space') || (!row.action && (pressed('ArrowLeft') || pressed('ArrowRight')))) {
+        row.change(); applySettings(); saveSettings();
       }
       scenes.title.idle(dt);
     },
@@ -2188,6 +2209,18 @@ const scenes: Loose = {
       });
       button(W / 2 - 110, 580, 220, 60, 'RETOUR', 'Escape', { size: 22, mouse: true });
       if (!TOUCH) text('Clic ou Entrée : changer   ·   Haut / Bas : choisir   ·   Échap : retour', W / 2, 668, 18, '#fff', 'center', 'bold', 4);
+      if (titleMsgT > 0 && !resetAsk) text(titleMsg, W / 2, 552, 22, '#19c37d', 'center', 'bold', 5);
+      if (resetAsk) { // the warning, over the whole screen
+        ctx.fillStyle = 'rgba(12,8,24,0.78)'; ctx.fillRect(0, 0, W, H);
+        panel(W / 2 - 380, 190, 760, 330, 'rgba(27,21,48,0.97)');
+        ctx.strokeStyle = '#ff5e7a'; ctx.lineWidth = 3; ctx.strokeRect(W / 2 - 372, 198, 744, 314);
+        text('EFFACER LA SAUVEGARDE ?', W / 2, 250, 36, '#ff5e7a', 'center', 'bold italic', 6);
+        text('Tu perdras tous tes scores, tes étoiles, tes niveaux débloqués,', W / 2, 310, 20, '#fff', 'center', 'bold');
+        text('ton garage et tes défis. Tu repartiras de zéro.', W / 2, 340, 20, '#fff', 'center', 'bold');
+        text('Impossible de revenir en arrière.', W / 2, 375, 18, '#a89fc8', 'center', 'bold');
+        button(W / 2 - 250, 420, 220, 64, 'OUI', 'ResetYes', { size: 26, mouse: true, bg: resetYes ? 'rgba(255,94,122,0.85)' : undefined, edge: resetYes ? '#fff' : '#ff5e7a' });
+        button(W / 2 + 30, 420, 220, 64, 'NON', 'ResetNo', { size: 26, mouse: true, bg: !resetYes ? 'rgba(25,195,125,0.85)' : undefined, edge: !resetYes ? '#fff' : '#19c37d' });
+      }
     },
   },
   boot: { // the app's opening picture: a moment, or until a tap or a key

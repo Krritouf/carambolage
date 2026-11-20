@@ -40,6 +40,11 @@ const EN: Record<string, string> = {
   'Entrée ou Gauche / Droite : changer': 'Enter or Left / Right: change',
   'Clic ou Entrée : changer': 'Click or Enter: change', 'Haut / Bas : choisir': 'Up / Down: choose',
   'Échap : retour': 'Esc: back', 'RETOUR': 'BACK',
+  'Sauvegarde': 'Save', 'Effacer': 'Erase', 'Effacer les scores, le garage et les niveaux': 'Erase the scores, the garage and the levels',
+  'EFFACER LA SAUVEGARDE ?': 'ERASE THE SAVE?', 'OUI': 'YES', 'NON': 'NO', 'Sauvegarde effacée': 'Save erased',
+  'Tu perdras tous tes scores, tes étoiles, tes niveaux débloqués,': 'You will lose all your scores, your stars, your unlocked levels,',
+  'ton garage et tes défis. Tu repartiras de zéro.': 'your garage and your challenges. You will start from zero.',
+  'Impossible de revenir en arrière.': 'This cannot be undone.',
   // levels
   'Le carrefour': 'The Crossroads', 'Le boulevard': 'The Boulevard', 'Le tremplin': 'The Ramp', "L'heure de pointe": 'Rush Hour',
   'Le convoi': 'The Convoy', 'Le grand chaos': 'Total Chaos', 'Sous la pluie': 'In the Rain', 'Nuit noire': 'Pitch Black',

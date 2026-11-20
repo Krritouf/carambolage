@@ -1,0 +1,165 @@
+# The one-shot's small check (check-run/1).
+# Written by one-shot-check.sh --record: the results are /prototype's reading of
+# evidence/self-check.tsv; never edited by hand.
+kind: check-run/1
+engine: web
+browser: "HeadlessChrome/157.0.0.0"
+time: "2026-11-18 15:12:11"
+checks:
+  - id: boots
+    result: pass
+    evidence:
+      - "evidence/self-check.tsv"
+  - id: shot
+    result: pass
+    evidence:
+      - "evidence/play.png"
+  - id: outlines
+    result: pass
+    evidence:
+      - "evidence/figures.png"
+  - id: brief-words
+    result: pass
+    evidence:
+      - "evidence/brief-words.tsv"
+  - id: emoji
+    result: pass
+    evidence:
+      - "evidence/self-check.tsv"
+  - id: nearest-game
+    result: pass
+    evidence:
+      - "evidence/nearest-game.txt"
+brief_checklist:
+  - id: L1
+    result: pass
+    evidence: "evidence/play.png"
+    item: "Look: ville en low-poly stylisé, couleurs saturées façon arcade des années 90. Les immeubles sont des blocs en relief dont les toits se décalent avec la caméra (parallaxe faux 3D), avec des ombres portées. Asphalte gris-bleu, marquages blancs et jaunes. Ta voiture est rouge vif, le trafic en couleurs distinctes selon le type : taxis jaunes, bus orange, camions blancs et bleus, motos noires. Détail signature : au choc, gerbe d'étincelles, fumée, débris, et les carrosseries se cabossent et noircissent avec les dégâts *(inferred (strong))*. Chaque véhicule est dessiné (vitres, phares, roues) : every figure drawn, no emoji, no plain circles."
+  - id: L2
+    result: pass
+    evidence: "evidence/nearest-game.txt"
+    item: "References: Burnout (le mode Crash : le carrefour comme puzzle de destruction) *(inferred (strong))*."
+  - id: L3
+    result: pass
+    evidence: "evidence/play.png"
+    item: "View: 2.5D · Camera: vue de dessus inclinée qui suit ta voiture, puis dézoome au choc pour montrer tout le carambolage *(provisional)*."
+  - id: F1
+    result: pass
+    evidence: "evidence/play.png"
+    item: "Rue en ville menant à un carrefour, avec murs et immeubles en faux 3D"
+  - id: F2
+    result: pass
+    evidence: "index.html:427"
+    item: "Voiture du joueur arcade et nerveuse. Contrôle coupé au premier contact (véhicule ou mur)."
+  - id: F3
+    result: pass
+    evidence: "evidence/level3-intro.png"
+    item: "Trafic multi-voies et multi-directions : voitures, taxis, camions, bus, motos, chacun avec sa masse"
+  - id: F4
+    result: pass
+    evidence: "index.html:357"
+    item: "Physique d'impact par poids : la moto vole, le bus dévie peu. Changements de voie et chocs en chaîne."
+  - id: F5
+    result: pass
+    evidence: "evidence/play.png"
+    item: "Dégâts visibles par véhicule, score des dégâts en direct"
+  - id: F6
+    result: pass
+    evidence: "evidence/figures.png"
+    item: "Bonus sur la route : points, boost de vitesse, multiplicateur de fin"
+  - id: F7
+    result: pass
+    evidence: "evidence/level3-intro.png"
+    item: "3 niveaux : carrefour 2 voies ; multi-voies avec bus et camions ; tremplin *(provisional)*"
+  - id: F8
+    result: pass
+    evidence: "index.html:1007"
+    item: "Écran de score avec seuil, meilleur score, rejouer ou niveau suivant"
+  - id: S1
+    result: pass
+    evidence: "evidence/play.png"
+    item: "trafic au carrefour · in the slice"
+  - id: S2
+    result: pass
+    evidence: "index.html:345"
+    item: "dégâts et inertie qui fait changer de voie · in the slice"
+  - id: S3
+    result: pass
+    evidence: "index.html:560"
+    item: "bonus (points, accélération, multiplicateur) · in the slice"
+  - id: S4
+    result: pass
+    evidence: "index.html:1007"
+    item: "plusieurs niveaux · in the slice"
+  - id: S5
+    result: pass
+    evidence: "index.html:494"
+    item: "tremplins · in the slice *(guessed)*"
+  - id: M1
+    result: pass
+    evidence: "evidence/level3-intro.png"
+    item: "Le niveau 1 démarre dans une rue bordée d'immeubles."
+  - id: M2
+    result: pass
+    evidence: "index.html:943"
+    item: "Une flèche indique le carrefour."
+  - id: M3
+    result: pass
+    evidence: "index.html:560"
+    item: "Tu accélères, tu ramasses un bonus « boost » posé sur la route, et tu vois au loin le trafic qui traverse le carrefour."
+  - id: M4
+    result: not_run
+    mark: not assessed
+    why: "timing your arrival is a feel line: needs a person's play"
+    item: "Tu ajustes ta vitesse pour arriver quand une voiture passe."
+  - id: M5
+    result: not_run
+    mark: not assessed
+    why: "the chain (moto flies, taxi piles in) depends on play; physics is built (index.html:357) but no run showed it"
+    item: "Choc : elle part en travers, une moto sur l'autre voie s'envole, un taxi pile dedans."
+  - id: M6
+    result: pass
+    evidence: "index.html:1027"
+    item: "Le compteur de dégâts monte en direct, puis l'écran de score montre les dégâts × le multiplicateur."
+  - id: M7
+    result: not_run
+    mark: not assessed
+    why: "a mark, not an item"
+    item: "*(guessed)*"
+  - id: C1
+    result: pass
+    evidence: "index.html:620"
+    item: "Chaque niveau a un seuil de dégâts pour passer au suivant."
+  - id: C2
+    result: pass
+    evidence: "index.html:1010"
+    item: "Sous ce seuil, tu recommences le niveau."
+  - id: C3
+    result: not_run
+    mark: not assessed
+    why: "level 1 at 8 000 € is meant to be easy; only play shows it"
+    item: "Le niveau 1 se passe facilement."
+  - id: C4
+    result: not_run
+    mark: not assessed
+    why: "level 2 needs heavy targets at 30 000 €; only play shows it"
+    item: "Au niveau 2, il faut viser le bus ou le camion au bon moment."
+  - id: C5
+    result: pass
+    evidence: "index.html:494"
+    item: "Au niveau 3, le tremplin demande d'arriver à la bonne vitesse pour atterrir au cœur du trafic."
+  - id: C6
+    result: pass
+    evidence: "index.html:328"
+    item: "Toucher un mur avant le carrefour coupe le contrôle et gâche le run."
+  - id: C7
+    result: not_run
+    mark: not assessed
+    why: "a mark, not an item"
+    item: "*(provisional)*"
+measures:
+  - id: step-time
+    value: 2.000
+    unit: ms
+    by: browser
+    detail: "mean 0.223 ms, slowest 2.000 ms, 396 steps"

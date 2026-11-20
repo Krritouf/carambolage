@@ -1,0 +1,180 @@
+browser	/c/Program Files/Google/Chrome/Application/chrome.exe
+time	2026-11-18 17:52:36
+render	cheap
+ua	HeadlessChrome/157.0.0.0
+scene	0	title
+state	0	title	{"t":0,"score":0,"gained":"","level":0,"lv":{"name":"Le carrefour","lanes":1,"approach":1700,"mix":{"car":5,"taxi":3,"moto":3},"spawn":[1.5,2.7],"pickups":[["points",19,1350],["mult",-19,1050],["boost
+scene	1	play
+state	1	play	{"t":0,"score":0,"gained":"","level":0,"lv":{"name":"Le carrefour","lanes":1,"approach":1700,"mix":{"car":5,"taxi":3,"moto":3},"spawn":[1.5,2.7],"pickups":[["points",19,1350],["mult",-19,1050],["boost
+playinput	4	ArrowUp
+saved	1323	localstorage	carambolage
+scene	1324	results
+state	1324	results	{"t":22.05,"score":2000,"gained":"Pas assez de dégâts","level":0,"lv":{"name":"Le carrefour","lanes":1,"approach":1700,"mix":{"car":5,"taxi":3,"moto":3},"spawn":[1.5,2.7],"pickups":[["points",19,1350]
+frame	3481	e97eab8
+frame	3482	e97eab8
+frame	3483	e97eab8
+frame	3484	e97eab8
+frame	3485	e97eab8
+frame	3486	e97eab8
+frame	3487	e97eab8
+frame	3488	e97eab8
+frame	3489	e97eab8
+frame	3490	e97eab8
+frame	3491	e97eab8
+frame	3492	e97eab8
+frame	3493	e97eab8
+frame	3494	e97eab8
+frame	3495	e97eab8
+frame	3496	e97eab8
+frame	3497	e97eab8
+frame	3498	e97eab8
+frame	3499	e97eab8
+frame	3500	e97eab8
+frame	3501	e97eab8
+frame	3502	e97eab8
+frame	3503	e97eab8
+frame	3504	e97eab8
+frame	3505	e97eab8
+frame	3506	e97eab8
+frame	3507	e97eab8
+frame	3508	e97eab8
+frame	3509	e97eab8
+frame	3510	e97eab8
+frame	3511	e97eab8
+frame	3512	e97eab8
+frame	3513	e97eab8
+frame	3514	e97eab8
+frame	3515	e97eab8
+frame	3516	e97eab8
+frame	3517	e97eab8
+frame	3518	e97eab8
+frame	3519	e97eab8
+frame	3520	e97eab8
+frame	3521	e97eab8
+frame	3522	e97eab8
+frame	3523	e97eab8
+frame	3524	e97eab8
+frame	3525	e97eab8
+frame	3526	e97eab8
+frame	3527	e97eab8
+frame	3528	e97eab8
+frame	3529	e97eab8
+frame	3530	e97eab8
+frame	3531	e97eab8
+frame	3532	e97eab8
+frame	3533	e97eab8
+frame	3534	e97eab8
+frame	3535	e97eab8
+frame	3536	e97eab8
+frame	3537	e97eab8
+frame	3538	e97eab8
+frame	3539	e97eab8
+frame	3540	e97eab8
+frame	3541	e97eab8
+frame	3542	e97eab8
+frame	3543	e97eab8
+frame	3544	e97eab8
+frame	3545	e97eab8
+frame	3546	e97eab8
+frame	3547	e97eab8
+frame	3548	e97eab8
+frame	3549	e97eab8
+frame	3550	e97eab8
+frame	3551	e97eab8
+frame	3552	e97eab8
+frame	3553	e97eab8
+frame	3554	e97eab8
+frame	3555	e97eab8
+frame	3556	e97eab8
+frame	3557	e97eab8
+frame	3558	e97eab8
+frame	3559	e97eab8
+frame	3560	e97eab8
+frame	3561	e97eab8
+frame	3562	e97eab8
+frame	3563	e97eab8
+frame	3564	e97eab8
+frame	3565	e97eab8
+frame	3566	e97eab8
+frame	3567	e97eab8
+frame	3568	e97eab8
+frame	3569	e97eab8
+frame	3570	e97eab8
+frame	3571	e97eab8
+frame	3572	e97eab8
+frame	3573	e97eab8
+frame	3574	e97eab8
+frame	3575	e97eab8
+frame	3576	e97eab8
+frame	3577	e97eab8
+frame	3578	e97eab8
+frame	3579	e97eab8
+frame	3580	e97eab8
+frame	3581	e97eab8
+frame	3582	e97eab8
+frame	3583	e97eab8
+frame	3584	e97eab8
+frame	3585	e97eab8
+frame	3586	e97eab8
+frame	3587	e97eab8
+frame	3588	e97eab8
+frame	3589	e97eab8
+frame	3590	e97eab8
+frame	3591	e97eab8
+frame	3592	e97eab8
+frame	3593	e97eab8
+frame	3594	e97eab8
+frame	3595	e97eab8
+frame	3596	e97eab8
+frame	3597	e97eab8
+frame	3598	e97eab8
+frame	3599	e97eab8
+frame	3600	e97eab8
+state	3600	results	{"t":22.05,"score":2000,"gained":"Pas assez de dégâts","level":0,"lv":{"name":"Le carrefour","lanes":1,"approach":1700,"mix":{"car":5,"taxi":3,"moto":3},"spawn":[1.5,2.7],"pickups":[["points",19,1350]
+digits	log	italic bold 23px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	italic bold 30px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	italic bold 36px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 14px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 20px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 19px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 11px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 16px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 34px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 15px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 18px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 22px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 36px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 17px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+loop	log	none	no loop() step was marked
+first	log	none	no state.beat
+ending	log	results	gained	Pas assez de dégâts
+pressure	none	the game set no number state.margin in play
+steptime	3600	0.077	4.800
+frametime	22	9.5	29.2	60	1	0
+done	3600	results	stop	60.0	3793
+measured	1280x720
+text	results	canvas	542,67,741,94	39.0	10.63	inside	TEMPS ÉCOULÉ
+text	results	canvas	371,121,435,140	28.5	10.42	inside	Dégâts
+text	results	canvas	878,120,910,136	31.5	16.40	inside	0 €
+text	results	canvas	369,154,548,170	28.5	10.42	inside	Véhicules touchés
+text	results	canvas	897,154,910,170	31.5	16.40	inside	0
+text	results	canvas	371,189,428,204	28.5	10.09	inside	Bonus
+text	results	canvas	820,188,910,204	31.5	16.35	inside	+2 000 €
+text	results	canvas	369,222,508,242	28.5	10.09	inside	Multiplicateur
+text	results	canvas	885,222,907,238	31.5	16.44	inside	×1
+text	results	canvas	370,280,448,299	36.0	10.38	inside	SCORE
+text	results	canvas	785,276,910,302	49.5	16.29	inside	2 000 €
+text	results	canvas	404,373,876,388	21.0	10.24	inside	Objectif 14 000 €   ·   2 étoiles 28 000 €   ·   3 étoiles 4
+text	results	canvas	497,395,782,407	21.0	10.46	inside	Meilleur 2 000 €   NOUVEAU RECORD !
+text	results	canvas	405,429,549,441	21.0	6.46	inside	Touche 4 véhicules
+text	results	canvas	885,430,911,441	21.0	6.78	inside	0/4
+text	results	canvas	406,455,517,467	21.0	6.46	inside	Détruis 1 moto
+text	results	canvas	885,456,908,467	21.0	6.78	inside	0/1
+text	results	canvas	406,481,542,493	21.0	6.46	inside	Score de 25 000 €
+text	results	canvas	880,481,910,493	21.0	6.78	inside	raté
+text	results	canvas	479,523,801,557	46.5	5.96	inside	Pas assez de dégâts
+text	results	canvas	322,572,958,593	25.5	17.10	inside	Entrée : réessayer   ·   R : rejouer   ·   V : revoir le rep
+text	results	canvas	518,606,762,622	22.5	11.06	inside	Crédit pour le garage : 2 000 €
+screen	3600	results	44707244	drawn
+uncaught	0
+shot	/c/Dev/repos/Claude-Code-Studios/production/qa/evidence/grow-carambolage/copy.png	122576

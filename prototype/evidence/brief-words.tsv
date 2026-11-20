@@ -1,0 +1,11 @@
+vue du dessus	top-down camera over the city, following the car (P() projection, drawWorld)	evidence/play.png
+faux 3D	every building, vehicle, pickup, ramp and barrier is an extruded prism whose top leans away from the view centre (prism(), persp)	evidence/play.png
+ville	colourful city blocks with windows and rooftop units line the street and the boulevard (buildCity, drawBuilding)	evidence/play.png
+carrefour	T-junction where the street meets a 2/4/6-lane boulevard, with zebras and stop line (drawGround)	evidence/play.png
+voitures, camions, bus, motos	six traffic kinds drawn with their own outline: car, taxi, moto, bus, truck, tanker (drawVehicle)	evidence/figures.png
+tremplins	level 3 ramp with chevrons that launches the car over a barrier (drawRamp, ramp physics)	evidence/figures.png
+plusieurs voies	levels 2 and 3 have 2 and 3 lanes each way (LEVELS.lanes)	evidence/play.png
+low-poly stylisé	flat-shaded prisms, one shade per face lit from the north-west, no gradients	evidence/play.png
+couleurs saturées façon arcade des années 90	saturated coral/teal/yellow/violet palette, italic outlined arcade titles and score pop-ups	evidence/play.png
+3D	fake 3D: extruded prisms with perspective lean (prism(), persp)	evidence/play.png
+low-poly	flat-shaded faceted prisms for buildings, vehicles and pickups	evidence/figures.png

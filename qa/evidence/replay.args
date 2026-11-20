@@ -1,0 +1,2 @@
+stop	3600
+log	Enter ArrowUp:5 ArrowRight:0.3 ArrowUp:1 wait:14 Enter wait:1

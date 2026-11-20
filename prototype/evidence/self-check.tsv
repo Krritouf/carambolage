@@ -1,0 +1,59 @@
+time	2026-11-18 15:12:11
+keep	lines	0	pinned	0
+briefword	3D	shown	evidence/play.png
+briefword	low-poly	shown	evidence/figures.png
+checklist	L1	unlisted	-	Look: ville en low-poly stylisé, couleurs saturées façon arcade des années 90. Les immeubles sont des blocs en relief dont les toits se décalent avec la caméra (parallaxe faux 3D), avec des ombres portées. Asphalte gris-bleu, marquages blancs et jaunes. Ta voiture est rouge vif, le trafic en couleurs distinctes selon le type : taxis jaunes, bus orange, camions blancs et bleus, motos noires. Détail signature : au choc, gerbe d'étincelles, fumée, débris, et les carrosseries se cabossent et noircissent avec les dégâts *(inferred (strong))*. Chaque véhicule est dessiné (vitres, phares, roues) : every figure drawn, no emoji, no plain circles.	
+checklist	L2	unlisted	-	References: Burnout (le mode Crash : le carrefour comme puzzle de destruction) *(inferred (strong))*.	
+checklist	L3	unlisted	-	View: 2.5D · Camera: vue de dessus inclinée qui suit ta voiture, puis dézoome au choc pour montrer tout le carambolage *(provisional)*.	
+checklist	F1	unlisted	-	Rue en ville menant à un carrefour, avec murs et immeubles en faux 3D	
+checklist	F2	unlisted	-	Voiture du joueur arcade et nerveuse. Contrôle coupé au premier contact (véhicule ou mur).	
+checklist	F3	unlisted	-	Trafic multi-voies et multi-directions : voitures, taxis, camions, bus, motos, chacun avec sa masse	
+checklist	F4	unlisted	-	Physique d'impact par poids : la moto vole, le bus dévie peu. Changements de voie et chocs en chaîne.	
+checklist	F5	unlisted	-	Dégâts visibles par véhicule, score des dégâts en direct	
+checklist	F6	unlisted	-	Bonus sur la route : points, boost de vitesse, multiplicateur de fin	
+checklist	F7	unlisted	-	3 niveaux : carrefour 2 voies ; multi-voies avec bus et camions ; tremplin *(provisional)*	
+checklist	F8	unlisted	-	Écran de score avec seuil, meilleur score, rejouer ou niveau suivant	
+checklist	S1	unlisted	-	trafic au carrefour · in the slice	
+checklist	S2	unlisted	-	dégâts et inertie qui fait changer de voie · in the slice	
+checklist	S3	unlisted	-	bonus (points, accélération, multiplicateur) · in the slice	
+checklist	S4	unlisted	-	plusieurs niveaux · in the slice	
+checklist	S5	unlisted	-	tremplins · in the slice *(guessed)*	
+checklist	M1	unlisted	-	Le niveau 1 démarre dans une rue bordée d'immeubles.	
+checklist	M2	unlisted	-	Une flèche indique le carrefour.	
+checklist	M3	unlisted	-	Tu accélères, tu ramasses un bonus « boost » posé sur la route, et tu vois au loin le trafic qui traverse le carrefour.	
+checklist	M4	unlisted	-	Tu ajustes ta vitesse pour arriver quand une voiture passe.	
+checklist	M5	unlisted	-	Choc : elle part en travers, une moto sur l'autre voie s'envole, un taxi pile dedans.	
+checklist	M6	unlisted	-	Le compteur de dégâts monte en direct, puis l'écran de score montre les dégâts × le multiplicateur.	
+checklist	M7	unlisted	-	*(guessed)*	
+checklist	C1	unlisted	-	Chaque niveau a un seuil de dégâts pour passer au suivant.	
+checklist	C2	unlisted	-	Sous ce seuil, tu recommences le niveau.	
+checklist	C3	unlisted	-	Le niveau 1 se passe facilement.	
+checklist	C4	unlisted	-	Au niveau 2, il faut viser le bus ou le camion au bon moment.	
+checklist	C5	unlisted	-	Au niveau 3, le tremplin demande d'arriver à la bonne vitesse pour atterrir au cœur du trafic.	
+checklist	C6	unlisted	-	Toucher un mur avant le carrefour coupe le contrôle et gâche le run.	
+checklist	C7	unlisted	-	*(provisional)*	
+browser	HeadlessChrome/157.0.0.0
+scene	play	0	title
+scene	play	1	play
+digits	log	bold 18px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 32px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 11px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 16px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 34px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 15px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 22px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+digits	log	bold 26px "Trebuchet MS", "Arial Black", Verdana, sans-serif	tabular	0
+measure	step-time	play	0.223	2.000	396
+lane	play	stop	6.6	236
+uncaught	play	0
+text	play	canvas	34,26,101,37	21.0	8.10	inside	NIVEAU 1
+text	play	canvas	35,45,175,59	27.0	12.52	inside	LE CARREFOUR
+text	play	canvas	920,24,978,39	21.0	5.87	inside	DÉGÂTS
+text	play	canvas	1130,30,1248,54	46.5	12.52	inside	3 285 €
+text	play	canvas	920,93,1035,107	21.0	7.14	inside	Objectif 8 000 €
+text	play	canvas	1122,93,1246,104	21.0	7.41	inside	Bonus +2 500   ×1
+text	play	canvas	33,655,169,668	19.5	6.09	inside	VÉHICULES TOUCHÉS
+text	play	canvas	37,676,45,695	36.0	9.69	inside	1
+screen	play	drawn
+shot	play	prototypes/carambolage/evidence/play.png
+responds	changed	4

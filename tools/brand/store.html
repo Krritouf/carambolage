@@ -1,0 +1,67 @@
+<!doctype html>
+<!-- The Play Store feature graphic (1024 x 500): the title and the tagline on the left, the
+     title screen in a phone on the right, the game's city behind. ?lang=fr or ?lang=en; it reads
+     shots/title-<lang>.png (the game's title screen at 1560 x 720, touch=1&app=1). Shot to store/. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Carambolage store art</title>
+<style>html, body { margin: 0; background: #1b1530; overflow: hidden; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const lang = new URLSearchParams(location.search).get('lang') === 'en' ? 'en' : 'fr';
+const W = 1024, H = 500;
+const cv = document.getElementById('c'); cv.width = W; cv.height = H;
+const g = cv.getContext('2d');
+let seed = 5; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const poly = (pts, c) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) g.lineTo(p[0], p[1]); g.closePath(); g.fillStyle = c; g.fill(); };
+const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = s => Math.min(255, Math.round(((n >> s) & 255) * f)); return `rgb(${c(16)},${c(8)},${c(0)})`; };
+function block(x, y, w, h, lift, c) { // a building seen from above, its top lifted
+  const t = [[x, y - lift], [x + w, y - lift], [x + w, y + h - lift], [x, y + h - lift]];
+  poly([[x, y + h], [x + w, y + h], t[2], t[3]], shade(c, 0.7)); poly([[x + w, y], [x + w, y + h], t[2], t[1]], shade(c, 0.6)); poly(t, c);
+}
+const img = new Image();
+img.onload = draw; img.src = `shots/title-${lang}.png`;
+function draw() {
+  // the city: a boulevard across, blocks above and below, darkened
+  g.fillStyle = '#1b1530'; g.fillRect(0, 0, W, H);
+  const pal = ['#ff5e7a', '#2ec4b6', '#ffc83d', '#7b5cff', '#ff8fd0', '#19c37d', '#4aa8ff', '#ff7b39'];
+  g.fillStyle = '#e9d8a6'; g.fillRect(0, 300, W, 120); g.fillStyle = '#4b5577'; g.fillRect(0, 312, W, 96);
+  g.fillStyle = '#ffd21f'; g.fillRect(0, 358, W, 2); g.fillRect(0, 362, W, 2);
+  g.fillStyle = '#f1f3f5'; for (let x = 0; x < W; x += 50) { g.fillRect(x, 334, 26, 2); g.fillRect(x, 386, 26, 2); }
+  for (let x = -20; x < W; ) { const w = 70 + rnd() * 70; block(x, 160 + rnd() * 30, w - 10, 130, 20 + rnd() * 30, pal[Math.floor(rnd() * 8)]); x += w; }
+  for (let x = -30; x < W; ) { const w = 70 + rnd() * 70; block(x, 440, w - 10, 120, 20 + rnd() * 30, pal[Math.floor(rnd() * 8)]); x += w; }
+  for (let x = -10; x < W; ) { const w = 70 + rnd() * 70; block(x, 20, w - 10, 120, 20 + rnd() * 30, pal[Math.floor(rnd() * 8)]); x += w; }
+  g.fillStyle = 'rgba(27,21,48,0.55)'; g.fillRect(0, 0, W, H);
+  const fade = g.createLinearGradient(0, 0, 560, 0); fade.addColorStop(0, 'rgba(27,21,48,0.92)'); fade.addColorStop(1, 'rgba(27,21,48,0)');
+  g.fillStyle = fade; g.fillRect(0, 0, 560, H);
+
+  // the phone, tilted a little, with the title screen in it
+  const pw = 460, ph = pw * 720 / 1560, cx = 770, cy = 255;
+  g.save(); g.translate(cx, cy); g.rotate(-0.06);
+  g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.roundRect(-pw / 2 - 18 + 10, -ph / 2 - 16 + 14, pw + 36, ph + 32, 30); g.fill();
+  g.fillStyle = '#0b0818'; g.beginPath(); g.roundRect(-pw / 2 - 18, -ph / 2 - 16, pw + 36, ph + 32, 30); g.fill();
+  g.strokeStyle = '#3b3160'; g.lineWidth = 3; g.stroke();
+  g.save(); g.beginPath(); g.roundRect(-pw / 2, -ph / 2, pw, ph, 14); g.clip();
+  g.drawImage(img, -pw / 2, -ph / 2, pw, ph); g.restore();
+  g.fillStyle = '#1d1a26'; g.beginPath(); g.arc(-pw / 2 - 9, 0, 4, 0, Math.PI * 2); g.fill(); // the camera
+  g.restore();
+
+  // the title and the tagline
+  g.save(); g.translate(52, 175); g.rotate(-0.05);
+  g.font = 'italic bold 60px "Trebuchet MS", "Arial Black", Verdana, sans-serif'; g.textBaseline = 'middle';
+  g.lineWidth = 10; g.lineJoin = 'round'; g.strokeStyle = '#1b1530'; g.strokeText('CARAMBOLAGE', 0, 0);
+  g.fillStyle = '#ffc83d'; g.fillText('CARAMBOLAGE', 0, 0); g.restore();
+  const lines = lang === 'en' ? ['One crash.', 'The biggest pile-up', 'you can make.'] : ['Un seul choc.', 'Le plus gros carambolage', 'possible.'];
+  g.font = 'bold 30px "Trebuchet MS", Verdana, sans-serif'; g.textBaseline = 'middle';
+  lines.forEach((l, i) => { g.lineWidth = 6; g.strokeStyle = '#1b1530'; g.strokeText(l, 58, 262 + i * 40); g.fillStyle = '#ffffff'; g.fillText(l, 58, 262 + i * 40); });
+  g.font = 'bold 20px "Trebuchet MS", Verdana, sans-serif';
+  const tag = lang === 'en' ? '19 levels · T-Rex · rockets · shops to wreck' : '19 niveaux · T-Rex · roquettes · commerces à démolir';
+  g.lineWidth = 5; g.strokeStyle = '#1b1530'; g.strokeText(tag, 58, 400); g.fillStyle = '#ff9fb2'; g.fillText(tag, 58, 400);
+  document.title = 'ready';
+}
+</script>
+</body>
+</html>

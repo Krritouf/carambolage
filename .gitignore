@@ -1,0 +1,8 @@
+# Built and installed: npm install and npm run build make them again
+node_modules/
+dist/
+dist-single/
+.vitest/
+test-results/
+playwright-report/
+prototype/dist/

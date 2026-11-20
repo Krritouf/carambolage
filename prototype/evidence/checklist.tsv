@@ -1,0 +1,30 @@
+L1	pass	evidence/play.png	saturated low-poly city of extruded blocks leaning with the camera, drop shadows, blue-grey asphalt with white and yellow lines, red player car, yellow taxis, orange buses, white/blue trucks, black motos; sparks/smoke/debris and darkening dents at index.html:365, 579, 689
+L2	pass	evidence/nearest-game.txt	one crossroads as a destruction puzzle, scored in euros; differs as noted
+L3	pass	evidence/play.png	top-down view, slightly tilted (persp_center_y 0.56), follows the car and zooms out on impact (index.html:610)
+F1	pass	evidence/play.png	street lined with 3D blocks leads to the boulevard (index.html:185)
+F2	pass	index.html:427	arcade driving with grip; any contact with a vehicle or a wall calls crash() and removes control (index.html:328)
+F3	pass	evidence/level3-intro.png	lanes both ways carry cars, taxis, motos, buses, trucks, tankers, each with its mass from config
+F4	pass	index.html:357	impulse physics divides by mass: light vehicles get vertical lift and roll, heavy ones barely move; loose vehicles slide across lanes and hit others (chain not observed in a run: not played)
+F5	pass	evidence/play.png	live DÉGÂTS counter 3 285 €; damaged car darkens with dents
+F6	pass	evidence/figures.png	points, boost and ×2 pickups on the street (index.html:560)
+F7	pass	evidence/level3-intro.png	LEVELS has 1, 2 and 3 lanes per direction; level 2 adds buses/trucks; level 3 ramp shown
+F8	pass	index.html:1007	results screen: damage, bonus, multiplier, score, objective, best, Entrée next/retry, R replay
+S1	pass	evidence/play.png	traffic flows through the junction
+S2	pass	index.html:345	impact damage plus inertia; vehicles lose their lane once hit
+S3	pass	index.html:560	three bonus kinds wired to score and speed
+S4	pass	index.html:1007	three levels unlocked by passing the threshold
+S5	pass	index.html:494	ramp launches the car over a barrier in level 3
+M1	pass	evidence/level3-intro.png	each level opens on the street lined with buildings
+M2	pass	index.html:943	drawn arrow and CARREFOUR label, painted arrows on the road
+M3	pass	index.html:560	boost pickup on the road; camera leads the car to show the traffic ahead
+M4	not_assessed	-	timing your arrival is a feel line: needs a person's play
+M5	not_assessed	-	the chain (moto flies, taxi piles in) depends on play; physics is built (index.html:357) but no run showed it
+M6	pass	index.html:1027	counter rises live; results show damage × multiplier
+M7	not_assessed	-	a mark, not an item
+C1	pass	index.html:620	threshold per level from config
+C2	pass	index.html:1010	below threshold Entrée/R retries the level
+C3	not_assessed	-	level 1 at 8 000 € is meant to be easy; only play shows it
+C4	not_assessed	-	level 2 needs heavy targets at 30 000 €; only play shows it
+C5	pass	index.html:494	take-off height scales with speed, so the landing point depends on arrival speed
+C6	pass	index.html:328	a wall touch calls crash() like a vehicle
+C7	not_assessed	-	a mark, not an item

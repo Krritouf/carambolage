@@ -5,7 +5,7 @@ prix du garage, mesurés par le pilote automatique de `tools/balance/`). Rien n'
 
 Ordre retenu :
 1. Finir l'équilibrage du jeu actuel.
-2. Le mode Expert (il réutilise tout le contenu existant).
+2. Le mode Casse-cou (il réutilise tout le contenu existant).
 3. Un premier pays : **la France**. On mesure le temps qu'il demande avant de planifier les suivants.
 
 ## Règle de contenu : la classification d'âge
@@ -132,24 +132,64 @@ licence ou personnage protégé.
 - Monument : **la tour de Pise, qui finit enfin par tomber.**
 - Gadget signature : **le volcan**, qui projette des blocs de lave sur le boulevard.
 
-## Le mode Expert (nom à trouver)
+## Le mode Casse-cou
 
-Deux modes : **Arcade** (le jeu actuel) et **Expert**. En Expert, déclencher un gadget lance un
-**mini-défi** de quelques secondes au milieu de l'écran ; le gadget s'active selon le résultat.
-But : plus de durée de vie, et du fun. S'inspirer du principe des micro-jeux très courts, avec notre
-propre style.
+Deux modes : **Arcade** (le jeu actuel) et **Casse-cou** (*Daredevil* en anglais). En Casse-cou,
+déclencher un gadget lance un **mini-défi** de 2 à 3 secondes au milieu de l'écran ; le gadget agit
+selon le résultat. But : plus de durée de vie, et du fun. S'inspirer du principe des micro-jeux très
+courts, avec notre propre style.
 
-Propositions faites (à valider) :
+### Décidé
 
-- **Pas de pause sèche** : le mini-défi se joue pendant un ralenti très appuyé, le carambolage visible
-  en fond, pour garder la tension du moment fort.
-- **Réussite graduée plutôt que tout ou rien** (idée initiale : raté = gadget consommé sans effet, ce
-  qui risque de frustrer pour un gadget payé cher et à usage unique) :
-  parfait = gadget renforcé, moyen = effet normal, raté = effet affaibli.
-- **Jouable au doigt** sur téléphone en 2 à 3 secondes : taper au bon moment, glisser, tapoter vite.
-- **Un défi lié à chaque gadget** : couper le bon fil (dynamite), aligner le viseur (roquette),
-  rugir en rythme (T-Rex).
-- **Étoiles et records séparés** pour le mode Expert, pour ne pas fausser les seuils de l'Arcade.
+- **Nom : Casse-cou.**
+- **Déblocage : par pays**, proposé au joueur quand il arrive **au bout du pays en Arcade** : il suffit
+  d'avoir **au moins 1 étoile au dernier niveau** (le 19 aujourd'hui), pas les 3 étoiles partout.
+- **Réussite graduée**, un raté affaiblit le gadget mais ne l'annule pas. Valeurs de départ à régler :
+
+  | Résultat | Effet du gadget | À l'écran |
+  |---|---|---|
+  | Parfait | ×1,5 (plus de rayon, plus de dégâts) | tampon « PARFAIT ! » doré |
+  | Réussi | ×1 (comme en Arcade) | « BIEN ! » |
+  | Raté | ×0,4 (pétard mouillé) | « RATÉ… » et une petite fumée comique |
+
+  Enchaîner les « parfait » dans une partie fait monter un petit multiplicateur de score.
+- **Étoiles et records Casse-cou séparés**, avec leurs propres seuils (plus hauts, puisque « parfait »
+  renforce les gadgets ; le pilote automatique simulera parfait, réussi et raté pour les régler).
+- **Les étoiles Casse-cou comptent pour débloquer les véhicules.**
+- **Le T-Rex est le gadget ultime**, et c'est lui que remplace le gadget signature de chaque pays
+  (tracteurs, kaiju, tornade, monstre du loch, char de carnaval, volcan).
+
+### Le déroulé d'un mini-défi
+
+- **Pas de pause sèche** : le défi se joue pendant un ralenti extrême, le carambolage visible en fond.
+- **Un seul geste**, compris en une demi-seconde : un mot d'ordre en gros (« COUPE ! », « VISE ! »,
+  « TAPE ! ») et une image.
+- **Au doigt comme au clavier** : taper, glisser ou maintenir sur téléphone ; Espace et flèches sur ordinateur.
+- **Plusieurs défis par gadget**, tirés au hasard, pour ne pas refaire toujours le même.
+- **Une difficulté qui monte** avec les niveaux : la fenêtre de réussite rétrécit, le rythme s'accélère.
+- **Une option « défis plus faciles »** (plus de temps) dans les réglages, pour les plus jeunes (7 ans et plus).
+
+### Le catalogue
+
+- **Dynamite** : couper le bon fil (trois fils de couleur, un seul indiqué) ; allumer la mèche (taper
+  quand la flamme passe sur la marque) ; le détonateur (tapoter vite pour enfoncer la poignée).
+- **T-Rex** : le rugissement (taper en rythme sur trois battements) ; le réveil (tapoter vite pour
+  réveiller le dino qui ronfle).
+- **Aimant**, automatique aujourd'hui : la charge (tracer un cercle). Il pourrait devenir déclenchable
+  en Casse-cou seulement.
+- **Gadgets des pays**, conçus avec leur pays :
+  - boule de pétanque : le pointage (une jauge de force va et vient, taper dans la zone verte) ;
+  - rayon du kaiju : la charge (maintenir, lâcher dans la zone verte ; trop tôt il est faible, trop
+    tard il part de travers) ;
+  - tornade : le tourbillon (tracer une spirale) ;
+  - tracteurs en colère : le klaxon en rythme ;
+  - char de carnaval : les tambours (suivre un rythme de batucada).
+
+### À décider plus tard
+
+- **Les roquettes** : leur garder un mini-défi (le viseur qui oscille, ou maintenir le doigt sur une
+  cible qui bouge) ? Et même **les garder dans le jeu** ? À revoir, avec l'idée du bouchon de
+  champagne prévue pour la France à leur place.
 
 ## Autres pistes
 

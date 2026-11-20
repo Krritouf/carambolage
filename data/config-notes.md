@@ -216,3 +216,8 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 - `farmers_push`: px/s a vehicle is shoved sideways; `farmers_damage`: € a second to a vehicle in its path
 - `farmers_bales`, `farmers_bale_every`: hay bales the last tractor drops, s between them
 - `mass_hay`, `value_hay`: a hay bale's mass and value (it rolls into the traffic)
+
+## The Jurassic combo (the T-Rex meets the farmers)
+
+- `combo_bonus`: € added to the bonus when the T-Rex meets the convoy (once a run)
+- `mass_farmtractor`, `value_farmtractor`: each tractor the T-Rex sends flying: its mass, and the € it scores as a wreck

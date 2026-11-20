@@ -43,6 +43,10 @@ Retenu en priorité :
 - **Le convoi de tracteurs en colère** remplace le T-Rex : une colonne de tracteurs sort d'un tunnel,
   traverse le carrefour en bousculant tout et sème des bottes de foin qui roulent sur la chaussée.
   (C'est la version « manif » de l'idée, sans personne à percuter.)
+  **Fait (2026-11-20)** : deux rangées de cinq tracteurs, touche C, en plus du T-Rex.
+- **Le combo jurassique** : si le T-Rex et le cortège se rencontrent, le T-Rex rugit et envoie valser
+  les tracteurs (épaves qui comptent au score), plus un bonus « COMBO JURASSIQUE ! » (`combo_bonus`).
+  Idée à reprendre pour chaque pays : le gadget du pays a un combo avec le T-Rex.
 - **La boule de pétanque géante** (gadget) : elle dévale le boulevard et fait un carreau dans les voitures.
 - **Le rond-point** : certains niveaux remplacent le carrefour par un rond-point. La circulation tourne,
   les angles de choc changent, le carambolage se propage en cercle. Change le gameplay, pas que le décor.

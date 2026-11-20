@@ -68,3 +68,23 @@ test('without the gadget bought, C does nothing', async ({ page }) => {
   const started = await page.evaluate(() => { const g = window.game!; g.press('KeyC'); g.step(1, false); return !!(g.state as any).farmers; });
   expect(started).toBe(false);
 });
+
+test('the T-Rex meeting the farmers sends the tractors flying: the Jurassic combo, once', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('carambolage', JSON.stringify({ lv: 2, unlocked: 19, up: { cars: ['sport'], car: 'sport', gear: { sport: { farmers: 1, trex: 1 } } } })));
+  await openLevel(page, 9);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    g.press('KeyC'); g.step(1, false); g.press('KeyT'); g.step(1, false);
+    const bonus0 = st.bonus;
+    let n = 0; while (!st.combo && g.scene === 'play' && n++ < 3000) g.step(1, false);
+    const tractors = st.bodies.filter((b: any) => b.kind === 'farmtractor');
+    const flying = tractors.filter((b: any) => b.vz > 0 || b.z > 0).length;
+    g.step(120, false);
+    return { combo: st.combo, convoyGone: !st.farmers, trexWalksOn: !!st.trex, tractors: tractors.length, flying,
+      battered: tractors.every((b: any) => b.dmg > 0), bonus: st.bonus - bonus0 };
+  });
+  expect(r).toMatchObject({ combo: true, convoyGone: true, trexWalksOn: true, battered: true });
+  expect(r.tractors).toBeGreaterThan(0);
+  expect(r.flying).toBe(r.tractors);
+  expect(r.bonus).toBeGreaterThanOrEqual(300000);
+});

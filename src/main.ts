@@ -191,6 +191,7 @@ const KINDS: Loose = {
   fire: { name: 'Pompiers', l: 104, w: 30, h: 34 },
   trailer: { name: 'Remorque', l: 112, w: 30, h: 36 },
   hay: { name: 'Botte de foin', l: 28, w: 22, h: 20 }, // dropped by the angry farmers' tractors
+  farmtractor: { name: 'Tracteur', l: 56, w: 40, h: 40 }, // a tractor the T-Rex sent flying (the Jurassic combo)
   bus: { name: 'Bus', l: 112, w: 30, h: 30 },
   truck: { name: 'Camion', l: 92, w: 30, h: 34 },
   tanker: { name: 'Camion-citerne', l: 96, w: 28, h: 30 },
@@ -373,7 +374,7 @@ function reset() {
     phase: 'intro', introT: tune.intro_time, timeLeft: tune.approach_time,
     crashed: false, crashT: 0, crashX: 0, crashY: 0, slowT: 0, countdown: 0, bannerT: 0,
     bodies: [], blocks: [], props: [], lanes: [], pickups: [], parts: [], floats: [], skids: [], blasts: [],
-    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
+    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
     nitroUsed: false, nitroT: 0, oilUsed: false, oilDropT: 0, oilLX: 0, oilLY: 0, jumpsLeft: 0, magnetT: 0, chal: [], stars: 0, insK: 1, rockets: [], rocketsLeft: 0, touchedOnce: false, trailer: null, oils: [], oilGrid: new Map(), scorch: [], controlT: 0, dynUsed: false, passed: false, final: 0, endReason: '',
   };
   state = st;
@@ -934,6 +935,7 @@ function updatePlay(dt: Loose) {
   }
   if (st.trex) stepTrex(st.trex, sdt);
   if (st.farmers) stepFarmers(st.farmers, sdt);
+  if (st.trex && st.farmers && !st.combo && trexMeetsFarmers(st.trex, st.farmers)) jurassicCombo(st.trex, st.farmers);
   for (const c of st.cranes) if (c.falling && !c.fallen) stepCrane(c, sdt);
   for (const S of st.shops) { // damaged shops smoke, ruined ones burn
     const f = S.dmg / S.value; S.smokeT = (S.smokeT || 0) - sdt;
@@ -1191,6 +1193,35 @@ function stepFarmers(fm: Loose, dt: number) {
     b.inv = true; loosen(b); hurt(b, tune.farmers_damage * dt, b.x, b.y);
     if (!b.leak) { b.leak = true; b.leakX = b.x; b.leakY = b.y; }
   }
+}
+// ---- The Jurassic combo: the T-Rex meets the farmers' convoy -------------------------------
+/** True when the T-Rex's footprint reaches the convoy's. */
+function trexMeetsFarmers(tr: Loose, fm: Loose): boolean {
+  const head = fm.x + tune.farmers_len / 2 + tune.farmers_gap * 0.3, tail = fm.x - (tune.farmers_count - 1) * tune.farmers_gap - tune.farmers_len / 2;
+  const half = tune.farmers_width / 2 + (tune.farmers_rows - 1) * tune.farmers_row_gap / 2;
+  return tr.x - tune.trex_len / 2 < head && tr.x + tune.trex_len / 2 > tail && Math.abs(tr.y - fm.y) < half + tune.trex_width / 2;
+}
+/** The T-Rex roars and sends every tractor flying: they become wrecks that score, plus the combo's bonus. The T-Rex walks on. */
+function jurassicCombo(tr: Loose, fm: Loose) {
+  const st = state; st.combo = true;
+  farmerRows(fm).forEach((y: number, r: number) => {
+    for (let i = 0; i < tune.farmers_count; i++) {
+      const x = fm.x - i * tune.farmers_gap + (r % 2) * tune.farmers_gap * 0.3;
+      if (x < -EXT - tune.tunnel_depth) continue; // still in the tunnel: it stays there
+      const b = mkBody('farmtractor', x, y, 0, (i + r) % 2 ? '#e03131' : '#2f9e44');
+      b.ai = false; b.loose = true; b.inv = true; b.id = st.nextId++;
+      const away = x <= tr.x ? -1 : 1; // thrown back the way it came
+      b.vx = away * (220 + rng() * 260); b.vy = (y - tr.y >= 0 ? 1 : -1) * (120 + rng() * 260); b.vz = 380 + rng() * 260;
+      b.w = (rng() - 0.5) * 9; b.rollV = (rng() - 0.5) * 8;
+      st.bodies.push(b); hurt(b, b.value * 0.6, b.x, b.y); // battered, still in its colours: the rest when it lands in the pile-up
+      for (let k = 0; k < 6; k++) { const an = vr() * Math.PI * 2, sp = 80 + vr() * 220; addPart(k % 2 ? 'debris' : 'spark', x, y, 30, Math.cos(an) * sp, Math.sin(an) * sp, 120 + vr() * 200, 0.6 + vr() * 0.6); }
+    }
+  });
+  st.farmers = null;
+  st.bonus += tune.combo_bonus;
+  st.floats.push({ x: tr.x, y: tr.y - 60, txt: 'COMBO JURASSIQUE ! +' + fmt(tune.combo_bonus) + ' €', t: 0, color: '#b4e33d', big: true });
+  st.shake = 26; roar(); crunch(1, true); buzz(tune.vibe_blast);
+  events.push({ type: 'combo', t: st.t });
 }
 /** One tractor, facing +x at x, y: green or red, big back wheels, a cab, an exhaust; the lead one flies the flag. */
 function drawTractor(x: number, y: number, col: string, lead: boolean, t: number) {
@@ -1568,6 +1599,13 @@ function drawVehicle(b: Loose) {
   else if (dk === 'hay') { // a straw bale with its two strings
     box(0, L, Wd, 0, 20, wreck ? '#b08a3a' : '#f2c94c', '#c99a2e');
     flat(b, -L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a'); flat(b, L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a');
+  } else if (dk === 'farmtractor') { // a tractor sent flying: wheels, bonnet, cab
+    const gl = '#22305a', dkc = wreck ? col : shade(col, 0.72);
+    box(-L * 0.28, L * 0.4, Wd, 0, 22, '#1d1a26', '#1d1a26'); // the back wheels' width
+    box(L * 0.28, L * 0.25, Wd * 0.8, 0, 13, '#1d1a26', '#1d1a26');
+    box(L * 0.18, L * 0.54, Wd * 0.5, 8, 20, col, dkc); // the bonnet
+    box(-L * 0.2, L * 0.4, Wd * 0.65, 8, 40, col, gl); // the cab
+    flat(b, -L * 0.2, 0, L * 0.38, Wd * 0.6, z + 40.1, wreck ? col : shade(col, 1.15));
   } else if (dk === 'moto') {
     box(0, L, Wd * 0.55, 3, 8, '#2b2b33', '#16161c');
     flat(b, L / 2 - 2, 0, 3, Wd * 0.5, z + 8, '#ffe066');

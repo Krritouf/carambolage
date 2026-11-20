@@ -28,7 +28,7 @@ const EN: Record<string, string> = {
   'Au premier choc, tu perds le contrôle !': 'First impact and you lose control!',
   'R : rejouer · P : pause · M : son · gadgets du garage : Espace, F, T, C': 'R: retry · P: pause · M: sound · garage gadgets: Space, F, T, C',
   'AGRICULTEURS PAS CONTENTS !': 'ANGRY FARMERS!', 'C : AGRICULTEURS PAS CONTENTS': 'C: ANGRY FARMERS', 'TRACTEURS': 'TRACTORS',
-  'Agriculteurs pas contents': 'Angry farmers', 'Botte de foin': 'Hay bale',
+  'Agriculteurs pas contents': 'Angry farmers', 'Botte de foin': 'Hay bale', 'Tracteur': 'Tractor',
   'C : des tracteurs déboulent par la gauche, bousculent tout et sèment du foin, sans toucher aux bâtiments':
     'C: tractors storm in from the left, shove everything aside and spill hay, leaving the buildings alone',
   'Un seul choc. Le plus gros carambolage possible.': 'One crash. The biggest pile-up you can make.',
@@ -142,6 +142,7 @@ const PATTERNS: Rule[] = [
   [/^(.+) DÉTRUITE !$/, m => `${tr(m[1])} DESTROYED!`],
   [/^LA GRUE ! \+(.+) €$/, m => `THE CRANE! +${m[1]} €`],
   [/^LA TOUR EIFFEL ! \+(.+) €$/, m => `THE EIFFEL TOWER! +${m[1]} €`],
+  [/^COMBO JURASSIQUE ! \+(.+) €$/, m => `JURASSIC COMBO! +${m[1]} €`],
   [/^×(\S+)   assurance ×(.+)$/, m => `×${m[1]}   insurance ×${m[2]}`],
   [/^Carambolage du jour : le record d'aujourd'hui \((.+)\) compte dans ton crédit$/, m => `Daily pile-up: today's best (${m[1]}) counts in your credit`],
   [/^Crédit pour le garage : (.+) €$/, m => `Garage credit: ${m[1]} €`],

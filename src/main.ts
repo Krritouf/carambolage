@@ -4,16 +4,19 @@
 // This file holds the page: screen, input, the world and its physics, drawing, HUD, garage, scenes
 // and the loop. Pure rules are in game/, the values in data/ (config.ts), the sound in audio.ts.
 
-import { CONFIG, LEVELS, tune } from './config';
+import { CONFIG, LEVELS_BY, tune } from './config';
 import { crunch, engineSound, isMuted, setMuted, startAudio, tone } from './audio';
 import { rng, setSeed, vr } from './game/random';
 import { finalScore, fmt, impactDamage, levelTargets, priceFor, starsAt } from './game/rules';
-import { LEVELS_VERSION, migrateLevels } from './game/save';
+import { countriesFromSave, SAVE_VERSION } from './game/save';
 import type { Loose } from './game/types';
 import { clock, install, manual, params, seedFrom } from './hook';
 import { defaultLang, setLang, tr } from './i18n';
 import { NATIVE, exitApp, nativeVibrate, onBack } from './native';
 import splashUrl from '../assets/splash.png'; // the app's opening picture (tools/brand/art.html)
+// the country being played and its levels (LEVELS); each country keeps its own progress (loadCountry)
+let country = 'fr', LEVELS: Loose[] = LEVELS_BY.fr;
+const PREFIX: Loose = { fr: '', uk: 'uk_' }; // a country's keys in data/config.json: uk_threshold_3...
 
 // ---- Built to be checked ----------------------------------------------------------------
 const STEP = 1 / 60;            // simulation step in seconds; motion is per second, never per frame
@@ -216,11 +219,12 @@ function dailyLevel() {
   return dailyCache;
 }
 const curLevel = () => daily ? dailyLevel() : LEVELS[levelIdx];
-const TH = () => daily ? dailyLevel().threshold : tune['threshold_' + (levelIdx + 1)];
+const TH = () => daily ? dailyLevel().threshold : tune[PREFIX[country] + 'threshold_' + (levelIdx + 1)];
 const bestNow = () => daily ? (dailyRec.date === today() ? dailyRec.score : 0) : best[levelIdx];
 // the run's three targets [1, 2, 3 stars]: the level's own (levelTargets), or the daily's objective times the shared ratios
-const targetsNow = (): number[] => daily ? [TH(), TH() * tune.star2, TH() * tune.star3] : levelTargets(levelIdx + 1, tune);
-const levelStars = (i: number) => starsAt(best[i], levelTargets(i + 1, tune)); // the stars a level's best has won
+const targetsNow = (): number[] => daily ? [TH(), TH() * tune.star2, TH() * tune.star3] : levelTargets(levelIdx + 1, tune, PREFIX[country]);
+const TH_OF = (i: number) => tune[PREFIX[country] + 'threshold_' + (i + 1)]; // a level's 1-star score in this country
+const levelStars = (i: number) => starsAt(best[i], levelTargets(i + 1, tune, PREFIX[country])); // the stars a level's best has won
 const SINGULAR: Loose = { car: 'voiture', taxi: 'taxi', moto: 'moto', bus: 'bus', truck: 'camion', tanker: 'citerne', police: 'voiture de police', ambulance: 'ambulance', fire: 'camion de pompiers' };
 const PLURAL: Loose = { car: 'voitures', taxi: 'taxis', moto: 'motos', bus: 'bus', truck: 'camions', tanker: 'citernes', police: 'voitures de police', ambulance: 'ambulances', fire: 'camions de pompiers' };
 function chalLabel(c: Loose) {
@@ -241,34 +245,43 @@ function G() { // what the vehicle at the wheel has, every item at 0 until bough
   return g;
 }
 let done: Loose = {}, dailyRec: Loose = { date: '', score: 0 }, dailyBank = 0; // challenges won (level:index), today's best, credit won on dailies // the garage: bought with the sum of best scores
-try {
-  const s = JSON.parse(localStorage.getItem('carambolage') || '{}');
-  // a save from before the levels' new order (src/game/save.ts) follows its levels there
-  const prog = { best: Array.isArray(s.best) ? s.best : [], done: s.done || {}, unlocked: s.unlocked || 1 };
-  const moved = (s.lv || 1) < LEVELS_VERSION ? migrateLevels(prog) : prog;
-  if (Array.isArray(s.best)) best = LEVELS.map((_: Loose, i: Loose) => moved.best[i] || 0);
-  if (s.unlocked) unlocked = Math.min(LEVELS.length, moved.unlocked);
-  if (s.up) {
-    up = Object.assign(up, s.up);
+// each country's progress (records, unlocks, challenges, garage, spending, dailies): the one being
+// played lives in the variables above; the others wait here (src/game/save.ts reads any save)
+let COUNTRY_SAVES: Loose = {};
+try { COUNTRY_SAVES = countriesFromSave(JSON.parse(localStorage.getItem('carambolage') || '{}')); } catch (e) { /* storage blocked: play without saves */ }
+/** Makes a country the one being played: its levels and its progress. */
+function loadCountry(id: string) {
+  const p = COUNTRY_SAVES[id] || {};
+  country = id; LEVELS = LEVELS_BY[id];
+  best = LEVELS.map((_: Loose, i: Loose) => (p.best || [])[i] || 0);
+  unlocked = Math.min(LEVELS.length, p.unlocked || 1);
+  up = { cars: ['sport'], car: 'sport', gear: {} };
+  if (p.up) {
+    up = Object.assign(up, p.up);
     if (!up.gear) up.gear = {};
     // an older save kept the items for every vehicle: they go to the vehicle at the wheel
     const old: Loose = {}; for (const k of 'engine|bullbar|armor|dynamite|rocket|magnet|nitro|oilcan|jump|insurance|extratime'.split('|')) if (up[k]) { old[k] = up[k]; delete up[k]; }
     if (Object.keys(old).length) up.gear[up.car || 'sport'] = Object.assign(old, up.gear[up.car || 'sport'] || {});
   }
   if (!Array.isArray(up.cars) || !up.cars.includes('sport')) up.cars = ['sport'].concat(Array.isArray(up.cars) ? up.cars : []);
-  if (s.spent) spent = s.spent;
+  spent = p.spent || 0;
   // the nitro, oil can and spring were taken out of the garage: what was paid for them comes back
   for (const car of Object.keys(up.gear || {})) for (const k of ['nitro', 'oilcan', 'jump']) {
     const g = up.gear[car];
     if (g && g[k]) { spent -= priceFor(tune[k + '_cost'], tune['my_price_' + car] || 1); delete g[k]; }
   }
-  if (s.done) done = moved.done;
-  if (s.daily) dailyRec = s.daily;
-  if (s.dailyBank) dailyBank = s.dailyBank;
-} catch (e) { /* storage blocked: play without saves */ }
+  done = p.done || {}; dailyRec = p.daily || { date: '', score: 0 }; dailyBank = p.dailyBank || 0;
+}
+/** Puts the country being played back with the others, before saving or switching. */
+function storeCountry() { COUNTRY_SAVES[country] = { best, unlocked, up, spent, done, daily: dailyRec, dailyBank }; }
+/** A country's progress, whether it is the one being played or not. */
+const progressOf = (id: string): Loose => { if (id === country) storeCountry(); return COUNTRY_SAVES[id] || {}; };
+/** The stars won in a country. */
+const starsIn = (id: string) => LEVELS_BY[id].reduce((a: number, _: Loose, i: number) => a + starsAt((progressOf(id).best || [])[i] || 0, levelTargets(i + 1, tune, PREFIX[id])), 0);
+loadCountry('fr');
 const credit = () => best.reduce((a: Loose, b: Loose) => a + b, 0) + challengeBank() + dailyBank - spent;
 function challengeBank() { let t = 0; LEVELS.forEach((lv: Loose, i: Loose) => (lv.challenges || []).forEach((c: Loose, ci: Loose) => { if (done[i + ':' + ci]) t += c.reward; })); return t; }
-function save() { try { localStorage.setItem('carambolage', JSON.stringify({ lv: LEVELS_VERSION, best, unlocked, up, spent, done, daily: dailyRec, dailyBank })); } catch (e) { /* ignore */ } }
+function save() { storeCountry(); try { localStorage.setItem('carambolage', JSON.stringify({ lv: SAVE_VERSION, countries: COUNTRY_SAVES })); } catch (e) { /* ignore */ } }
 
 // What the player can drive. Sizes in px; mass, speed and turning from config (my_*), the sports car from mass_player.
 const MODELS: Loose = {
@@ -2364,9 +2377,7 @@ const SETTINGS_ROWS: Loose[] = [
 let resetAsk = false, resetYes = false; // the "erase the save?" box is open; Yes is the chosen answer (No by default)
 /** Erases the save: scores, levels, garage, challenges and dailies. The settings (sound, language) stay. */
 function eraseSave(): void {
-  best = LEVELS.map(() => 0); unlocked = 1; levelIdx = 0; wheelPos = 0;
-  up = { cars: ['sport'], car: 'sport', gear: {} }; spent = 0;
-  done = {}; dailyRec = { date: '', score: 0 }; dailyBank = 0;
+  COUNTRY_SAVES = {}; loadCountry(country); levelIdx = 0; wheelPos = 0; // every country starts over
   try { localStorage.removeItem('carambolage'); } catch (e) { /* storage blocked */ }
 }
 const setRowStep = () => Math.min(120, Math.floor(390 / SETTINGS_ROWS.length));
@@ -2402,7 +2413,7 @@ function drawWheelCard(i: Loose, k: Loose) {
   const tags = [lv.rain && 'pluie', lv.night && 'nuit', lv.fog && 'brouillard', lv.ice && 'verglas', lv.median && 'autoroute', lv.ramp && 'tremplin'].filter(Boolean).join(' · ');
   if (ok && tags) text(tags, mx, r.y + 88 * sc, Math.round(14 * sc), '#a89fc8', 'center', 'bold');
   for (let s2 = 0; s2 < 3; s2++) star(mx - 30 * sc + s2 * 30 * sc, r.y + 116 * sc, 12 * sc, s2 < nst ? '#ffc83d' : '#3b3160');
-  if (ok) text(best[i] ? 'Record ' + fmt(best[i]) + ' €' : 'Objectif ' + fmt(tune['threshold_' + (i + 1)]) + ' €', mx, r.y + 146 * sc, Math.round(14 * sc), '#d0c8f0', 'center', 'bold');
+  if (ok) text(best[i] ? 'Record ' + fmt(best[i]) + ' €' : 'Objectif ' + fmt(TH_OF(i)) + ' €', mx, r.y + 146 * sc, Math.round(14 * sc), '#d0c8f0', 'center', 'bold');
   else padlock(mx, r.y + 140 * sc, sc, '#8a80a8');
   ctx.globalAlpha = 1;
 }
@@ -2411,10 +2422,16 @@ function drawWheelCard(i: Loose, k: Loose) {
 // ---- The countries: the home screen picks one, then its levels' wheel ---------------------
 // Only France is ready: its 19 levels are the game's. The others show as "soon".
 const COUNTRIES: Loose[] = [
-  { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: false },
+  { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: true, after: 'fr' },
   { id: 'jp', name: 'Japon', ready: false }, { id: 'us', name: 'États-Unis', ready: false }, { id: 'br', name: 'Brésil', ready: false },
 ];
-let countryIdx = 0, country = 'fr', homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
+let countryIdx = 0, homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
+/** A country is open once the one before it has a star on its last level (France always is). */
+function countryOpen(c: Loose): boolean {
+  if (!c.after) return true;
+  const last = LEVELS_BY[c.after].length, b = (progressOf(c.after).best || [])[last - 1] || 0;
+  return starsAt(b, levelTargets(last, tune, PREFIX[c.after])) >= 1;
+}
 /** A country's flag, flat, in the box x, y, w, h. */
 function flag(id: string, x: number, y: number, w: number, h: number) {
   const r = (cx: number, cy: number, cw: number, chh: number, c: string) => { ctx.fillStyle = c; ctx.fillRect(x + cx * w, y + cy * h, cw * w, chh * h); };
@@ -2448,7 +2465,9 @@ function goHome() {
 function enterCountry() {
   const c = COUNTRIES[countryIdx];
   if (!c.ready) { homeMsg = 'Bientôt disponible !'; homeMsgT = 2; tone(180, 0.2, 'triangle', 0.2); return; }
-  country = c.id; applyCountryModels(country); daily = false; reset(); scene = 'title'; tone(660, 0.12, 'square', 0.15);
+  if (!countryOpen(c)) { homeMsg = `Finis le niveau ${LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name} avec au moins une étoile`; homeMsgT = 2.5; tone(180, 0.2, 'triangle', 0.2); return; }
+  if (c.id !== country) { storeCountry(); loadCountry(c.id); levelIdx = Math.max(0, unlocked - 1); wheelPos = levelIdx; }
+  applyCountryModels(country); daily = false; reset(); scene = 'title'; tone(660, 0.12, 'square', 0.15);
 }
 
 const scenes: Loose = {
@@ -2520,15 +2539,20 @@ const scenes: Loose = {
       text('CHOISIS TON PAYS', W / 2, 192, 24, '#ffc83d', 'center', 'bold italic', 5);
       COUNTRIES.forEach((c: Loose, i: number) => {
         const r = countryRect(i), sel = i === countryIdx, mx = r.x + r.w / 2;
-        panel(r.x, r.y, r.w, r.h, sel ? 'rgba(90,70,30,0.97)' : c.ready ? 'rgba(27,21,48,0.94)' : 'rgba(27,21,48,0.8)');
+        const open = c.ready && countryOpen(c);
+        panel(r.x, r.y, r.w, r.h, sel ? 'rgba(90,70,30,0.97)' : open ? 'rgba(27,21,48,0.94)' : 'rgba(27,21,48,0.8)');
         if (sel) { ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 3; ctx.strokeRect(r.x + 8, r.y + 3, r.w - 16, r.h - 6); }
         flag(c.id, mx - 66, r.y + 30, 132, 88);
-        if (!c.ready) { ctx.fillStyle = 'rgba(27,21,48,0.6)'; ctx.fillRect(mx - 66, r.y + 30, 132, 88); }
-        text(c.name, mx, r.y + 148, c.name.length > 10 ? 21 : 26, c.ready ? '#fff' : '#8a80a8', 'center', 'bold');
-        if (c.ready) {
+        if (!open) { ctx.fillStyle = 'rgba(27,21,48,0.6)'; ctx.fillRect(mx - 66, r.y + 30, 132, 88); }
+        text(c.name, mx, r.y + 148, c.name.length > 10 ? 21 : 26, open ? '#fff' : '#8a80a8', 'center', 'bold');
+        if (open) {
           star(mx - 44, r.y + 200, 14, '#ffc83d'); // the stars won in this country, out of all of them
-          text(`${totalStars()} / ${LEVELS.length * 3}`, mx + 14, r.y + 201, 24, '#fff', 'center', 'bold');
-          text(`${LEVELS.length} niveaux`, mx, r.y + 250, 15, '#d0c8f0', 'center', 'bold');
+          text(`${starsIn(c.id)} / ${LEVELS_BY[c.id].length * 3}`, mx + 14, r.y + 201, 24, '#fff', 'center', 'bold');
+          text(`${LEVELS_BY[c.id].length} niveaux`, mx, r.y + 250, 15, '#d0c8f0', 'center', 'bold');
+        } else if (c.ready) { // ready but still locked: what opens it
+          padlock(mx, r.y + 190, 1, '#8a80a8');
+          text(`Niveau ${LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name}`, mx, r.y + 232, 14, '#ffc83d', 'center', 'bold');
+          text('avec une étoile', mx, r.y + 252, 14, '#ffc83d', 'center', 'bold');
         } else {
           padlock(mx, r.y + 196, 1, '#8a80a8');
           text('BIENTÔT', mx, r.y + 244, 18, '#ffc83d', 'center', 'bold italic');
@@ -2936,6 +2960,7 @@ install({
   },
 });
 
+if (params.get('country') && LEVELS_BY[params.get('country') as string]) loadCountry(params.get('country') as string); // for the checks
 applyCountryModels(country);
 if (params.get('level')) levelIdx = Math.max(0, Math.min(LEVELS.length - 1, Number(params.get('level')) - 1));
 reset();

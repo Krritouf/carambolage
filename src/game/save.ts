@@ -34,3 +34,30 @@ export function migrateLevels(old: LevelProgress, order: readonly number[] = LEV
   order.forEach((n, i) => { if (n <= old.unlocked) unlocked = Math.max(unlocked, i + 1); });
   return { best, done, unlocked };
 }
+
+/** The save's version since the countries: each country keeps its own progress. */
+export const SAVE_VERSION = 3;
+
+/** One country's progress, as the save stores it. */
+export interface CountryProgress {
+  best?: number[];
+  unlocked?: number;
+  done?: Record<string, boolean>;
+  up?: unknown;
+  spent?: number;
+  daily?: unknown;
+  dailyBank?: number;
+}
+
+/**
+ * A save of any version as each country's progress. Before version 3 there was one country,
+ * France: its records, challenges and unlocks (moved to the levels' new order if older still),
+ * garage, spending and dailies become France's. An empty save gives no country at all.
+ */
+export function countriesFromSave(s: Record<string, any>): Record<string, CountryProgress> {
+  if ((s.lv || 1) >= SAVE_VERSION) return s.countries || {};
+  if (!s.best && !s.up && !s.done && !s.unlocked) return {};
+  let prog: LevelProgress = { best: Array.isArray(s.best) ? s.best : [], done: s.done || {}, unlocked: s.unlocked || 1 };
+  if ((s.lv || 1) < LEVELS_VERSION) prog = migrateLevels(prog);
+  return { fr: { best: prog.best, unlocked: prog.unlocked, done: prog.done, up: s.up, spent: s.spent, daily: s.daily, dailyBank: s.dailyBank } };
+}

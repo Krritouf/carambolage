@@ -38,7 +38,15 @@ const EN: Record<string, string> = {
   'O : réglages': 'O: settings', 'Verrouillé': 'Locked',
   // the countries
   'Berlinette': 'Coupé', 'Camionnette jaune': 'Yellow van', 'Camion du boulanger': "Baker's truck", 'Routier': 'Big rig',
-  'CHOISIS TON PAYS': 'PICK YOUR COUNTRY', 'France': 'France', 'Royaume-Uni': 'United Kingdom', 'Japon': 'Japan',
+  'CHOISIS TON PAYS': 'PICK YOUR COUNTRY',
+  'avec une étoile': 'with a star',
+  // the United Kingdom's levels
+  'Piccadilly': 'Piccadilly', 'Oxford Street': 'Oxford Street', 'Le pont de Londres': 'London Bridge', "L'heure de pointe à la City": 'Rush hour in the City',
+  'Pluie sur Soho': 'Rain over Soho', 'Le convoi de Camden': 'The Camden convoy', 'Chaos à Trafalgar': 'Chaos at Trafalgar', 'Nuit à Westminster': 'Night at Westminster',
+  'Le verglas de Hyde Park': 'Black ice in Hyde Park', 'Les coursiers de Brixton': 'The Brixton couriers', 'La petite rue de Notting Hill': 'The little Notting Hill street',
+  'Brouillard sur la Tamise': 'Fog on the Thames', 'La M25': 'The M25', 'Tempête sur la Manche': 'Storm over the Channel', 'Les pompiers de Londres': "London's firefighters",
+  'La M25 de nuit': 'The M25 by night', 'Le convoi de nuit': 'The night convoy', 'Blizzard sur les Highlands': 'Blizzard over the Highlands',
+  'La relève de la garde': 'The changing of the guard', 'Le grand final royal': 'The royal grand finale', 'France': 'France', 'Royaume-Uni': 'United Kingdom', 'Japon': 'Japan',
   'États-Unis': 'United States', 'Brésil': 'Brazil', 'BIENTÔT': 'SOON', 'Bientôt disponible !': 'Coming soon!',
   'Entrée ou clic : choisir': 'Enter or click: choose', 'Gauche / Droite : changer de pays': 'Left / Right: change country',
   'JOUER': 'PLAY', 'PLEIN ÉCRAN': 'FULL SCREEN', 'RÉGLAGES': 'SETTINGS', "Tourne ton téléphone à l'horizontale": 'Turn your phone sideways',
@@ -115,6 +123,8 @@ const NOUN: Record<string, string> = {
 type Rule = [RegExp, (m: RegExpMatchArray) => string];
 /** Sentences with numbers or names in them. */
 const PATTERNS: Rule[] = [
+  [/^Niveau (\d+) de (.+)$/, m => `${tr(m[2])}'s level ${m[1]}`],
+  [/^Finis le niveau (\d+) de (.+) avec au moins une étoile$/, m => `Finish ${tr(m[2])}'s level ${m[1]} with at least one star`],
   [/^(\d+) niveaux$/, m => `${m[1]} levels`],
   [/^NIVEAU (\d+)$/, m => `LEVEL ${m[1]}`],
   [/^NIVEAU (\d+) — (.+)$/, m => `LEVEL ${m[1]} — ${tr(m[2])}`],

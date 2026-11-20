@@ -32,6 +32,10 @@ describe('levelTargets', () => {
     const tune = { threshold_3: 1000, star2_3: 1800, star3_3: 5000, star2: 2, star3: 3.2 };
     expect(levelTargets(3, tune)).toEqual([1000, 1800, 5000]);
   });
+  it("reads a country's own keys with its prefix", () => {
+    const tune = { threshold_3: 1000, uk_threshold_3: 5000, uk_star2_3: 7000, uk_star3_3: 9000, star2: 2, star3: 3.2 };
+    expect(levelTargets(3, tune, 'uk_')).toEqual([5000, 7000, 9000]);
+  });
   it('falls back to the objective times the shared ratios', () => {
     const tune = { threshold_3: 1000, star2: 2, star3: 3.2 };
     expect(levelTargets(3, tune)).toEqual([1000, 2000, 3200]);

@@ -229,3 +229,9 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 - `max_bodies`: vehicles on the map at most; beyond it no more traffic comes out of the tunnels
 - `max_steps`: physics steps a frame at most; a device that can't keep up runs the game a little slower
   instead of falling further behind (the countdown runs on the game's time)
+
+## The United Kingdom
+
+- `uk_threshold_N`, `uk_star2_N`, `uk_star3_N` (N = 1 to 20): the UK levels' 1, 2 and 3-star scores. Its levels
+  (data/levels-uk.json) follow France's level for level, so its scores start as France's; level 20 is
+  12 % above France's 19. To measure again with the autopilot.

@@ -1,7 +1,7 @@
 // Vitest: an old save follows the levels into their new order (src/game/save.ts).
 import { describe, expect, it } from 'vitest';
 import levels from '../../data/levels.json';
-import { LEVEL_ORDER, migrateLevels } from '../../src/game/save';
+import { countriesFromSave, LEVEL_ORDER, migrateLevels } from '../../src/game/save';
 
 // a short order for the fixtures: position 0 is old level 1, position 1 old level 3, position 2 old level 2
 const ORDER = [1, 3, 2];
@@ -31,5 +31,23 @@ describe('migrateLevels', () => {
 
   it('gives a missing record zero', () => {
     expect(migrateLevels({ best: [50], done: {}, unlocked: 1 }, ORDER).best).toEqual([50, 0, 0]);
+  });
+});
+
+describe('countriesFromSave', () => {
+  it("makes a save from before the countries France's progress", () => {
+    const old = { lv: 2, best: [10, 20], unlocked: 2, done: { '0:1': true }, up: { car: 'van' }, spent: 5, daily: { date: 'd', score: 3 }, dailyBank: 7 };
+    expect(countriesFromSave(old)).toEqual({ fr: { best: [10, 20], unlocked: 2, done: { '0:1': true }, up: { car: 'van' }, spent: 5, daily: { date: 'd', score: 3 }, dailyBank: 7 } });
+  });
+  it('moves an older save to the levels\' new order on the way', () => {
+    const r = countriesFromSave({ best: [1, 2, 3, 4, 5, 6, 7], unlocked: 1 });
+    expect(r.fr.best!.slice(0, 7)).toEqual([1, 2, 3, 4, 7, 5, 6]); // LEVEL_ORDER starts 1, 2, 3, 4, 7, 5, 6
+  });
+  it('keeps a countries save as it is', () => {
+    const s = { lv: 3, countries: { fr: { best: [1] }, uk: { best: [2] } } };
+    expect(countriesFromSave(s)).toEqual(s.countries);
+  });
+  it('gives no country for an empty save', () => {
+    expect(countriesFromSave({})).toEqual({});
   });
 });

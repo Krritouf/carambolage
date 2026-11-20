@@ -18,11 +18,11 @@ export function finalScore(damage: number, bonus: number, mult: number, insuranc
 /**
  * A level's three targets in euros: [1 star, 2 stars, 3 stars]. threshold_N is the objective;
  * star2_N and star3_N, when the config has them, are that level's own 2- and 3-star scores,
- * else the objective times the shared star2 / star3 ratios.
+ * else the objective times the shared star2 / star3 ratios. prefix picks a country's keys ('uk_threshold_3').
  */
-export function levelTargets(level: number, tune: Record<string, number>): [number, number, number] {
-  const t1 = tune['threshold_' + level];
-  return [t1, tune['star2_' + level] ?? t1 * tune.star2, tune['star3_' + level] ?? t1 * tune.star3];
+export function levelTargets(level: number, tune: Record<string, number>, prefix = ''): [number, number, number] {
+  const t1 = tune[prefix + 'threshold_' + level];
+  return [t1, tune[prefix + 'star2_' + level] ?? t1 * tune.star2, tune[prefix + 'star3_' + level] ?? t1 * tune.star3];
 }
 
 /** Stars for a score against a level's three targets. */

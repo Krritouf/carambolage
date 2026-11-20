@@ -338,8 +338,11 @@ function mkBody(kind: Loose, x: Loose, y: Loose, a: Loose, color: Loose): Loose 
 }
 
 let scene: Loose, state: Loose, cam: Loose = { x: 0, y: 0, zoom: 1 };
-function laneY(L: Loose, i: Loose, dir: Loose) { // dir +1 eastbound (south half), -1 westbound (north half)
-  return dir * (4 + tune.lane_width * (i + 0.5));
+// which side of the road the traffic keeps to: the right, or the left in the United Kingdom
+const KEEP_LEFT: Loose = { uk: true };
+const roadSide = () => KEEP_LEFT[country] ? -1 : 1;
+function laneY(L: Loose, i: Loose, dir: Loose) { // dir +1 eastbound, -1 westbound: the south half on the right, the north half on the left
+  return roadSide() * dir * (4 + tune.lane_width * (i + 0.5));
 }
 function buildCity(lv: Loose, roadHalf: Loose) {
   const blocks: Loose[] = [];
@@ -433,7 +436,7 @@ function reset() {
     while (x < EXT) { spawnOn(ln, ln.dir > 0 ? x : -x); x += 260 + rng() * 380; }
   }
   // player
-  const [p, trailer] = mkPlayerBodies(up.car, tune.lane_width / 2, south + lv.approach, -Math.PI / 2);
+  const [p, trailer] = mkPlayerBodies(up.car, roadSide() * tune.lane_width / 2, south + lv.approach, -Math.PI / 2); // in the street's own lane
   p.id = 0; p.inv = true; p.gear = { bullbar: G().bullbar, armor: G().armor, dynamite: G().dynamite, rocket: G().rocket }; st.player = p; st.bodies.push(p);
   if (trailer) { trailer.inv = true; st.trailer = trailer; st.bodies.push(trailer); }
   st.rocketsLeft = G().rocket ? tune.rockets_per_run + G().rocket2 * tune.rocket2_extra : 0;
@@ -1897,7 +1900,7 @@ function drawGround() {
   // painted arrows up the street
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   for (let y = south + 300; y < south + lv.approach; y += 420) {
-    const x = LW / 2;
+    const x = roadSide() * LW / 2;
     ctx.beginPath(); ctx.moveTo(x, y - 34); ctx.lineTo(x + 12, y - 14); ctx.lineTo(x + 4, y - 14); ctx.lineTo(x + 4, y + 20);
     ctx.lineTo(x - 4, y + 20); ctx.lineTo(x - 4, y - 14); ctx.lineTo(x - 12, y - 14); ctx.closePath(); ctx.fill();
   }

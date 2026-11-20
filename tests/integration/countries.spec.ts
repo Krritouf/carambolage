@@ -77,3 +77,17 @@ test("a save from before the countries becomes France's: its open levels stay op
   await page.reload(); await expect.poll(() => page.evaluate(() => typeof window.game?.step)).toBe('function');
   expect(await tryLevel(4)).toBe('title'); // still locked
 });
+
+test('in the United Kingdom the traffic keeps left, and so does the player\'s car', async ({ page }) => {
+  const sides = async (q: string) => {
+    await page.goto(`${pathToFileURL(resolve('dist-single/index.html')).href}?manual=1&seed=7&scene=play&level=1&${q}`);
+    await expect.poll(() => page.evaluate(() => typeof window.game?.step)).toBe('function');
+    return page.evaluate(() => {
+      const st = window.game!.state as any, east = st.lanes.filter((l: any) => l.dir > 0), west = st.lanes.filter((l: any) => l.dir < 0);
+      // on screen y grows southwards: going east, the right-hand side is the south (y > 0)
+      return { eastSouth: east.every((l: any) => l.y > 0), westNorth: west.every((l: any) => l.y < 0), playerRight: st.player.x > 0 };
+    });
+  };
+  expect(await sides('country=fr')).toEqual({ eastSouth: true, westNorth: true, playerRight: true });
+  expect(await sides('country=uk')).toEqual({ eastSouth: false, westNorth: false, playerRight: false });
+});

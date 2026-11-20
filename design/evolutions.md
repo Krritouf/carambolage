@@ -85,6 +85,13 @@ licence ou personnage protégé.
 
 #### Royaume-Uni (Europe)
 
+**Fait (2026-11-20)** : ouvert quand le niveau 19 de France a au moins 1 étoile ; sa propre progression
+(argent, garage, véhicules, étoiles : tout repart de zéro) ; 20 niveaux qui suivent la courbe de la France,
+seuils repris de la France en attendant le pilote automatique ; conduite à gauche ; bus à impériale, taxis
+noirs, police et ambulance à damier, pub et salon de thé ; Big Ben ; le monstre du loch (touche C, il surgit
+au milieu du carrefour et balaie un tour complet) ; l'heure du thé (dès le niveau 4). À faire : un combo
+avec le T-Rex, et mesurer les seuils.
+
 - **Mécanique : la conduite à gauche.** Tout est inversé, réflexes du joueur compris.
 - Circulation : bus à impériale rouges, taxis noirs, mini-citadines.
 - Monument : la tour de Big Ben.

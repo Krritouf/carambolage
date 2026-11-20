@@ -253,6 +253,22 @@ Le rond-point (fait : le niveau 20, la place de l'Étoile) devient une mécaniqu
 - Le rond-point reste français (décision du 2026-11-20 : pas au Royaume-Uni).
 - Chaque niveau converti change de score : **seuils à remesurer** avec le pilote automatique.
 
+## Des bonus sur le boulevard (idée du 2026-11-20)
+
+Aujourd'hui les bonus sont tous dans la rue, avant le carrefour. **En mettre sur le boulevard**
+donnerait enfin un intérêt au **pare-buffle** et à la **carrosserie renforcée** : ils laissent le volant
+1 à 3 s après le premier choc, mais il n'y a rien à faire de ces secondes. Avec des bonus au milieu du
+chaos, on fonce les ramasser.
+
+- **Qu'ils apparaissent au moment du choc** plutôt que posés d'avance dans la circulation (le joueur les
+  prendrait avant de percuter et le carrefour deviendrait trop facile) : par exemple les camions
+  accidentés lâchent des pièces ou un ×2 qui roulent sur la chaussée. Ils ne servent qu'à qui garde le volant.
+- **L'aimant les attire** vers la voiture pendant son effet : utile même sans pare-buffle.
+- **Des bonus propres au boulevard** : « +2 s de compte à rebours », plutôt que le ×2, très puissant.
+- **Revoir les durées** du pare-buffle (1 s) et du blindage (+2 s) une fois les bonus en place : 1 s est
+  court pour aller en chercher un.
+- Le pilote automatique devra apprendre à les ramasser, pour mesurer l'effet sur les scores.
+
 ## Autres pistes
 
 - ~~Un **20ᵉ niveau** pour un compte rond~~ — fait : la place de l'Étoile (France).

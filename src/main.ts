@@ -522,7 +522,8 @@ function hurt(b: Loose, amount: Loose, px: Loose, py: Loose) {
 function impact(A: Loose, B: Loose, j: Loose, c: Loose, fall: Loose) {
   const st = state, p = st.player;
   const touchesPlayer = A === p || B === p || (st.trailer && (A === st.trailer || B === st.trailer));
-  if (touchesPlayer && (A.static || B.static) && !st.touchedOnce) { // scraping a house before the junction: no harm, you keep the wheel
+  // scraping a house in the street, before the junction: no harm, you keep the wheel. On the crossroads a wall is a crash.
+  if (touchesPlayer && (A.static || B.static) && !st.touchedOnce && p.y > st.south) {
     if (j > 30) {
       for (let i = 0; i < Math.min(8, j / 40); i++) { const an = vr() * Math.PI * 2, sp = 60 + vr() * 160; addPart('spark', c.p[0], c.p[1], 6, Math.cos(an) * sp, Math.sin(an) * sp, 40 + vr() * 80, 0.2 + vr() * 0.2); }
       crunch(Math.min(0.25, j / 1600));
@@ -953,7 +954,7 @@ function updatePlay(dt: Loose) {
   // pickups
   for (const u of st.pickups) {
     u.spin += dt * 2.5;
-    if (u.taken || !p.control || p.z > 20) continue;
+    if (u.taken || st.phase === 'intro' || p.z > 20) continue; // a car sliding out of control still picks up what it runs over
     if (Math.hypot(p.x - u.x, p.y - u.y) < 30) {
       u.taken = true;
       if (u.kind === 'points') { st.bonus += tune.bonus_points; st.floats.push({ x: u.x, y: u.y, txt: '+' + fmt(tune.bonus_points) + ' €', t: 0, color: '#ffd21f' }); }

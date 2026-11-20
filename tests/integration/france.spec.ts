@@ -88,3 +88,33 @@ test('the T-Rex meeting the farmers sends the tractors flying: the Jurassic comb
   expect(r.flying).toBe(r.tractors);
   expect(r.bonus).toBeGreaterThanOrEqual(300000);
 });
+
+test('level 20 is a roundabout: the traffic goes round the island on its own side and on, without crashing on its own', async ({ page }) => {
+  await openLevel(page, 20);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    st.player.x = 2000; st.player.y = 2000; st.player.control = false; st.timeLeft = 1e9; // the car out of the way
+    const crossed = new Set();
+    for (let f = 0; f < 60 * 25; f++) {
+      g.step(1, false);
+      for (const c of st.bodies) { if (!c.ai) continue; if (c.from === undefined) c.from = Math.sign(c.x); else if (Math.sign(c.x) === -c.from && Math.abs(c.x) > st.roundabout.ro + 20) crossed.add(c); }
+    }
+    const intact = st.bodies.filter((c: any) => c.ai);
+    return { ring: !!st.roundabout, arc: !!st.arc, crossed: crossed.size, crashed: st.crashed, onIsland: st.bodies.filter((c: any) => Math.hypot(c.x, c.y) < st.roundabout.ri).length,
+      sides: intact.filter((c: any) => Math.abs(c.x) < 60).every((c: any) => Math.sign(c.y) === c.lane.dir) }; // at the middle, eastbound in the south half
+  });
+  expect(r).toMatchObject({ ring: true, arc: true, crashed: false, onIsland: 0, sides: true });
+  expect(r.crossed).toBeGreaterThan(50);
+});
+
+test('the Arc de Triomphe takes the hits on its island', async ({ page }) => {
+  await openLevel(page, 20);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any, p = st.player;
+    st.bodies = st.bodies.filter((b: any) => b === p); for (const l of st.lanes) l.timer = 1e9;
+    p.x = 0; p.y = st.roundabout.ri + 120; p.a = -Math.PI / 2; p.vx = 0; p.vy = -600; // straight at the island
+    g.hold('ArrowUp', true); g.step(120, false); g.hold('ArrowUp', false);
+    return { arcHurt: st.arc.dmg > 0, crashed: st.crashed };
+  });
+  expect(r).toEqual({ arcHurt: true, crashed: true });
+});

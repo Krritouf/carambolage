@@ -371,5 +371,10 @@
   "uk_star3_19": { "value": 40000000, "min": 0, "max": 60000000, "step": 1000 },
   "uk_threshold_20": { "value": 16128000, "min": 0, "max": 60000000, "step": 1000 },
   "uk_star2_20": { "value": 29008000, "min": 0, "max": 60000000, "step": 1000 },
-  "uk_star3_20": { "value": 44800000, "min": 0, "max": 60000000, "step": 1000 }
+  "uk_star3_20": { "value": 44800000, "min": 0, "max": 60000000, "step": 1000 },
+  "threshold_20": { "value": 16128000, "min": 0, "max": 60000000, "step": 1000 },
+  "star2_20": { "value": 29008000, "min": 0, "max": 60000000, "step": 1000 },
+  "star3_20": { "value": 44800000, "min": 0, "max": 60000000, "step": 1000 },
+  "rb_island": { "value": 90, "min": 40, "max": 200, "step": 5 },
+  "value_arc": { "value": 500000, "min": 0, "max": 5000000, "step": 10000 }
 }

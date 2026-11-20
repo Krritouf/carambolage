@@ -311,6 +311,7 @@ function applyCountryModels(id: string) {
 const wetK = () => state.lv.ice ? tune.ice_grip : state.lv.rain ? tune.rain_grip : 1; // grip and braking on a wet or icy road
 // the shops on the boulevard from level 10: name, roof colour (values and weights in config)
 const SHOPS: Loose = { // m: a masculine name ("le pub"), for "DÉTRUIT"
+  arc: { name: 'Arc de Triomphe', color: '#e8dcc0', m: true }, // the roundabout's monument
   pub: { name: 'Pub', color: '#8a5a3c', m: true },
   salon: { name: 'Salon de thé', color: '#f4b8c8' },
   boulangerie: { name: 'Boulangerie', color: '#f4c27a' },
@@ -351,6 +352,51 @@ let scene: Loose, state: Loose, cam: Loose = { x: 0, y: 0, zoom: 1 };
 // which side of the road the traffic keeps to: the right, or the left in the United Kingdom
 const KEEP_LEFT: Loose = { uk: true };
 const roadSide = () => KEEP_LEFT[country] ? -1 : 1;
+// ---- The roundabout (France's level 20: la place de l'Étoile) -------------------------------------
+// The crossroads becomes a ring round an island. Each lane goes round the island on its own side,
+// anticlockwise (traffic keeps right), and carries on along the boulevard. On the island stands the
+// Arc de Triomphe: it takes the hits like a shop, and falls with a big bonus.
+const ringRadius = (rb: Loose, i: number) => rb.ri + 18 + tune.lane_width * (i + 0.5); // where lane i goes round
+function buildRoundabout(st: Loose, lv: Loose) {
+  const ri = tune.rb_island, ro = ri + 18 + tune.lane_width * lv.lanes + 12;
+  st.roundabout = { ri, ro };
+  // the buildings that stood where the ring is go
+  st.blocks = st.blocks.filter((S: Loose) => Math.hypot(Math.max(Math.abs(S.x) - S.hl, 0), Math.max(Math.abs(S.y) - S.hw, 0)) > ro + 24);
+  // the Arc: one object the island's three boxes all stand for (S.part), in the shops' list so blasts and quakes reach it
+  const arc: Loose = { static: true, kind: 'arc', shop: 'arc', x: 0, y: 0, a: 0, hl: 46, hw: 20, h: 84, height: 84, value: tune.value_arc, dmg: 0, color: '#e8dcc0', invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
+  st.arc = arc; st.shops.push(arc);
+  for (const [hl, hw] of [[ri, ri * 0.6], [ri * 0.6, ri], [ri * 0.85, ri * 0.85]]) // a rounded island: a wide box, a tall one, a square
+    st.props.push({ static: true, kind: 'island', part: arc, x: 0, y: 0, a: 0, hl, hw, h: 6, height: 999, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 });
+}
+/** Where a lane's car should be across the road at x: its lane, or round the ring when the ring bulges further out. */
+function laneTargetY(ln: Loose, x: number): number {
+  const rb = state.roundabout; if (!rb) return ln.y;
+  const R = ringRadius(rb, ln.idx || 0); if (Math.abs(x) >= R) return ln.y;
+  const yc = Math.sign(ln.y) * Math.sqrt(R * R - x * x);
+  return Math.abs(yc) > Math.abs(ln.y) ? yc : ln.y;
+}
+function drawRoundaboutGround(st: Loose) {
+  const rb = st.roundabout, LW = tune.lane_width, disc = (r: number, c: string) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); };
+  disc(rb.ro + 20, '#e9d8a6'); disc(rb.ro, '#4b5577'); // the pavement round it, the ring's tarmac
+  ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 3; ctx.setLineDash([22, 18]);
+  for (let k = 1; k < st.lv.lanes; k++) { ctx.beginPath(); ctx.arc(0, 0, rb.ri + 18 + LW * k, 0, Math.PI * 2); ctx.stroke(); } // between the lanes
+  ctx.setLineDash([]);
+  disc(rb.ri + 12, '#dfe3e8'); disc(rb.ri, '#5a9e4b'); // the island's kerb, its lawn
+  ctx.fillStyle = '#e8dcc0'; ctx.fillRect(-rb.ri * 0.75, -5, rb.ri * 1.5, 10); ctx.fillRect(-5, -rb.ri * 0.75, 10, rb.ri * 1.5); // the paths to the Arc
+  for (let i = 0; i < 24; i++) { const an = i * Math.PI / 12, r = rb.ri - 10; ctx.fillStyle = i % 2 ? '#ff6b6b' : '#fcc419'; ctx.beginPath(); ctx.arc(Math.cos(an) * r, Math.sin(an) * r, 4, 0, Math.PI * 2); ctx.fill(); } // flowers
+}
+/** The Arc de Triomphe: two great piers, the vault between them, the attic on top; rubble once ruined. */
+function drawArc(S: Loose) {
+  const b: Loose = { x: S.x, y: S.y, a: 0 }, stone = S.ruined ? '#8f8778' : mix('#e8dcc0', '#3a3533', Math.min(1, S.dmg / S.value) * 0.5), side = shade(stone, 0.8);
+  const box = (ox: number, len: number, wid: number, h0: number, h1: number, top: string, sd: string) => prism(rect(b, ox, 0, len, wid), h0, h1, top, sd);
+  if (S.ruined) { box(0, 96, 46, 0, 18, stone, side); box(-20, 30, 34, 18, 30, stone, side); return; }
+  box(-33, 28, 40, 0, 60, stone, side); box(33, 28, 40, 0, 60, stone, side); // the piers
+  box(0, 92, 40, 60, 74, stone, side); // over the vault
+  box(0, 96, 44, 74, 84, shade(stone, 1.06), side); // the attic
+  flat(b, 0, 0, 38, 40, 59.9, '#3b3326'); // the vault's shadow
+  const c = P(S.x, S.y, 92); text(SHOPS.arc.name.toUpperCase(), c[0], c[1] - 10, Math.max(9, Math.round(13 * cam.zoom)), '#1b1530', 'center', 'bold');
+  text(money(S.value - S.dmg), c[0], c[1] + 6, Math.max(9, Math.round(12 * cam.zoom)), '#1b1530', 'center', 'bold');
+}
 function laneY(L: Loose, i: Loose, dir: Loose) { // dir +1 eastbound, -1 westbound: the south half on the right, the north half on the left
   return roadSide() * dir * (4 + tune.lane_width * (i + 0.5));
 }
@@ -405,6 +451,7 @@ function reset() {
   };
   state = st;
   st.blocks = buildCity(lv, roadHalf);
+  if (lv.roundabout) buildRoundabout(st, lv);
   // the boulevard's front row: shops worth their price, and building sites with a tower crane
   if (lv.shops || lv.cranes) {
     const front = st.blocks.filter((S: Loose) => S.kind === 'building' && Math.abs(S.x) < EXT - 100 && Math.abs(S.x) > APPROACH_HALF + 80 &&
@@ -439,12 +486,12 @@ function reset() {
   }
   // lanes
   for (const dir of [1, -1]) for (let i = 0; i < lv.lanes; i++) {
-    st.lanes.push({ y: laneY(lv, i, dir), dir, timer: 0.3 + rng() * 1.5 });
+    st.lanes.push({ y: laneY(lv, i, dir), dir, idx: i, timer: 0.3 + rng() * 1.5 });
   }
   // pre-filled traffic
   for (const ln of st.lanes) {
     let x = -EXT + rng() * 200;
-    while (x < EXT) { spawnOn(ln, ln.dir > 0 ? x : -x); x += 260 + rng() * 380; }
+    while (x < EXT) { const at = ln.dir > 0 ? x : -x; if (!st.roundabout || Math.abs(at) > st.roundabout.ro + 40) spawnOn(ln, at); x += 260 + rng() * 380; }
   }
   // player
   const [p, trailer] = mkPlayerBodies(up.car, roadSide() * tune.lane_width / 2, south + lv.approach, -Math.PI / 2); // in the street's own lane
@@ -621,7 +668,8 @@ function impact(A: Loose, B: Loose, j: Loose, c: Loose, fall: Loose) {
   const dmg = impactDamage(jd, tune.hit_threshold, tune.damage_scale);
   { // a shop or a crane in the impact
     const S = A.static ? A : B.static ? B : null, hay = A.kind === 'hay' || B.kind === 'hay'; // the farmers' bales spare the buildings
-    if (S && S.shop && !hay) shopHurt(S, dmg * tune.shop_damage_k);
+    const T = S && (S.part || S); // the island's boxes stand for the Arc
+    if (T && T.shop && !hay) shopHurt(T, dmg * tune.shop_damage_k);
     if (S && S.kind === 'crane' && !hay) startCraneFall(S.ref);
   }
   hurt(A, dmg * (B.static ? 0.6 : 1), c.p[0], c.p[1]); hurt(B, dmg * (A.static ? 0.6 : 1), c.p[0], c.p[1]);
@@ -741,8 +789,10 @@ function driveAI(b: Loose, dt: Loose) {
   let s = b.vx * fx + b.vy * fy;
   // the nearest thing in front, in this lane's path
   let gap = Infinity, gapWreck = false;
+  const rb = state.roundabout;
   for (const o of state.bodies) {
     if (o === b || o.z > 30) continue;
+    if (rb && o.ai && o.lane && o.lane.dir !== b.lane.dir) continue; // on the roundabout each way keeps to its own side of the island: the other way's traffic is never in the way
     const rx = o.x - b.x, ry = o.y - b.y, along = rx * fx + ry * fy;
     if (along <= 0 || along > 420) continue;
     // a chase car looks down the lane it is heading for, so it does not brake for the lane it is leaving
@@ -762,7 +812,13 @@ function driveAI(b: Loose, dt: Loose) {
   if (b.braking) s = Math.max(0, s - tune.traffic_brake * (state.crashed && gapWreck ? tune.wreck_brake : 1) * wetK() * dt);
   else s = Math.min(b.cruise, s + 220 * dt);
   b.vx = fx * s; b.vy = fy * s; b.w = 0;
-  b.y += (b.lane.y - b.y) * Math.min(1, (b.chase ? tune.chase_lane_change : 3) * dt);
+  const ty = laneTargetY(b.lane, b.x);
+  b.y += (ty - b.y) * Math.min(1, (b.chase ? tune.chase_lane_change : 3) * dt);
+  if (state.roundabout) { // face along the ring's curve
+    const dir = b.lane.dir, slope = (laneTargetY(b.lane, b.x + 1) - laneTargetY(b.lane, b.x - 1)) / 2;
+    const want = dir > 0 ? Math.atan2(slope, 1) : Math.atan2(-slope, -1), d = Math.atan2(Math.sin(want - b.a), Math.cos(want - b.a));
+    b.a += d * Math.min(1, 8 * dt);
+  }
 }
 // a free lane beside b, same direction, with room to pull into; null when there is none
 function overtakeLane(b: Loose): Loose {
@@ -2099,6 +2155,7 @@ function drawGround() {
     ctx.fillStyle = '#c9a36a'; ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = '#ff922b'; ctx.lineWidth = 4; ctx.setLineDash([14, 8]); ctx.strokeRect(x + 4, y + 4, w - 8, h - 8); ctx.setLineDash([]);
   }
+  if (st.roundabout) drawRoundaboutGround(st);
   // the marks on the road: scorch, oil, skids. In play they are painted once, as they appear, on a
   // layer that each frame only copies; the replay, which shows them as they were at each moment,
   // paints them all every frame
@@ -2182,7 +2239,7 @@ function drawRamp() {
   }
 }
 function drawBarrier(S: Loose) {
-  if (S.kind === 'bound' || S.kind === 'tunnel') return; // invisible walls (the tunnels are drawn over the city)
+  if (S.kind === 'bound' || S.kind === 'tunnel' || S.kind === 'island') return; // invisible walls (the tunnels are drawn over the city; the island on the ground)
   if (S.ref && S.ref.monument) return; // a monument's collider, standing or fallen: the monument draws itself
   if (S.kind === 'median') { // a long concrete barrier with reflectors
     prism([[S.x - S.hl, S.y - S.hw], [S.x + S.hl, S.y - S.hw], [S.x + S.hl, S.y + S.hw], [S.x - S.hl, S.y + S.hw]], 0, S.h, '#ced4da', '#adb5bd');
@@ -2277,10 +2334,10 @@ function drawWorld() {
     }
   }
   drawParts(false);
-  const blocks = st.blocks.filter((S: Loose) => visible(S, 260));
+  const blocks = st.blocks.filter((S: Loose) => visible(S, 260)).concat(st.arc ? [st.arc] : []);
   const d = (S: Loose) => { const p = P(S.x, S.y, 0); return (p[0] - VP[0]) ** 2 + (p[1] - VP[1]) ** 2; };
   blocks.sort((a: Loose, b: Loose) => d(b) - d(a));
-  for (const S of blocks) drawBuilding(S);
+  for (const S of blocks) S.kind === 'arc' ? drawArc(S) : drawBuilding(S);
   for (const c of st.cranes) c.monument === 'eiffel' ? drawEiffel(c) : c.monument === 'bigben' ? drawBigBen(c) : drawCrane(c);
   drawTunnels();
   for (const b of air) { drawShadow(b); }
@@ -2619,14 +2676,14 @@ function drawWheelCard(i: Loose, k: Loose) {
 // ---- The countries: the home screen picks one, then its levels' wheel ---------------------
 // Only France is ready: its 19 levels are the game's. The others show as "soon".
 const COUNTRIES: Loose[] = [
-  { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: true, after: 'fr' },
+  { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: true, after: 'fr', afterLevel: 19 },
   { id: 'jp', name: 'Japon', ready: false }, { id: 'us', name: 'États-Unis', ready: false }, { id: 'br', name: 'Brésil', ready: false },
 ];
 let countryIdx = 0, homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
 /** A country is open once the one before it has a star on its last level (France always is). */
 function countryOpen(c: Loose): boolean {
   if (!c.after) return true;
-  const last = LEVELS_BY[c.after].length, b = (progressOf(c.after).best || [])[last - 1] || 0;
+  const last = c.afterLevel || LEVELS_BY[c.after].length, b = (progressOf(c.after).best || [])[last - 1] || 0;
   return starsAt(b, levelTargets(last, tune, PREFIX[c.after])) >= 1;
 }
 /** A country's flag, flat, in the box x, y, w, h. */
@@ -2662,7 +2719,7 @@ function goHome() {
 function enterCountry() {
   const c = COUNTRIES[countryIdx];
   if (!c.ready) { homeMsg = 'Bientôt disponible !'; homeMsgT = 2; tone(180, 0.2, 'triangle', 0.2); return; }
-  if (!countryOpen(c)) { homeMsg = `Finis le niveau ${LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name} avec au moins une étoile`; homeMsgT = 2.5; tone(180, 0.2, 'triangle', 0.2); return; }
+  if (!countryOpen(c)) { homeMsg = `Finis le niveau ${c.afterLevel || LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name} avec au moins une étoile`; homeMsgT = 2.5; tone(180, 0.2, 'triangle', 0.2); return; }
   if (c.id !== country) { storeCountry(); loadCountry(c.id); levelIdx = Math.max(0, unlocked - 1); wheelPos = levelIdx; }
   applyCountryModels(country); daily = false; reset(); scene = 'title'; tone(660, 0.12, 'square', 0.15);
 }
@@ -2749,7 +2806,7 @@ const scenes: Loose = {
           text(`${LEVELS_BY[c.id].length} niveaux`, mx, r.y + 250, 15, '#d0c8f0', 'center', 'bold');
         } else if (c.ready) { // ready but still locked: what opens it
           padlock(mx, r.y + 190, 1, '#8a80a8');
-          text(`Niveau ${LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name}`, mx, r.y + 232, 14, '#ffc83d', 'center', 'bold');
+          text(`Niveau ${c.afterLevel || LEVELS_BY[c.after].length} de ${COUNTRIES.find((o: Loose) => o.id === c.after).name}`, mx, r.y + 232, 14, '#ffc83d', 'center', 'bold');
           text('avec une étoile', mx, r.y + 252, 14, '#ffc83d', 'center', 'bold');
         } else {
           padlock(mx, r.y + 196, 1, '#8a80a8');

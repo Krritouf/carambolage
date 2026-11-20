@@ -248,3 +248,9 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
 - `nessie_push`, `nessie_lift`: px/s a vehicle it meets is thrown aside and up
 - `nessie_damage`: € a second to a vehicle in its sweep
 - `tea_time`: s the traffic stays stopped at tea time (a United Kingdom event, levels 4 on)
+
+## The roundabout (France's level 20, la place de l'Étoile)
+
+- `threshold_20`, `star2_20`, `star3_20`: its 1, 2 and 3-star scores, 12 % above level 19's until the autopilot measures them
+- `rb_island`: px, the island's radius (the ring's lanes go round it)
+- `value_arc`: € the Arc de Triomphe is worth; it takes the hits like a shop and falls once it has taken them all

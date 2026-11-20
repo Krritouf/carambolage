@@ -41,6 +41,7 @@ const EN: Record<string, string> = {
   'Berlinette': 'Coupé', 'Camionnette jaune': 'Yellow van', 'Camion du boulanger': "Baker's truck", 'Routier': 'Big rig',
   'CHOISIS TON PAYS': 'PICK YOUR COUNTRY',
   'avec une étoile': 'with a star',
+  "La place de l'Étoile": 'Place de l\'Étoile', 'Arc de Triomphe': 'Arc de Triomphe', 'ARC DE TRIOMPHE': 'ARC DE TRIOMPHE',
   'Pub': 'Pub', 'PUB': 'PUB', 'Salon de thé': 'Tea room', 'SALON DE THÉ': 'TEA ROOM', 'Petite anglaise': 'Little British car', 'Fourgon rouge': 'Red van', 'Camion de livraison': 'Delivery lorry',
   // the United Kingdom's levels
   'Piccadilly': 'Piccadilly', 'Oxford Street': 'Oxford Street', 'Le pont de Londres': 'London Bridge', "L'heure de pointe à la City": 'Rush hour in the City',

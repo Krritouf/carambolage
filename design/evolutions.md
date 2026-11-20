@@ -48,7 +48,9 @@ Retenu en priorité :
   les tracteurs (épaves qui comptent au score), plus un bonus « COMBO JURASSIQUE ! » (`combo_bonus`).
   Idée à reprendre pour chaque pays : le gadget du pays a un combo avec le T-Rex.
 - **La boule de pétanque géante** (gadget) : elle dévale le boulevard et fait un carreau dans les voitures.
-- **Le rond-point** : certains niveaux remplacent le carrefour par un rond-point. La circulation tourne,
+- **Le rond-point** — **fait (2026-11-20)** : le niveau 20 de France, la place de l'Étoile, avec l'Arc de Triomphe
+  sur l'îlot (destructible, gros bonus). Spécialité française (pas au Royaume-Uni). Idée d'origine :
+  certains niveaux remplacent le carrefour par un rond-point. La circulation tourne,
   les angles de choc changent, le carambolage se propage en cercle. Change le gameplay, pas que le décor.
 
 En complément :

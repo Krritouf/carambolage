@@ -7,8 +7,8 @@ import { countriesFromSave, LEVEL_ORDER, migrateLevels } from '../../src/game/sa
 const ORDER = [1, 3, 2];
 
 describe('LEVEL_ORDER', () => {
-  it('names every level exactly once', () => {
-    expect([...LEVEL_ORDER].sort((a, b) => a - b)).toEqual(levels.map((_: unknown, i: number) => i + 1));
+  it('names every level that existed at the reorder exactly once (the 19 before level 20 came)', () => {
+    expect([...LEVEL_ORDER].sort((a, b) => a - b)).toEqual(levels.slice(0, 19).map((_: unknown, i: number) => i + 1));
   });
 });
 

@@ -239,7 +239,7 @@ function chalProgress(c: Loose, live: Loose) {
 let best: number[] = LEVELS.map(() => 0), unlocked = 1;
 // the garage: vehicles owned, the one at the wheel, and each vehicle's own upgrades and gadgets (gear[car][item] = level)
 let up: Loose = { cars: ['sport'], car: 'sport', gear: {} }, spent = 0;
-const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, farmers: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
+const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, farmers: 0, nessie: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
 function G() { // what the vehicle at the wheel has, every item at 0 until bought
   const g = up.gear[up.car] || (up.gear[up.car] = {});
   for (const k in GEAR0) if (typeof g[k] !== 'number') g[k] = 0;
@@ -397,7 +397,7 @@ function reset() {
     phase: 'intro', introT: tune.intro_time, timeLeft: tune.approach_time,
     crashed: false, crashT: 0, crashX: 0, crashY: 0, slowT: 0, countdown: 0, bannerT: 0,
     bodies: [], blocks: [], props: [], lanes: [], pickups: [], parts: [], floats: [], skids: [], blasts: [],
-    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
+    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, nessie: null, nessieUsed: false, combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
     nitroUsed: false, nitroT: 0, oilUsed: false, oilDropT: 0, oilLX: 0, oilLY: 0, jumpsLeft: 0, magnetT: 0, chal: [], stars: 0, insK: 1, rockets: [], rocketsLeft: 0, touchedOnce: false, trailer: null, oils: [], oilGrid: new Map(), scorch: [], controlT: 0, dynUsed: false, passed: false, final: 0, endReason: '',
   };
   state = st;
@@ -1028,7 +1028,16 @@ function updatePlay(dt: Loose) {
     st.floats.push({ x: p.x, y: p.y, txt: 'AGRICULTEURS PAS CONTENTS !', t: 0, color: '#ffa94d', big: true });
     honk(); events.push({ type: 'farmers', t: st.t });
   }
+  // the loch monster (C, the United Kingdom): it surfaces in the middle of the crossroads and sweeps the boulevard
+  if (G().nessie && country === 'uk' && !st.nessieUsed && pressed('KeyC') && (st.phase === 'drive' || st.phase === 'crash')) {
+    st.nessieUsed = true; startPileup(0, 0);
+    st.nessie = { t: 0, a0: Math.atan2(p.y, p.x) + Math.PI / 2, a: 0, hit: new Set() }; // it starts a quarter turn from the player's car
+    st.nessie.a = st.nessie.a0;
+    st.floats.push({ x: p.x, y: p.y, txt: 'LE MONSTRE DU LOCH !', t: 0, color: '#38d9a9', big: true });
+    roar(); events.push({ type: 'nessie', t: st.t });
+  }
   if (st.trex) stepTrex(st.trex, sdt);
+  if (st.nessie) stepNessie(st.nessie, sdt);
   if (st.farmers) stepFarmers(st.farmers, sdt);
   if (st.trex && st.farmers && !st.combo && trexMeetsFarmers(st.trex, st.farmers)) jurassicCombo(st.trex, st.farmers);
   for (const c of st.cranes) if (c.falling && !c.fallen) stepCrane(c, sdt);
@@ -1139,7 +1148,7 @@ function updatePlay(dt: Loose) {
     if (st.recTick % 2 === 0 && st.replay.length < 700) {
       const fr: Loose[] = []; for (const b of st.bodies) if (Math.abs(b.x - st.crashX) < 1500 && Math.abs(b.y - st.crashY) < 900) fr.push(snap(b));
       st.replay.push({ bodies: fr, fx: st.fxPending.splice(0), oilSeq: st.oilSeq, skidSeq: st.skidSeq, scorchN: st.scorch.length,
-        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t } : null, farmers: st.farmers ? { x: st.farmers.x, y: st.farmers.y, t: st.farmers.t } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
+        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t } : null, farmers: st.farmers ? { x: st.farmers.x, y: st.farmers.y, t: st.farmers.t } : null, nessie: st.nessie ? { t: st.nessie.t, a: st.nessie.a } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
     }
   }
   // the countdown from the first impact; the damage is counted when it reaches zero
@@ -1366,6 +1375,67 @@ function farmersIcon(x: number, y: number, k: number) { // a tractor in profile
   poly([[-13, -21], [-1, -21], [-1, -10], [-13, -10]], '#a5d8ff'); poly([[10, -16], [13, -16], [13, -4], [10, -4]], '#495057');
   ctx.fillStyle = '#1d1a26'; ctx.beginPath(); ctx.arc(-10, 8, 12, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(15, 12, 7, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#ffc83d'; ctx.beginPath(); ctx.arc(-10, 8, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(15, 12, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+// ---- The loch monster (the United Kingdom's gadget) ----------------------------------------------
+// It rises out of the middle of the crossroads, sweeps one full turn with its long humped body,
+// throwing every vehicle it meets up and aside, then dives. Like the farmers, it spares the buildings.
+function nessieAngle(ns: Loose) { // where its body points: still while it rises, a full turn, still while it dives
+  const k = Math.max(0, Math.min(1, (ns.t - tune.nessie_rise) / tune.nessie_sweep));
+  return ns.a0 + k * Math.PI * 2;
+}
+function nessieUp(ns: Loose) { // how far out of the water it is, 0 to 1
+  const end = tune.nessie_rise + tune.nessie_sweep;
+  return Math.max(0, Math.min(1, ns.t / tune.nessie_rise, (end + tune.nessie_rise - ns.t) / tune.nessie_rise));
+}
+function stepNessie(ns: Loose, dt: number) {
+  const st = state;
+  ns.t += dt; const prev = ns.a; ns.a = nessieAngle(ns);
+  if (ns.t > tune.nessie_rise * 2 + tune.nessie_sweep) { st.nessie = null; return; }
+  if (ns.a === prev) return; // rising or diving: it doesn't hit
+  st.shake = Math.min(26, st.shake + 0.4);
+  const c = Math.cos(ns.a), sn = Math.sin(ns.a), L = tune.nessie_len, hw = tune.nessie_width / 2;
+  for (const b of st.bodies) {
+    if (b.z > 60) continue;
+    const along = b.x * c + b.y * sn, across = -b.x * sn + b.y * c; // in the body's frame
+    if (along < 20 || along > L + b.hl || Math.abs(across) > hw + b.hw + 10) continue;
+    const tx = -sn, ty = c; // the way the body sweeps
+    b.vx = tx * tune.nessie_push + c * 60; b.vy = ty * tune.nessie_push + sn * 60; b.vz = Math.max(b.vz, tune.nessie_lift);
+    b.w += (rng() - 0.5) * 6;
+    if (isMine(b)) { if (b.control) { crash(b.x, b.y); b.control = false; b.loose = true; st.controlT = 0; } continue; }
+    b.inv = true; loosen(b); hurt(b, tune.nessie_damage * dt, b.x, b.y);
+    if (!ns.hit.has(b)) { ns.hit.add(b); crunch(0.25); }
+  }
+}
+function drawNessie(ns: Loose) {
+  const up = nessieUp(ns), a = ns.a === undefined ? nessieAngle(ns) : ns.a, c = Math.cos(a), sn = Math.sin(a), L = tune.nessie_len;
+  const at = (r: number, z: number) => [c * r, sn * r, z * up];
+  // the dark water it comes out of
+  const w0 = P(0, 0, 0); ctx.fillStyle = 'rgba(20,60,90,0.75)'; ctx.beginPath(); ctx.ellipse(w0[0], w0[1], 70 * cam.zoom * Math.max(0.3, up), 46 * cam.zoom * Math.max(0.3, up), 0, 0, Math.PI * 2); ctx.fill();
+  const green = '#2f9e83', dark = '#1e6b59';
+  // the humps along its back, out from the middle
+  for (let k = 0; k < 4; k++) {
+    const r0 = 40 + k * (L - 80) / 4, r1 = r0 + (L - 80) / 4 * 0.8, n = 6;
+    for (let i = 0; i < n; i++) {
+      const u0 = i / n, u1 = (i + 1) / n, h0 = Math.sin(u0 * Math.PI) * 30, h1 = Math.sin(u1 * Math.PI) * 30;
+      beam(at(r0 + (r1 - r0) * u0, h0), at(r0 + (r1 - r0) * u1, h1), 22, i % 2 ? green : dark);
+    }
+  }
+  // the neck and the head at the far end
+  beam(at(L - 50, 0), at(L - 20, 60), 18, green); beam(at(L - 20, 60), at(L, 70), 16, green);
+  const h = P(...(at(L + 6, 72) as [number, number, number]));
+  ctx.fillStyle = green; ctx.beginPath(); ctx.ellipse(h[0], h[1], 16 * cam.zoom, 11 * cam.zoom, a, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(h[0] + 4 * cam.zoom, h[1] - 4 * cam.zoom, 3 * cam.zoom, 0, Math.PI * 2); ctx.fill();
+  // spray where it cuts the road
+  ctx.fillStyle = 'rgba(200,235,255,0.6)';
+  for (let k = 1; k < 6; k++) { const q = P(c * (L * k / 6) - sn * 18, sn * (L * k / 6) + c * 18, 4); ctx.beginPath(); ctx.arc(q[0], q[1], 5 * cam.zoom * up, 0, Math.PI * 2); ctx.fill(); }
+}
+function nessieIcon(x: number, y: number, k: number) { // three humps and a head out of the water
+  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+  ctx.fillStyle = '#4dabf7'; ctx.fillRect(-26, 8, 52, 6);
+  ctx.fillStyle = '#2f9e83';
+  for (const o of [-16, -2]) { ctx.beginPath(); ctx.arc(o, 8, 7, Math.PI, 0); ctx.fill(); }
+  ctx.beginPath(); ctx.moveTo(10, 8); ctx.lineTo(14, -12); ctx.lineTo(22, -14); ctx.lineTo(24, -9); ctx.lineTo(18, -8); ctx.lineTo(17, 8); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 function trexIcon(x: number, y: number, k: number) { // a T-Rex head in profile, jaws open
@@ -2208,6 +2278,7 @@ function drawWorld() {
   for (const b of air) drawVehicle(b);
   for (const r of st.rockets || []) drawRocket(r);
   if (st.farmers) drawFarmers(st.farmers);
+  if (st.nessie) drawNessie(st.nessie);
   if (st.trex) drawTrex(st.trex); // after the tractors: the T-Rex, far taller, steps over them
   drawParts(true);
   if (NIGHT) { // the dark, then headlight beams added on top
@@ -2324,6 +2395,7 @@ function drawHUD() {
   if (st.rocketsLeft > 0) gearHud.push([rocketIcon, 'F : ROQUETTE ×' + st.rocketsLeft, '#9fd3ff']);
   if (G().trex && !st.trexUsed) gearHud.push([trexIcon, 'T : APPEL DU JURASSIQUE', '#b4e33d']);
   if (G().farmers && country === 'fr' && !st.farmersUsed) gearHud.push([farmersIcon, 'C : TRACTEURS', '#ffa94d']);
+  if (G().nessie && country === 'uk' && !st.nessieUsed) gearHud.push([nessieIcon, 'C : MONSTRE DU LOCH', '#38d9a9']);
   if (st.phase !== 'intro' && !TOUCH) gearHud.forEach(([ic, label, c]: Loose, i: Loose) => {
     const y = 130 + i * 44;
     panel(W - 236, y, 220, 38); ic(W - 206, y + 19, 0.7); text(label, W - 112, y + 19, 15, c, 'center', 'bold');
@@ -2427,6 +2499,8 @@ const GARAGE = [
     desc: () => `+${tune.rocket2_extra} roquettes par course` },
   { id: 'trex', name: 'Appel du jurassique', max: 1, icon: trexIcon, cost: () => tune.trex_cost,
     desc: () => 'T : un T-Rex traverse le boulevard, écrase les véhicules et ébranle les commerces (lance le compte à rebours)' },
+  { id: 'nessie', name: 'Le monstre du loch', max: 1, icon: nessieIcon, cost: () => tune.nessie_cost, country: 'uk',
+    desc: () => 'C : un monstre surgit au milieu du carrefour et balaie le boulevard d\'un tour de queue' },
   { id: 'farmers', name: 'Agriculteurs pas contents', max: 1, icon: farmersIcon, cost: () => tune.farmers_cost, country: 'fr',
     desc: () => 'C : des tracteurs déboulent par la gauche, bousculent tout et sèment du foin, sans toucher aux bâtiments' },
 ];
@@ -2440,7 +2514,7 @@ const rowY = (i: number) => 200 + i * rowH();
 const GARAGE_BY = Object.fromEntries(GARAGE.map((g: Loose) => [g.id, g]));
 const TABS: Loose = [
   { name: 'AMÉLIORATIONS', items: ['engine', 'bullbar', 'armor', 'extratime', 'extratime2', 'insurance', 'magnet'] },
-  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex', 'farmers'] }, // an item with a country shows only in it
+  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex', 'farmers', 'nessie'] }, // an item with a country shows only in it
   { name: 'VÉHICULES', cars: true },
 ];
 const carStars = (id: Loose) => id === 'sport' ? 0 : tune['my_stars_' + id]; // stars it takes to unlock a vehicle
@@ -2946,11 +3020,11 @@ const scenes: Loose = {
       const st = state, f = st.replay[st.rp.idx] || st.replay[0], live = st.bodies, oils = st.oils, skids = st.skids, scorch = st.scorch;
       // the road as it was at that moment: only the oil, skid marks and scorches made so far
       st.bodies = f.bodies; st.oils = oils.filter((o: Loose) => o.seq <= f.oilSeq); st.skids = skids.filter((k: Loose) => k[4] <= f.skidSeq); st.scorch = scorch.slice(0, f.scorchN);
-      const trex = st.trex, farmers = st.farmers, thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
-      st.trex = f.trex; st.farmers = f.farmers || null; st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
+      const trex = st.trex, farmers = st.farmers, nessie = st.nessie, thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
+      st.trex = f.trex; st.farmers = f.farmers || null; st.nessie = f.nessie || null; st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
       st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = f.shops[i]; });
       try { drawWorld(); } finally {
-        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex; st.farmers = farmers;
+        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex; st.farmers = farmers; st.nessie = nessie;
         st.cranes.forEach((c: Loose, i: number) => { [c.theta, c.falling] = thetas[i]; }); st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = shops[i]; });
       }
       ctx.fillStyle = '#0b0818'; ctx.fillRect(0, 0, W, 54); ctx.fillRect(0, H - 54, W, 54);
@@ -3010,6 +3084,7 @@ function drawTouch() {
       let ry = gy;
       if (G().trex && !st.trexUsed) { gadget(W - 206, ry, 'T-REX', 'KeyT', trexIcon, 'rgba(60,120,30,0.85)'); ry += gh + 8; }
       if (G().farmers && country === 'fr' && !st.farmersUsed) gadget(W - 206, ry, 'TRACTEURS', 'KeyC', farmersIcon, 'rgba(170,90,20,0.85)');
+      if (G().nessie && country === 'uk' && !st.nessieUsed) gadget(W - 206, ry, 'MONSTRE', 'KeyC', nessieIcon, 'rgba(20,120,110,0.85)');
     }
   }); else if (scene === 'title') {
     for (let i = 0; i < LEVELS.length; i++) { // tap the facing card to play, a side card to turn the wheel to it

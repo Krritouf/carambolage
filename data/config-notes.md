@@ -239,3 +239,11 @@ Old garage prices kept only to refund them: `nitro_cost`, `oilcan_cost`, `jump_c
   12 % above France's 19. To measure again with the autopilot.
 - `value_pub`, `value_salon`, `shop_w_pub`, `shop_w_salon`: London's pub and tea room, which take the bakery's
   and the butcher's place (and value, and weight) in the United Kingdom
+
+## The loch monster (the United Kingdom's gadget, key C)
+
+- `nessie_cost`: € in the garage (the sports car's price; x my_price_* for the others)
+- `nessie_rise`, `nessie_sweep`: s it takes to rise (and to dive), s for its one full turn
+- `nessie_len`, `nessie_width`: px its body reaches from the middle of the crossroads, px wide
+- `nessie_push`, `nessie_lift`: px/s a vehicle it meets is thrown aside and up
+- `nessie_damage`: € a second to a vehicle in its sweep

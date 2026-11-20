@@ -32,3 +32,26 @@ test('Big Ben falls across the boulevard and scores its value', async ({ page })
   expect(r.said).toBe(true);
   expect(r.gained).toBeGreaterThan(0);
 });
+
+test('the loch monster rises in the middle, sweeps one turn throwing the traffic up, and dives', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('carambolage', JSON.stringify({ lv: 3, countries: { uk: { unlocked: 20, up: { cars: ['sport'], car: 'sport', gear: { sport: { nessie: 1 } } } } } })));
+  await openUkLevel(page, 4);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    g.press('KeyC'); g.step(1, false);
+    const started = !!st.nessie, pileup = st.crashed;
+    let n = 0, thrown = 0; const seen = new Set();
+    while (st.nessie && g.scene === 'play' && n++ < 2000) { g.step(1, false); for (const b of st.bodies) if (b.z > 20 && b !== st.player && !seen.has(b)) { seen.add(b); thrown++; } }
+    return { started, pileup, gone: !st.nessie, thrown, damage: st.damage, shopsHurt: st.shops.filter((S: any) => S.dmg > 0).length };
+  });
+  expect(r).toMatchObject({ started: true, pileup: true, gone: true });
+  expect(r.thrown).toBeGreaterThan(3);
+  expect(r.damage).toBeGreaterThan(0);
+});
+
+test('the loch monster is the United Kingdom\'s: in France, C with it bought does nothing', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('carambolage', JSON.stringify({ lv: 3, countries: { fr: { unlocked: 19, up: { cars: ['sport'], car: 'sport', gear: { sport: { nessie: 1 } } } } } })));
+  await page.goto(build('manual=1&seed=7&scene=play&drive&level=4'));
+  await expect.poll(() => page.evaluate(() => typeof window.game?.step)).toBe('function');
+  expect(await page.evaluate(() => { const g = window.game!; g.press('KeyC'); g.step(1, false); return !!(g.state as any).nessie; })).toBe(false);
+});

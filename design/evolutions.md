@@ -206,8 +206,59 @@ courts, avec notre propre style.
   cible qui bouge) ? Et même **les garder dans le jeu** ? À revoir, avec l'idée du bouchon de
   champagne prévue pour la France à leur place.
 
+## Le frein sur téléphone et les obstacles dans la rue (idée du 2026-11-20)
+
+Sur téléphone la voiture accélère seule : la rue n'est qu'une ligne droite où l'on vise. Avec un
+**frein**, elle devient une épreuve de timing, et des **obstacles avant le carrefour** rendent le défi
+plus grand. Le compte à rebours de la rue (22 s) fait déjà la tension : freiner coûte du temps.
+
+**Le frein** (sur ordinateur il existe déjà : Bas / S). Où le mettre sur téléphone :
+- **recommandé : maintenir le doigt au milieu de l'écran**, la grande zone libre entre GAUCHE et
+  DROITE ; impossible à rater, ne masque rien ; un petit « FREIN » discret au centre ;
+- autres options écartées : GAUCHE + DROITE ensemble (pas intuitif, empêche de braquer en freinant),
+  un bouton FREIN au-dessus de DROITE (un pouce de plus à déplacer).
+
+**Les règles des obstacles :**
+- **toujours annoncés** (feux qui clignotent, sonnerie, barrières qui descendent ~2 s avant) : on les
+  évite en regardant, pas par chance ;
+- **un choc compte** (contrairement aux maisons frôlées dans la rue, sans conséquence) : proposé, il
+  déclenche le carambolage sur place, dans la rue, avec peu de véhicules autour (un « carambolage
+  raté » qui rapporte peu, sans écran d'échec brutal) — à décider ;
+- **le pilote automatique** (`tools/balance/`) doit apprendre à freiner et à attendre, sinon les
+  seuils de ces niveaux ne se mesurent plus ;
+- le test des bonus (`tests/unit/levels.test.ts`) devra aussi vérifier qu'aucun bonus n'est sous un
+  obstacle ;
+- règle des 7 ans et plus : **pas de passage piéton à feu** (il suppose des piétons), ni d'animaux.
+
+**Idées d'obstacles :**
+- le **passage à niveau** : un train qui passe à un moment aléatoire, feux, sonnerie, barrières ;
+- la **camionnette de livraison en double file** qui bouche une voie (cliché français) ;
+- des **travaux** qui rétrécissent la rue (cônes, une voie fermée) ;
+- un **bus** qui déboîte de son arrêt ;
+- un **tram** qui traverse la rue (France) ;
+- un **pont-levis** qui se lève (Royaume-Uni, plus tard : le Tower Bridge).
+
+## Plus de ronds-points en France (idée du 2026-11-20)
+
+Le rond-point (fait : le niveau 20, la place de l'Étoile) devient une mécanique courante en France :
+**entre un niveau sur deux et un sur trois**.
+
+- **Recommandé : un sur trois**, les niveaux 3, 6, 9, 12, 15, 18 plus la finale à l'Étoile (7 sur 20).
+  À un sur deux, le carrefour classique deviendrait l'exception.
+- **Varier les ronds-points** : la taille de l'anneau (2 à 5 voies), et ce qu'il y a au centre. Le
+  cliché parfait : **les sculptures bizarres des ronds-points français** (un escargot géant, une
+  énorme bicyclette, une théière géante…), chacune destructible avec son bonus ; l'Arc de Triomphe
+  reste réservé à l'Étoile.
+- **Tremplin + rond-point** : on décolle de la rue et on vole au-dessus de l'anneau ; au moins un niveau.
+- Le rond-point reste français (décision du 2026-11-20 : pas au Royaume-Uni).
+- Chaque niveau converti change de score : **seuils à remesurer** avec le pilote automatique.
+
 ## Autres pistes
 
-- Un **20ᵉ niveau** pour un compte rond (le jeu en a 19).
+- ~~Un **20ᵉ niveau** pour un compte rond~~ — fait : la place de l'Étoile (France).
 - Le **bouton « Effacer la sauvegarde »** des réglages (commit `09d673b`) : à garder ou non pour la
   version publiée, à décider.
+- **Recalibrer tous les seuils** avec le pilote automatique : le plafond de 280 véhicules (les derniers
+  niveaux), le Royaume-Uni, le niveau 20, les tracteurs, le monstre et le combo jurassique ont changé
+  les scores depuis la dernière mesure.
+- **Un combo par pays** entre son gadget et le T-Rex (comme le combo jurassique en France).

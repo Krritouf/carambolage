@@ -22,3 +22,6 @@
 - path: assets/icon-background.png
   origin: code
   tool: "tools/brand/art.html?what=bg, shot at 1024 x 1024 (the adaptive icon's background)"
+- path: assets/apple-touch-icon.png
+  origin: code
+  tool: "copy of android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png (192 x 192, made by npm run android:assets): the iPhone home-screen icon"

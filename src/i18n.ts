@@ -52,7 +52,12 @@ const EN: Record<string, string> = {
   'La relève de la garde': 'The changing of the guard', 'Le grand final royal': 'The royal grand finale', 'France': 'France', 'Royaume-Uni': 'United Kingdom', 'Japon': 'Japan',
   'États-Unis': 'United States', 'Brésil': 'Brazil', 'BIENTÔT': 'SOON', 'Bientôt disponible !': 'Coming soon!',
   'Entrée ou clic : choisir': 'Enter or click: choose', 'Gauche / Droite : changer de pays': 'Left / Right: change country',
-  'JOUER': 'PLAY', 'PLEIN ÉCRAN': 'FULL SCREEN', 'RÉGLAGES': 'SETTINGS', "Tourne ton téléphone à l'horizontale": 'Turn your phone sideways',
+  'JOUER': 'PLAY', 'PLEIN ÉCRAN': 'FULL SCREEN',
+  'PLEIN ÉCRAN SUR IPHONE': 'FULL SCREEN ON IPHONE', 'Safari ne permet pas le plein écran à une page web.': "Safari doesn't let a web page go full screen.",
+  "Ajoute le jeu à l'écran d'accueil :": 'Add the game to your Home Screen:', '1. Touche Partager': '1. Tap Share',
+  "2. Choisis « Sur l'écran d'accueil »": '2. Choose "Add to Home Screen"',
+  "3. Ouvre Carambolage depuis l'écran d'accueil : il sera en plein écran": '3. Open Carambolage from the Home Screen: it plays full screen',
+  'Touche pour fermer': 'Tap to close', 'RÉGLAGES': 'SETTINGS', "Tourne ton téléphone à l'horizontale": 'Turn your phone sideways',
   // settings
   'Son': 'Sound', 'Activé': 'On', 'Désactivé': 'Off', 'Vibrations': 'Vibration', 'Activées': 'On', 'Désactivées': 'Off',
   'Langue': 'Language', 'Français': 'Français', 'English': 'English',

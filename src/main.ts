@@ -110,8 +110,14 @@ touchMode = TOUCH; fit();
 // Full screen and landscape: asked on the first tap (a browser only allows it from a tap), and from a button
 const fsAPI = () => NATIVE || params.get('app') === '1' ? null : document.documentElement.requestFullscreen || (document.documentElement as Loose).webkitRequestFullscreen;
 const isFull = () => !!(document.fullscreenElement || (document as Loose).webkitFullscreenElement);
-let fsTried = false;
+// An iPhone: Safari gives a page no full screen at all; the only way is "Add to Home Screen",
+// so the button explains that instead (until the game is opened from the home screen)
+const IOS_NOFS = !NATIVE && params.get('app') !== '1' && (/iPhone|iPod/.test(navigator.userAgent) || params.get('ios') === '1')
+  && !(document.fullscreenEnabled || (document as Loose).webkitFullscreenEnabled) && !(navigator as Loose).standalone && !matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+const showFsButton = () => !isFull() && (!!fsAPI() || IOS_NOFS);
+let fsTried = false, iosHelp = false;
 function goFullscreen() {
+  if (IOS_NOFS) { iosHelp = true; return; }
   const req = fsAPI(); if (!req || isFull()) return;
   try {
     const pr = req.call(document.documentElement, { navigationUI: 'hide' });
@@ -133,7 +139,8 @@ canvas.addEventListener('pointerdown', (e: Loose) => {
     return;
   }
   e.preventDefault(); startAudio();
-  if (!fsTried) { fsTried = true; goFullscreen(); }
+  if (iosHelp) { iosHelp = false; return; } // a tap anywhere closes the iPhone help
+  if (!fsTried) { fsTried = true; if (!IOS_NOFS) goFullscreen(); } // the iPhone shows its help only from the button
   swipe = { id: e.pointerId, x, tap: null };
   for (let i = btns.length - 1; i >= 0; i--) {
     const b = btns[i];
@@ -3168,7 +3175,9 @@ function drawTouch() {
     button(W / 2 - 218, 590, 210, 66, `GARAGE ${money(credit())}`, 'KeyU', { size: 17 });
     button(W / 2 + 4, 590, 220, 66, 'CARAMBOLAGE DU JOUR', 'KeyD', { size: 14, bg: 'rgba(160,20,90,0.85)' });
     button(W / 2 + 236, 590, 204, 66, 'RÉGLAGES', 'KeyO', { size: 18 });
-    if (fsAPI() && !isFull()) button(W - 372, 24, 256, 58, 'PLEIN ÉCRAN', 'Fullscreen', { size: 20 });
+    if (showFsButton()) button(W - 372, 24, 256, 58, 'PLEIN ÉCRAN', 'Fullscreen', { size: 20 });
+  } else if (scene === 'countries') {
+    if (showFsButton()) button(W - 372, 24, 256, 58, 'PLEIN ÉCRAN', 'Fullscreen', { size: 20 });
   } else if (scene === 'garage') {
     const n = TABS[garageTab].cars ? CARS.length : tabItems(TABS[garageTab]).length;
     for (let i = 0; i < n; i++) btns.push({ x: W / 2 - 420, y: rowY(i), w: 840, h: rowH() - 6, code: 'Row' + i, hold: false });
@@ -3188,6 +3197,24 @@ function drawTouch() {
     ctx.fillStyle = 'rgba(27,21,48,0.85)'; ctx.fillRect(0, H / 2 - 60, W, 120);
     text('Tourne ton téléphone à l\'horizontale', W / 2, H / 2, 40, '#ffc83d', 'center', 'bold', 6);
   }
+  if (iosHelp) drawIosHelp();
+}
+/** The iPhone's full-screen help: Share, then Add to Home Screen. A tap closes it. */
+function drawIosHelp() {
+  ctx.fillStyle = 'rgba(14,10,28,0.88)'; ctx.fillRect(0, 0, W, H);
+  panel(W / 2 - 440, H / 2 - 190, 880, 380);
+  text('PLEIN ÉCRAN SUR IPHONE', W / 2, H / 2 - 140, 34, '#ffc83d', 'center', 'bold italic', 6);
+  text("Safari ne permet pas le plein écran à une page web.", W / 2, H / 2 - 84, 20, '#fff', 'center', 'bold');
+  text("Ajoute le jeu à l'écran d'accueil :", W / 2, H / 2 - 54, 20, '#fff', 'center', 'bold');
+  // the Share icon: a box with an arrow out of it
+  const sx = W / 2 - 300, sy = H / 2 + 4;
+  ctx.strokeStyle = '#4aa8ff'; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(sx - 8, sy - 8); ctx.lineTo(sx - 18, sy - 8); ctx.lineTo(sx - 18, sy + 26); ctx.lineTo(sx + 18, sy + 26); ctx.lineTo(sx + 18, sy - 8); ctx.lineTo(sx + 8, sy - 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx, sy + 10); ctx.lineTo(sx, sy - 26); ctx.moveTo(sx - 10, sy - 16); ctx.lineTo(sx, sy - 26); ctx.lineTo(sx + 10, sy - 16); ctx.stroke();
+  text('1. Touche Partager', sx + 40, sy, 24, '#fff', 'left', 'bold');
+  text("2. Choisis « Sur l'écran d'accueil »", sx - 18, sy + 60, 24, '#fff', 'left', 'bold');
+  text("3. Ouvre Carambolage depuis l'écran d'accueil : il sera en plein écran", W / 2, sy + 120, 18, '#d0c8f0', 'center', 'bold');
+  text('Touche pour fermer', W / 2, H / 2 + 166, 16, '#ffc83d', 'center', 'bold');
 }
 function drawFrame() { btns.length = 0; scenes[scene].draw(); drawTouch(); if (SHOW_FPS) drawFps(); }
 // the frames-a-second counter, for testing only: ?fps in the address, or window.SHOW_FPS set by a test page

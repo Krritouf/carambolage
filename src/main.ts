@@ -199,6 +199,8 @@ const PALETTE = ['#ff5e7a', '#2ec4b6', '#ffc83d', '#7b5cff', '#ff8fd0', '#19c37d
 const CAR_COLORS = ['#2f80ff', '#12b886', '#9b5de5', '#f1f3f5', '#ff922b', '#15aabf', '#e64980', '#82c91e'];
 // France's cars: as many colours as CAR_COLORS, so a seed draws the same traffic in either
 const CAR_COLORS_FR = ['#4d79c7', '#f1f3f5', '#c92a2a', '#f3d27a', '#8fbfa0', '#9aa0a6', '#e8590c', '#3b3a4a'];
+const CAR_COLORS_JP = ['#f1f3f5', '#ced4da', '#212529', '#96f2d7', '#74c0fc', '#ffec99', '#a61e4d', '#ffa8a8']; // pearl white, silver, black, mint, sky, cream, wine, pink
+const CAR_COLORS_US = ['#c92a2a', '#1f3a8a', '#212529', '#f1f3f5', '#adb5bd', '#2b8a3e', '#e8590c', '#7c5e3c']; // red, navy, black, white, silver, green, orange, brown
 const CAR_COLORS_UK = ['#1e5631', '#c92a2a', '#1f3a8a', '#f1f3f5', '#adb5bd', '#212529', '#d4a017', '#efe6cf']; // racing green, red, navy, white, silver, black, mustard, cream
 const KINDS: Loose = {
   player: { name: 'Ta voiture', l: 46, w: 23, h: 20 },
@@ -306,8 +308,11 @@ const MODELS: Loose = {
   ambulance: { name: 'Ambulance', l: 56, w: 25, h: 32, color: '#f8f9fa', draw: 'ambulance' },
   truck: { name: 'Camion', l: 92, w: 30, h: 34, color: '#ff2d2d', draw: 'truck' },
   semi: { name: 'Semi-remorque', l: 50, w: 30, h: 26, color: '#7b5cff', draw: 'tractor', trailer: true },
+  monster: { name: 'Monster truck', l: 60, w: 40, h: 44, color: '#7048e8', draw: 'monster', country: 'us' }, // drives over the small vehicles and crushes them
 };
 const CARS = Object.keys(MODELS);
+/** The garage's vehicles in the country being played: one with a country (the monster truck) only there. */
+const carsHere = () => CARS.filter(id => !MODELS[id].country || MODELS[id].country === country);
 // each country's names and paint for the garage's vehicles (same sizes and stats everywhere)
 const MODELS_BASE = Object.fromEntries(CARS.map(id => [id, { name: MODELS[id].name, color: MODELS[id].color }]));
 const COUNTRY_MODELS: Loose = {
@@ -315,6 +320,10 @@ const COUNTRY_MODELS: Loose = {
     truck: { name: 'Camion du boulanger', color: '#c92a2a' }, semi: { name: 'Routier', color: '#1f4fbf' } },
   uk: { sport: { name: 'Petite anglaise', color: '#c92a2a' }, van: { name: 'Fourgon rouge', color: '#d6222a' }, ambulance: { name: 'Ambulance', color: '#ffd43b' },
     truck: { name: 'Camion de livraison', color: '#1e5631' }, semi: { name: 'Routier', color: '#1f3a8a' } },
+  jp: { sport: { name: 'Petite sportive', color: '#f1f3f5' }, van: { name: 'Mini-van', color: '#74c0fc' }, ambulance: { name: 'Ambulance', color: '#f8f9fa' },
+    truck: { name: 'Camion de livraison', color: '#1c7ed6' }, semi: { name: 'Routier', color: '#e03131' } },
+  us: { sport: { name: 'Muscle car', color: '#e03131' }, van: { name: 'Van', color: '#f1f3f5' }, ambulance: { name: 'Ambulance', color: '#f8f9fa' },
+    truck: { name: 'Poids lourd', color: '#c92a2a' }, semi: { name: 'Routier', color: '#1f3a8a' } },
 };
 /** Paints and names the garage's vehicles the way a country has them. */
 function applyCountryModels(id: string) {
@@ -565,10 +574,11 @@ function spawnOn(ln: Loose, x: Loose) {
   const kind = pickKind(state.lv.mix);
   // the country's paint: France has a Paris taxi, a green bus, the baker's truck; the United Kingdom
   // a black cab, a red double-decker, a yellow ambulance (the same random draws in every country)
-  const fr = country === 'fr', uk = country === 'uk', cars = fr ? CAR_COLORS_FR : uk ? CAR_COLORS_UK : CAR_COLORS;
+  const fr = country === 'fr', uk = country === 'uk', jp = country === 'jp', us = country === 'us';
+  const cars = fr ? CAR_COLORS_FR : uk ? CAR_COLORS_UK : jp ? CAR_COLORS_JP : us ? CAR_COLORS_US : CAR_COLORS;
   const color = kind === 'police' ? '#f8f9fa' : kind === 'ambulance' ? (uk ? '#ffd43b' : '#f8f9fa') : kind === 'fire' ? '#e8202a'
-    : kind === 'taxi' ? (fr ? '#2b2b33' : uk ? '#1d1d22' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : uk ? '#d6222a' : '#ff8a00') : kind === 'moto' ? '#26262e'
-    : kind === 'truck' ? (fr ? '#f3e3c3' : uk ? '#1e5631' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
+    : kind === 'taxi' ? (fr ? '#2b2b33' : uk ? '#1d1d22' : jp ? '#2f6f4e' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : uk ? '#d6222a' : jp ? '#f1f3f5' : us ? '#f5b800' : '#ff8a00') : kind === 'moto' ? '#26262e'
+    : kind === 'truck' ? (fr ? '#f3e3c3' : uk ? '#1e5631' : jp ? '#1c7ed6' : us ? '#c92a2a' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
   const b = mkBody(kind, x, ln.y, ln.dir > 0 ? 0 : Math.PI, color);
   for (const o of state.bodies) if (Math.abs(o.y - ln.y) < 20 && Math.abs(o.x - x) < o.hl + b.hl + 30) return false;
   if (ln.z) b.z = ln.z; // an avenue below the boulevard
@@ -642,6 +652,27 @@ function resolve(A: Loose, B: Loose, c: Loose) {
     B.vx -= tx * jt * B.invM; B.vy -= ty * jt * B.invM; B.w -= rbt * jt * B.invI;
   }
   return j;
+}
+// ---- The monster truck: it drives over the small vehicles -------------------------------------------------
+const CRUSHABLE: Loose = { car: 1, taxi: 1, moto: 1, police: 1, hay: 1 };
+/** The monster truck m meeting o: true when it drives over it instead of hitting it. Fast enough, a car, a taxi, a
+ *  motorbike or a police car is flattened (monster_crush_damage of its value, tread marks), the truck bucks up and
+ *  slows a little, and keeps the wheel: only a heavier vehicle or a wall takes it away. A flattened one it rolls over. */
+function monsterCrush(m: Loose, o: Loose): boolean {
+  if (o.static || !CRUSHABLE[o.kind] || o.z > m.z + 8) return false;
+  if (o.crushed) return true;
+  if (Math.hypot(m.vx, m.vy) < tune.monster_crush_speed) return false;
+  const st = state;
+  o.crushed = true; o.inv = true; loosen(o); o.height = Math.max(7, KINDS[o.kind].h * tune.monster_flat);
+  o.vx = o.vx * 0.3 + m.vx * 0.2; o.vy = o.vy * 0.3 + m.vy * 0.2; o.w *= 0.3;
+  if (!st.crashed) startPileup(o.x, o.y);
+  hurt(o, o.value * tune.monster_crush_damage, o.x, o.y);
+  m.vz = Math.max(m.vz, tune.monster_hop); m.vx *= tune.monster_slow; m.vy *= tune.monster_slow;
+  st.crushes = (st.crushes || 0) + 1; st.shake = Math.max(st.shake || 0, 6); crunch(0.35); buzz(tune.vibe_crash);
+  for (let i = 0; i < 6; i++) { const an = vr() * Math.PI * 2, sp = 60 + vr() * 140; addPart('spark', o.x, o.y, 10, Math.cos(an) * sp, Math.sin(an) * sp, 40 + vr() * 60, 0.25 + vr() * 0.2); }
+  if (!st.crushSaid || st.t - st.crushSaid > 1.2) { st.crushSaid = st.t; st.floats.push({ x: o.x, y: o.y, txt: 'ÉCRASÉE !', t: 0, color: '#b197fc', big: true }); }
+  events.push({ type: 'crush', t: st.t });
+  return true;
 }
 function loosen(b: Loose) { if (!b.static && b.ai) { b.ai = false; b.loose = true; } if (b.kind === 'player') b.loose = true; }
 // the pile-up starts: countdown, slow motion, the banner (the player's first contact, a rocket, the dynamite)
@@ -1045,6 +1076,7 @@ function physics(dt: Loose) {
       for (const k of bodyPairs(grid, bodies, i)) {
         const B = bodies[k];
         if (tr && ((A === pl && B === tr) || (A === tr && B === pl))) continue;
+        if (pl && pl.model === 'monster' && (A === pl || B === pl) && monsterCrush(pl, A === pl ? B : A)) continue; // driven over, not hit
         const rr = A.hl + B.hl; if (Math.abs(A.x - B.x) > rr || Math.abs(A.y - B.y) > rr) continue;
         if (A.z > B.height + B.z || B.z > A.height + A.z) continue; // one passes over the other
         const c = sat(A, B); if (!c) continue;
@@ -3009,6 +3041,196 @@ function drawBritish(b: Loose, dk: string, box: Loose, L: number, Wd: number, z:
   }
   return false;
 }
+// ---- Japan's and the United States' vehicles: the same bodies, drawn each country's way -----------------------
+// A car's look there is one of three (b.id % 3): Japan has the cube car, the kei truck and the plain car; the United
+// States the pickup, the SUV and the plain car. The truck is two (b.id % 2): the long-nosed rig or the ice-cream truck.
+/** Headlights in front, brake lights behind, at height h; u the front's distance from the middle. */
+function carLights(b: Loose, L: number, Wd: number, z: number, h: number, u = L / 2) {
+  flat(b, u - 2, Wd * 0.3, 3, 5, z + h, '#fff3bf'); flat(b, u - 2, -Wd * 0.3, 3, 5, z + h, '#fff3bf');
+  brakeLight(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + h); brakeLight(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + h);
+}
+/** Draws a vehicle the Japanese way; false for a kind Japan draws like everyone else. */
+function drawJapanese(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean): boolean {
+  const paint = (c: string) => wreck ? col : mix(c, '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
+  if (dk === 'car' && b.id % 3 === 0) { // the cube car: a tall box, glass all round, the back window wrapped round one corner
+    box(0, L * 0.86, Wd, 3, 12, col, col);
+    box(-L * 0.03, L * 0.72, Wd * 0.92, 12, 25, glass, glass);
+    flat(b, -L * 0.03, 0, L * 0.66, Wd * 0.84, z + 25.1, wreck ? col : shade(col, 1.14));
+    flat(b, -L * 0.33, Wd * 0.2, L * 0.08, Wd * 0.36, z + 25.2, glass);
+    carLights(b, L * 0.86, Wd, z, 12);
+    return true;
+  }
+  if (dk === 'car' && b.id % 3 === 1) { // the kei truck: a flat-nosed cab at the very front, a drop-side bed, crates
+    box(L * 0.31, L * 0.36, Wd, 3, 12, col, col);
+    box(L * 0.3, L * 0.32, Wd * 0.92, 12, 21, col, glass); // its roof the paint, glass all round
+    box(-L * 0.18, L * 0.62, Wd, 3, 7, paint('#868e96'), paint('#5c636a')); // the bed
+    for (const sd of [1, -1]) box(-L * 0.18, L * 0.62, 2, 7, 11, col, col, sd * (Wd / 2 - 1));
+    box(-L / 2 + 1, 2, Wd, 7, 11, col, col); // the tailgate
+    if (!wreck) for (const [u, v] of [[-0.06, 4], [-0.06, -4], [-0.3, 0]]) { box(L * u, 8, 8, 7, 14, '#d9a066', '#a8743a', v); flat(b, L * u, v, 6, 6, z + 14.1, '#82c91e'); } // crates of greens
+    carLights(b, L, Wd, z, 10);
+    return true;
+  }
+  if (dk === 'taxi') { // the taxi: a square saloon, a yellow band, mirrors out on the wings, the lit sign on the roof
+    box(0, L, Wd, 3, 11, col, col);
+    box(-L * 0.04, L * 0.48, Wd * 0.84, 11, 20, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.42, Wd * 0.72, z + 20.1, shade(col, 1.12));
+    if (!wreck) for (const sd of [1, -1]) flat(b, 0, sd * (Wd / 2 - 2.5), L * 0.92, 2.5, z + 11.1, '#ffd43b');
+    for (const sd of [1, -1]) box(L * 0.34, 2.5, 2.5, 11, 14, '#212529', '#212529', sd * (Wd / 2 - 3)); // the wing mirrors
+    box(L * 0.02, 5, 10, 20, 25, '#fff3bf', '#ffd43b'); flat(b, L * 0.02, 0, 2.5, 6, z + 25.1, '#e8590c'); // the lit sign
+    carLights(b, L, Wd, z, 11);
+    return true;
+  }
+  if (dk === 'police') { // black below, white above: the bonnet and the boot black, the roof white, a red light bar
+    box(0, L, Wd, 3, 11, paint('#1d1a26'), paint('#1d1a26'));
+    flat(b, 0, 0, L * 0.3, Wd * 0.92, z + 11.1, col); // the white doors
+    box(-L * 0.04, L * 0.48, Wd * 0.84, 11, 20, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.42, Wd * 0.72, z + 20.1, col);
+    carLights(b, L, Wd, z, 11); siren(b, -2, Wd * 0.75, 20);
+    return true;
+  }
+  if (dk === 'moto') { // the delivery scooter: a leg shield, the rider, a red box on the back
+    box(-2, L * 0.8, Wd * 0.7, 3, 9, '#f1f3f5', '#ced4da');
+    box(L * 0.3, 4, Wd * 0.8, 6, 16, '#f1f3f5', '#ced4da');
+    flat(b, L / 2 - 2, 0, 3, Wd * 0.5, z + 9, '#ffe066');
+    box(-1, 8, Wd, 9, 16, b.rider || '#2f80ff', b.rider || '#2f80ff');
+    box(1, 6, Wd * 0.75, 16, 21, '#f8f9fa', '#ced4da');
+    box(-L * 0.36, 9, Wd * 1.15, 9, 19, paint('#e03131'), paint('#a61e1e')); flat(b, -L * 0.36, 0, 9, 2, z + 19.1, '#f8f9fa');
+    return true;
+  }
+  if (dk === 'bus') { // the city bus: white, a green band under the windows, the amber sign over the windscreen
+    box(0, L, Wd, 2, 12, col, col);
+    box(0, L - 2, Wd - 2, 12, 14, paint('#2b8a3e'), paint('#2b8a3e'));
+    box(0, L - 2, Wd - 2, 14, 26, col, glass);
+    flat(b, 0, 0, L - 8, Wd - 8, z + 26.1, shade(col, 1.04));
+    if (!wreck) for (const sd of [1, -1]) flat(b, 0, sd * (Wd / 2 - 4), L - 10, 3, z + 26.2, '#2b8a3e'); // the green line along the roof
+    box(-L * 0.25, 20, Wd * 0.55, 26, 30, '#dee2e6', '#adb5bd'); // the air conditioning
+    flat(b, L / 2 - 4, 0, 4, Wd - 8, z + 26.2, '#ff922b');
+    flat(b, L / 2 - 1, Wd * 0.32, 2, 5, z + 9, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.32, 2, 5, z + 9, '#ffe066');
+    return true;
+  }
+  if (dk === 'truck') { // the flat-fronted lorry: the cab over the engine, an aluminium box with ribs
+    const alu = paint('#dee2e6');
+    box(-L * 0.13, L * 0.72, Wd, 4, 34, alu, paint('#ced4da'));
+    if (!wreck) for (let i = 0; i < 9; i++) flat(b, -L * 0.47 + i * L * 0.085, 0, 1.4, Wd - 2, z + 34.1, '#adb5bd');
+    box(L * 0.37, L * 0.24, Wd - 2, 3, 27, col, col);
+    box(L * 0.4, L * 0.18, Wd - 4, 15, 27, col, glass);
+    flat(b, L / 2 - 1, Wd * 0.32, 2, 5, z + 10, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.32, 2, 5, z + 10, '#ffe066');
+    return true;
+  }
+  return false;
+}
+/** Draws a vehicle the American way; false for a kind the United States draw like everyone else. */
+function drawAmerican(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean): boolean {
+  const paint = (c: string) => wreck ? col : mix(c, '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
+  if (dk === 'car' && b.id % 3 === 0) { // the pickup: a long bonnet, the cab, an open bed behind with its tailgate
+    box(L * 0.2, L * 0.6, Wd, 3, 13, col, col);
+    box(L * 0.01, L * 0.24, Wd * 0.86, 13, 22, glass, glass);
+    flat(b, L * 0.0, 0, L * 0.2, Wd * 0.76, z + 22.1, shade(col, 1.12));
+    box(-L * 0.3, L * 0.4, Wd, 3, 7, paint('#343a40'), col); // the bed
+    for (const sd of [1, -1]) box(-L * 0.3, L * 0.4, 2.5, 7, 13, col, col, sd * (Wd / 2 - 1.25));
+    box(-L / 2 + 1.2, 2.4, Wd, 7, 13, col, col);
+    flat(b, L / 2 - 1.5, 0, 2, Wd * 0.5, z + 11, '#ced4da'); // the chrome grille
+    carLights(b, L, Wd, z, 12);
+    return true;
+  }
+  if (dk === 'car' && b.id % 3 === 1) { // the SUV: big and square, glass all along, rails on the roof
+    box(0, L, Wd, 3, 13, col, col);
+    box(-L * 0.08, L * 0.72, Wd * 0.88, 13, 24, glass, glass);
+    flat(b, -L * 0.08, 0, L * 0.66, Wd * 0.78, z + 24.1, shade(col, 1.12));
+    for (const sd of [1, -1]) flat(b, -L * 0.08, sd * Wd * 0.33, L * 0.6, 1.6, z + 24.3, '#343a40');
+    carLights(b, L, Wd, z, 13);
+    return true;
+  }
+  if (dk === 'taxi') { // the yellow cab: a checked band down each side, the lit sign on the roof
+    box(0, L, Wd, 3, 11, col, col);
+    box(-L * 0.04, L * 0.5, Wd * 0.84, 11, 20, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.44, Wd * 0.72, z + 20.1, shade(col, 1.1));
+    if (!wreck) checks(b, L, Wd, z + 11.1, '#1d1a26', '#f8f9fa');
+    box(-2, 6, 13, 20, 25, '#f8f9fa', '#ced4da'); flat(b, -2, 0, 3, 9, z + 25.1, '#e03131');
+    carLights(b, L, Wd, z, 11);
+    return true;
+  }
+  if (dk === 'police') { // black and white: a black body, the doors and the roof white, a long light bar
+    box(0, L, Wd, 3, 11, paint('#1d1a26'), paint('#1d1a26'));
+    for (const sd of [1, -1]) flat(b, -L * 0.03, sd * (Wd / 2 - 3), L * 0.4, 6, z + 11.1, col);
+    box(-L * 0.04, L * 0.48, Wd * 0.84, 11, 20, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.42, Wd * 0.72, z + 20.1, col);
+    flat(b, L * 0.4, 0, 2, Wd * 0.7, z + 11.2, '#ced4da'); // the push bar
+    carLights(b, L, Wd, z, 11); siren(b, -2, Wd * 0.85, 20);
+    return true;
+  }
+  if (dk === 'bus') { // the school bus: yellow, a long nose, black bands, red lamps at the corners, a white roof
+    box(L / 2 - L * 0.09, L * 0.18, Wd * 0.82, 3, 14, col, col); // the nose
+    flat(b, L / 2 - 1, 0, 2, Wd * 0.5, z + 12, '#1d1a26');
+    const bu = -L * 0.09, bl = L * 0.82;
+    box(bu, bl, Wd, 2, 8, col, col);
+    box(bu, bl, Wd, 8, 10, paint('#1d1a26'), paint('#1d1a26'));
+    box(bu, bl, Wd, 10, 15, col, col);
+    box(bu, bl - 2, Wd - 2, 15, 26, col, glass);
+    flat(b, bu, 0, bl - 6, Wd - 6, z + 26.1, shade(col, 1.1));
+    if (!wreck) for (const sd of [1, -1]) flat(b, bu, sd * (Wd / 2 - 3.5), bl - 8, 1.6, z + 26.2, '#1d1a26'); // the black lines along the roof
+    for (const sd of [1, -1]) { flat(b, bu + bl / 2 - 3, sd * Wd * 0.38, 3, 3, z + 26.2, '#e03131'); flat(b, bu - bl / 2 + 3, sd * Wd * 0.38, 3, 3, z + 26.2, '#e03131'); }
+    flat(b, bu + bl / 2 - 3, 0, 3, Wd * 0.4, z + 26.2, '#ffa94d');
+    flat(b, L / 2 - 1, Wd * 0.3, 2, 5, z + 10, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.3, 2, 5, z + 10, '#ffe066');
+    return true;
+  }
+  if (dk === 'truck' && b.id % 2 === 0) { // the long-nosed rig: a big bonnet, chrome stacks, a sleeper cab, the box
+    box(L * 0.4, L * 0.2, Wd * 0.8, 3, 18, col, col);
+    flat(b, L / 2 - 1, 0, 2, Wd * 0.6, z + 15, '#ced4da');
+    box(L * 0.22, L * 0.17, Wd - 2, 3, 28, col, col);
+    box(L * 0.25, L * 0.1, Wd - 4, 18, 28, col, glass);
+    for (const sd of [1, -1]) box(L * 0.3, 3, 3, 3, 37, '#dee2e6', '#adb5bd', sd * (Wd / 2 - 1)); // the exhaust stacks
+    const side = paint('#f1f3f5');
+    box(-L * 0.21, L * 0.58, Wd, 4, 34, side, paint('#dee2e6'));
+    flat(b, -L * 0.21, 0, L * 0.54, 4, z + 34.1, col);
+    flat(b, L / 2 - 1, Wd * 0.34, 2, 4, z + 12, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.34, 2, 4, z + 12, '#ffe066');
+    return true;
+  }
+  if (dk === 'truck') { // the ice-cream truck: white with pink bands, a serving hatch, a giant cone on the roof
+    const white = paint('#f8f9fa'), pink = paint('#f783ac');
+    box(-L * 0.08, L * 0.84, Wd, 3, 15, white, white);
+    box(-L * 0.08, L * 0.84, Wd, 15, 18, pink, pink);
+    box(-L * 0.08, L * 0.84, Wd, 18, 30, white, white);
+    flat(b, -L * 0.08, 0, L * 0.8, Wd - 4, z + 30.1, wreck ? col : paint('#fff0f6'));
+    if (!wreck) for (let i = 0; i < 6; i++) flat(b, -L * 0.4 + i * L * 0.12, Wd / 2 + 2, L * 0.06, 4, z + 20, i % 2 ? '#f8f9fa' : '#f783ac'); // the striped awning over the hatch
+    box(L * 0.42, L * 0.16, Wd - 2, 3, 22, col, col);
+    box(L * 0.44, L * 0.1, Wd - 4, 13, 22, col, glass);
+    box(-L * 0.12, 7, 7, 30, 37, paint('#e8b36a'), paint('#c48c43')); // the cone
+    box(-L * 0.12, 10, 10, 37, 44, paint('#ff8fd0'), paint('#e64980')); flat(b, -L * 0.12, 0, 3, 3, z + 44.1, '#e03131'); // its scoop, a cherry
+    flat(b, L / 2 - 1, Wd * 0.32, 2, 5, z + 10, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.32, 2, 5, z + 10, '#ffe066');
+    return true;
+  }
+  return false;
+}
+/** The monster truck: four giant tyres, the suspension showing, a pickup body high on top, flames on the bonnet. */
+function drawMonster(b: Loose, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean) {
+  const tw = Wd * 0.3, ty = Wd / 2 - tw / 2, tl = L * 0.34;
+  for (const u of [0.3, -0.3]) for (const sd of [1, -1]) {
+    box(L * u, tl, tw, 0, 20, '#2b2833', '#14121a', sd * ty);
+    for (let i = 0; i < 5; i++) flat(b, L * u + (i - 2) * tl * 0.2, sd * ty, tl * 0.08, tw, z + 20.1, '#14121a'); // the tread
+    flat(b, L * u, sd * ty, tl * 0.36, tw * 0.5, z + 20.2, '#ced4da'); // the hub
+  }
+  box(0, L * 0.76, Wd * 0.34, 8, 22, '#495057', '#343a40'); // the chassis and the springs
+  for (const u of [0.3, -0.3]) box(L * u, 4, Wd * 0.4, 14, 24, '#ffd43b', '#e0a800');
+  const bw = Wd * 0.62;
+  box(L * 0.14, L * 0.62, bw, 22, 33, col, col); // the bonnet and the cab
+  box(-L * 0.02, L * 0.26, bw * 0.9, 33, 43, glass, glass);
+  flat(b, -L * 0.02, 0, L * 0.22, bw * 0.8, z + 43.1, wreck ? col : shade(col, 1.12));
+  box(-L * 0.32, L * 0.32, bw, 22, 30, wreck ? col : shade(col, 0.75), col); // the bed
+  if (!wreck) {
+    for (const [u, w, c] of [[0.34, 0.5, '#ffd43b'], [0.37, 0.34, '#ff922b'], [0.4, 0.18, '#e03131']] as [number, number, string][]) flat(b, L * u, 0, L * 0.2, bw * w, z + 33.1 + u, c); // the flames
+    for (let i = 0; i < 4; i++) flat(b, L * 0.1, (i - 1.5) * bw * 0.2, 3, 3, z + 43.3, '#fff3bf'); // the lamps on the roof
+  }
+  carLights(b, L * 0.76, Wd * 0.62, z, 31, L * 0.45);
+}
+/** The monster truck's tyre marks across a vehicle it drove over: two dark bands of tread, a little askew. */
+function treadMarks(b: Loose, L: number, Wd: number) {
+  const h = b.z + KINDS[b.kind].h + 0.5, an = Math.PI / 2 + (hash01(b.dent || 1, 9, 9) - 0.5) * 0.6, gap = Math.min(L * 0.3, 9);
+  for (const o of [-gap, gap]) {
+    flatTurned(b, o, 0, Wd * 1.25, 7, an, h, 'rgba(20,16,24,0.6)');
+    for (let i = -2; i <= 2; i++) flatTurned(b, o + Math.cos(an) * i * Wd * 0.22, Math.sin(an) * i * Wd * 0.22, 2, 7.5, an + Math.PI / 2, h + 0.05, 'rgba(8,6,10,0.7)');
+  }
+}
 // ---- A vehicle's damage, in three stages before the wreck ------------------------------------------------------
 // Drawn over the body seen from above, in its own frame (u forward, v across), clipped to its outline, and baked
 // into the vehicle's sprite for its stage, so it costs nothing a frame:
@@ -3111,7 +3333,7 @@ const SPRITE_PAD = 6, SPRITE_MAX = 300; // world units round the body (wheels, b
 function vehicleSprite(b: Loose, stage: number) {
   const S = Math.min(3, Math.max(1.5, Math.ceil(baseR * 1.6 * 2) / 2)); // pixels a world unit: sharp up close, capped for a phone's memory
   if (S !== spriteScale) { SPRITES.clear(); spriteScale = S; }
-  const key = country + '|' + b.kind + '|' + b.color + '|' + (b.id % 2) + '|' + (b.rider || '') + '|' + (b.stripe || '') + '|' + (b.wide ? 1 : 0) + '|' + stage;
+  const key = country + '|' + b.kind + '|' + b.color + '|' + (b.kind === 'car' && (country === 'jp' || country === 'us') ? b.id % 6 : b.id % 2) + '|' + (b.crushed ? 'c' : '') + '|' + (b.rider || '') + '|' + (b.stripe || '') + '|' + (b.wide ? 1 : 0) + '|' + stage;
   let sp = SPRITES.get(key); if (sp) return sp;
   if (SPRITES.size >= SPRITE_MAX) SPRITES.clear();
   const cw = Math.ceil((b.hl * 2 + SPRITE_PAD * 2) * S), ch = Math.ceil((b.hw * 2 + SPRITE_PAD * 2) * S);
@@ -3162,7 +3384,7 @@ function drawVehicleShapes(b: Loose) {
     return R;
   };
   const dk = b.kind === 'player' ? MODELS[b.model || 'sport'].draw : b.kind; // what it looks like
-  if (detail && !wreck && dk !== 'moto' && dk !== 'hay' && dk !== 'farmtractor') { // the tyres, just out from under the body
+  if (detail && !wreck && dk !== 'moto' && dk !== 'hay' && dk !== 'farmtractor' && dk !== 'monster') { // the tyres, just out from under the body
     const wl = Math.max(7, Math.min(13, L * 0.2)), axles = dk === 'trailer' ? [-0.3, -0.42] : L > 80 ? [0.38, -0.18, -0.36] : [0.31, -0.31];
     const tyres: number[][][] = [], hubs: number[][][] = [];
     for (const ax of axles) for (const sd of [1, -1]) { tyres.push(rect(b, L * ax, sd * (Wd / 2 - 1.4), wl, 4.6)); hubs.push(rect(b, L * ax, sd * (Wd / 2 + 0.2), wl * 0.45, 1.4)); }
@@ -3170,6 +3392,9 @@ function drawVehicleShapes(b: Loose) {
   }
   if (country === 'fr' && drawFrench(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the French way */ }
   else if (country === 'uk' && drawBritish(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the British way */ }
+  else if (country === 'jp' && drawJapanese(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the Japanese way */ }
+  else if (country === 'us' && drawAmerican(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the American way */ }
+  else if (dk === 'monster') drawMonster(b, box, L, Wd, z, col, glass, wreck);
   else if (dk === 'hay') { // a straw bale with its two strings
     box(0, L, Wd, 0, 20, wreck ? '#b08a3a' : '#f2c94c', '#c99a2e');
     flat(b, -L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a'); flat(b, L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a');
@@ -3269,6 +3494,7 @@ function drawVehicleShapes(b: Loose) {
   if (b.kind === 'player' && b.gear) drawGear(b, box, L, Wd, z);
   ROUND_FLAT = false;
   if (b.kind !== 'moto') vehicleDamage(b, f, L, Wd); // crumpled, dented, scratched, cracked: by stage
+  if (b.crushed) treadMarks(b, L, Wd);
 }
 // the garage's gear on the player's vehicle: bull bar, armour plates, dynamite, rocket launcher
 function drawGear(b: Loose, box: Loose, L: Loose, Wd: Loose, z: Loose) {
@@ -4312,7 +4538,7 @@ let garageSel = 0, garageMsg = '', garageMsgT = 0, garageTab = 0;
 // the garage's rows share 420 px of height, 68 px each at most
 // a tab's items in the country being played: an item with a country (the farmers) shows only there
 const tabItems = (T: Loose): string[] => T.items.filter((id: string) => !GARAGE_BY[id].country || GARAGE_BY[id].country === country);
-const tabLen = () => TABS[garageTab].cars ? CARS.length : tabItems(TABS[garageTab]).length;
+const tabLen = () => TABS[garageTab].cars ? carsHere().length : tabItems(TABS[garageTab]).length;
 const rowH = () => Math.min(68, Math.floor(426 / tabLen()));
 const rowY = (i: number) => 200 + i * rowH();
 const GARAGE_BY = Object.fromEntries(GARAGE.map((g: Loose) => [g.id, g]));
@@ -4329,7 +4555,7 @@ const priceOf = (g: Loose, lv: number) => roundIn(priceFor(g.cost(lv), priceK())
 function carDesc(id: Loose) {
   const n: number = (Object.values(up.gear[id] || {}) as number[]).reduce((a: Loose, b: Loose) => a + (b || 0), 0);
   const m = id === 'sport' ? tune.mass_player : tune['my_mass_' + id], sp = id === 'sport' ? 1 : tune['my_speed_' + id], st = id === 'sport' ? 1 : tune['my_steer_' + id];
-  const extra = ({ sport: 'légère et vive', van: 'un peu plus lourd', ambulance: 'avec gyrophare', truck: 'lourd : il pousse fort', semi: 'la remorque balaie tout en portefeuille' } as Loose)[id];
+  const extra = ({ sport: 'légère et vive', van: 'un peu plus lourd', ambulance: 'avec gyrophare', truck: 'lourd : il pousse fort', semi: 'la remorque balaie tout en portefeuille', monster: 'roule sur les petites voitures et les écrase sans s\'arrêter' } as Loose)[id];
   return `Dégâts ×${carDmgK(id).toFixed(2)} · poids ${m.toFixed(1)} · vitesse ×${sp.toFixed(2)} · virage ×${st.toFixed(2)} · ${extra}` + (up.cars.includes(id) ? ` · ${n} équipement${n > 1 ? 's' : ''}` : '');
 }
 // draws a player's model at a screen point (the garage's thumbnails)
@@ -4611,7 +4837,7 @@ const scenes: Loose = {
       if (pressed('ArrowLeft') || pressed('KeyQ') || pressed('KeyA')) tab = (garageTab + TABS.length - 1) % TABS.length;
       for (let i = 0; i < TABS.length; i++) if (pressed('Tab' + i)) tab = i;
       if (tab !== garageTab) { garageTab = tab; garageSel = 0; }
-      const T = TABS[garageTab], n = T.cars ? CARS.length : tabItems(T).length;
+      const T = TABS[garageTab], n = T.cars ? carsHere().length : tabItems(T).length;
       if (pressed('ArrowUp') || pressed('KeyW') || pressed('KeyZ')) garageSel = (garageSel + n - 1) % n;
       if (pressed('ArrowDown') || pressed('KeyS')) garageSel = (garageSel + 1) % n;
       for (let i = 0; i < n; i++) if (pressed('Row' + i)) { if (garageSel === i) hit.add('Enter'); else { garageSel = i; garageMsg = 'Touche encore pour valider'; garageMsgT = 1.5; } }
@@ -4625,7 +4851,7 @@ const scenes: Loose = {
           else if (credit() < priceOf(g, lv)) { garageMsg = 'Pas assez de crédit : fais plus de dégâts !'; no(); }
           else { spent += priceOf(g, lv); G()[g.id] = lv + 1; save(); garageMsg = g.name + ' installé !'; ok(); events.push({ type: 'buy', id: g.id }); }
         } else {
-          const id = CARS[garageSel], M = MODELS[id];
+          const id = carsHere()[garageSel], M = MODELS[id];
           if (up.cars.includes(id)) { up.car = id; save(); garageMsg = M.name + " : c'est parti !"; ok(); }
           else if (totalStars() < carStars(id)) { garageMsg = `Il te faut ${carStars(id)} étoiles pour ce véhicule (tu en as ${totalStars()})`; no(); }
           else { up.cars.push(id); up.car = id; save(); garageMsg = M.name + ' débloqué !'; ok(); events.push({ type: 'unlock', id }); }
@@ -4669,7 +4895,7 @@ const scenes: Loose = {
         row(i, (x: Loose, y: Loose) => g.icon(x, y, 0.95), g.name, g.desc(lv), maxed ? 'INSTALLÉ' : locked ? GARAGE_BY[g.needs].name.toUpperCase() + ' REQUIS' : money(priceOf(g, lv)),
           maxed ? '#19c37d' : locked ? '#a89fc8' : credit() >= priceOf(g, lv) ? '#ffc83d' : '#ff5e7a', [g.max, lv]);
       });
-      else CARS.forEach((id: Loose, i: Loose) => {
+      else carsHere().forEach((id: Loose, i: Loose) => {
         const owned = up.cars.includes(id), chosen = up.car === id;
         const can = totalStars() >= carStars(id);
         row(i, (x: Loose, y: Loose) => drawModelAt(id, x, y, 110), MODELS[id].name, carDesc(id), chosen ? 'AU VOLANT' : owned ? 'CHOISIR' : can ? 'DÉBLOQUER' : `${carStars(id)} ÉTOILES`,
@@ -4909,7 +5135,7 @@ function drawTouch() {
   } else if (scene === 'countries') {
     if (showFsButton()) button(W - 372, 24, 256, 58, 'PLEIN ÉCRAN', 'Fullscreen', { size: 20 });
   } else if (scene === 'garage') {
-    const n = TABS[garageTab].cars ? CARS.length : tabItems(TABS[garageTab]).length;
+    const n = TABS[garageTab].cars ? carsHere().length : tabItems(TABS[garageTab]).length;
     for (let i = 0; i < n; i++) btns.push({ x: W / 2 - 420, y: rowY(i), w: 840, h: rowH() - 6, code: 'Row' + i, hold: false });
     button(W / 2 - 110, 652, 220, 54, 'RETOUR', 'Escape', { size: 22 });
   } else if (scene === 'results') {

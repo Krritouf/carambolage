@@ -123,7 +123,10 @@ deux boutiques japonaises, l'échoppe de ramen et le magasin de jouets (capsules
 thé. **Le yen** : tous les montants restent comptés en euros et s'affichent au taux du pays (`jp_rate` = 175 ;
 `uk_rate` = 1, la livre étant proche de l'euro) : dégâts, bonus, crédit, prix du garage, objectifs. Les objectifs
 d'étoiles et les prix du garage sont arrondis à 3 chiffres significatifs dans la monnaie du pays (au moins au
-millier), pour des cibles rondes. Reste : les véhicules japonais, le typhon et les lanternes.
+millier), pour des cibles rondes. **Les véhicules japonais** (2026-11-24) : la voiture cubique, le mini-camion kei
+(cageots de légumes), la voiture ordinaire (un tiers chacune), le taxi vert au lumignon et aux rétroviseurs sur les ailes,
+la police noir et blanc, le scooter de livraison au coffre rouge, le bus de ville blanc à bande verte, le camion à
+cabine plate et caisse alu. Reste : le typhon et les lanternes.
 
 - **Mécanique : l'échangeur sur plusieurs étages** : des voies qui se croisent en hauteur, des
   véhicules qui tombent d'un niveau à l'autre.
@@ -152,8 +155,12 @@ millier), pour des cibles rondes. Reste : les véhicules japonais, le typhon et 
   en l'air et le lâche au milieu du carrefour (onde de choc, prime `twister_bonus`), puis il repart, étourdi ;
 - **la statue de la Liberté** à la place de la première grue (les lettres d'Hollywood sont une marque déposée) ;
 - les boutiques : diner, boutique de donuts, station-service (qui explose comme le labo, qu'elle remplace).
-Reste : les véhicules américains (bus scolaires, pick-ups, semi-remorques à long nez, camions de glaces), le monster
-truck, l'alerte tornade, le défilé.
+**Les véhicules américains** (2026-11-24) : pick-up, SUV et voiture ordinaire (un tiers chacun), taxi jaune à damier,
+police noir et blanc à pare-buffle, bus scolaire jaune à long nez, semi-remorque à long nez et cheminées chromées, camion
+de glaces (un camion sur deux). **Le monster truck** (garage, États-Unis seulement, `my_*_monster`, 20 étoiles) : roule
+sur les voitures, taxis, motos et voitures de police à plus de `monster_crush_speed` et les écrase (`monster_crush_damage`
+de leur valeur, traces de pneus, « ÉCRASÉE ! »), rebondit (`monster_hop`) et **garde le volant** ; un véhicule plus lourd
+ou un mur l'arrête comme les autres. Reste : l'alerte tornade, le défilé.
 
 - **Mécanique : les très larges boulevards** à 8 voies et beaucoup de véhicules lourds : le pays des
   records de dégâts.

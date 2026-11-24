@@ -125,7 +125,8 @@ const EN: Record<string, string> = {
   'Pompiers': 'Fire engine', 'Remorque': 'Trailer', 'Bus': 'Bus', 'Camion': 'Truck', 'Camion-citerne': 'Tanker', 'Convoi': 'Convoy',
   'Citerne géante': 'Giant tanker', 'T-Rex': 'T-Rex', 'Roquette': 'Rocket', 'En feu': 'On fire', 'À toi :': 'Yours:',
   'Tout équipée': 'Fully geared', 'Équipée': 'Geared', 'Bonus': 'Bonus', 'Garage': 'Garage',
-  'Sportive': 'Sports car', 'Van': 'Van', 'Semi-remorque': 'Semi-trailer',
+  'Sportive': 'Sports car', 'Van': 'Van', 'Semi-remorque': 'Semi-trailer', 'Monster truck': 'Monster truck', 'Petite sportive': 'Little sports car', 'Mini-van': 'Minivan', 'Muscle car': 'Muscle car', 'Poids lourd': 'Big truck',
+  "roule sur les petites voitures et les écrase sans s'arrêter": 'drives over the small cars and crushes them without stopping', 'ÉCRASÉE !': 'CRUSHED!',
   'Boulangerie': 'Bakery', 'Boucherie': 'Butcher', 'Bijouterie': 'Jeweller', 'Banque': 'Bank', 'Laboratoire': 'Laboratory',
   // in play
   'BOUM !': 'BOOM!', 'CONVOI EXCEPTIONNEL !': 'OVERSIZE CONVOY!', 'COURSE-POURSUITE !': 'POLICE CHASE!', 'CITERNE GÉANTE !': 'GIANT TANKER!',

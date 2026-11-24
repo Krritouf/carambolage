@@ -146,3 +146,31 @@ test('on every American level the player\'s car can drive up the street onto the
   }
   expect(stuck).toEqual([]);
 });
+
+test('the monster truck drives over a car, flattens it and keeps the wheel; a bus stops it like any vehicle', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('carambolage', JSON.stringify({ lv: 3, countries: { us: { unlocked: 20, up: { cars: ['sport', 'monster'], car: 'monster', gear: {} } } } })));
+  await page.goto(build('manual=1&seed=7&scene=play&drive&country=us&level=1'));
+  await expect.poll(() => page.evaluate(() => typeof window.game?.step)).toBe('function');
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any, p = st.player;
+    st.bodies = st.bodies.filter((b: any) => b === p);
+    g.hold('ArrowUp', true);
+    let n = 0; while (Math.hypot(p.vx, p.vy) < 200 && n++ < 600) g.step(1, false);
+    // a parked car straight ahead
+    const car = { ...p, kind: 'car', model: undefined, hl: 21, hw: 10.5, height: 20, m: 1, invM: 1, invI: p.invI * 3, value: 9000, dmg: 0, ai: false, loose: true, control: false,
+      x: p.x, y: p.y - 70, vx: 0, vy: 0, vz: 0, z: 0, w: 0, a: -Math.PI / 2, id: 50, inv: false, touched: false, crushed: false, gear: undefined };
+    st.bodies.push(car);
+    const before = st.damage;
+    while (!car.crushed && n++ < 1200) g.step(1, false);
+    let hopped = 0; for (let i = 0; i < 20; i++) { g.step(1, false); hopped = Math.max(hopped, p.z); }
+    const crushed = { crushed: car.crushed, control: p.control, pileup: st.crashed, gained: st.damage - before, hopped: Math.round(hopped), said: st.floats.some((f: any) => f.txt.startsWith('ÉCRASÉE')), flat: car.height < 10 };
+    // a bus across the street ahead
+    const bus = { ...car, kind: 'bus', hl: 56, hw: 15, height: 30, m: 4, invM: 0.25, value: 30000, dmg: 0, x: p.x, y: p.y - 120, a: 0, id: 51, crushed: false };
+    st.bodies.push(bus);
+    let m = 0; while (p.control && m++ < 600) g.step(1, false);
+    return { ...crushed, busCrushed: bus.crushed, stoppedByBus: !p.control };
+  });
+  expect(r).toMatchObject({ crushed: true, control: true, pileup: true, said: true, flat: true, busCrushed: false, stoppedByBus: true });
+  expect(r.gained).toBeGreaterThan(0);
+  expect(r.hopped).toBeGreaterThan(5);
+});

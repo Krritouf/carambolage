@@ -107,6 +107,14 @@ avec le T-Rex, et mesurer les seuils.
 
 #### Japon (Asie)
 
+**En cours (2026-11-24)** : ouvert quand le niveau 20 du Royaume-Uni a au moins 1 étoile ; sa propre
+progression ; conduite à gauche ; le yen ; 20 niveaux (seuils repris du Royaume-Uni en attendant le pilote
+automatique). L'échangeur est fait : une avenue en contrebas (−120) au nord dès le niveau 1, une seconde au sud
+sous la rue d'arrivée (un pont) dès le niveau 7, une avenue plus profonde encore (−210) derrière la première dès
+le niveau 15. Un parapet casse sous un choc fort (`rail_break`), le véhicule tombe et le carambolage continue en
+bas ; la voiture du joueur peut tomber aussi. Reste : les véhicules et boutiques japonais, la tour de Tokyo,
+le kaiju, le typhon et les lanternes.
+
 - **Mécanique : l'échangeur sur plusieurs étages** : des voies qui se croisent en hauteur, des
   véhicules qui tombent d'un niveau à l'autre.
 - Circulation : mini-camions kei, taxis à portes automatiques, voitures cubiques, motos de livraison.

@@ -1,4 +1,5 @@
-// Playwright: the home screen picks the country; France opens its levels' wheel, the others are "soon".
+// Playwright: the home screen picks the country; France opens its levels' wheel, each next country a star on the
+// last level of the one before, and the ones still to come are "soon".
 import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -25,7 +26,7 @@ test('a country still to come stays on the home screen', async ({ page }) => {
   await open(page);
   const scene = await page.evaluate(() => {
     const g = window.game!;
-    g.press('ArrowRight'); g.step(1, false); g.press('ArrowRight'); g.step(1, false); // Japan
+    for (let i = 0; i < 3; i++) { g.press('ArrowRight'); g.step(1, false); } // the United States
     g.press('Enter'); g.step(1, false);
     return g.scene;
   });

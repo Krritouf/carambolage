@@ -28,6 +28,8 @@ export interface GameHook {
   readonly cam?: { x: number; y: number; zoom: number };
   /** The core loop's log: the loop() steps (act, result, reward). A check empties it after each step. */
   readonly events?: unknown[];
+  /** Spills a slick of oil of radius r at (x, y), as a wreck's leak does: a check puts one where it needs it. */
+  spillOil?(x: number, y: number, r: number): void;
 }
 
 /** A clock in seconds. */

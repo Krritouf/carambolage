@@ -16,8 +16,8 @@ import { NATIVE, exitApp, nativeVibrate, onBack } from './native';
 import splashUrl from '../assets/splash.png'; // the app's opening picture (tools/brand/art.html)
 // the country being played and its levels (LEVELS); each country keeps its own progress (loadCountry)
 let country = 'fr', LEVELS: Loose[] = LEVELS_BY.fr;
-const PREFIX: Loose = { fr: '', uk: 'uk_' }; // a country's keys in data/config.json: uk_threshold_3...
-const CURRENCY: Loose = { fr: '€', uk: '£' }; // each country's money
+const PREFIX: Loose = { fr: '', uk: 'uk_', jp: 'jp_' }; // a country's keys in data/config.json: uk_threshold_3...
+const CURRENCY: Loose = { fr: '€', uk: '£', jp: '¥' }; // each country's money
 /** An amount in the country's money, written the way the player's language writes it (1 000 £, £1,000). */
 const money = (n: number) => moneyIn(n, CURRENCY[country] || '€', getLang());
 
@@ -356,8 +356,8 @@ function mkBody(kind: Loose, x: Loose, y: Loose, a: Loose, color: Loose): Loose 
 }
 
 let scene: Loose, state: Loose, cam: Loose = { x: 0, y: 0, zoom: 1 };
-// which side of the road the traffic keeps to: the right, or the left in the United Kingdom
-const KEEP_LEFT: Loose = { uk: true };
+// which side of the road the traffic keeps to: the right, or the left in the United Kingdom and Japan
+const KEEP_LEFT: Loose = { uk: true, jp: true };
 const roadSide = () => KEEP_LEFT[country] ? -1 : 1;
 // ---- The roundabout (France's level 20: la place de l'Étoile) -------------------------------------
 // The crossroads becomes a ring round an island. Each lane goes round the island on its own side,
@@ -423,7 +423,7 @@ function laneY(L: Loose, i: Loose, dir: Loose) { // dir +1 eastbound, -1 westbou
   return roadSide() * dir * (4 + tune.lane_width * (i + 0.5));
 }
 function buildCity(lv: Loose, roadHalf: Loose) {
-  const blocks: Loose[] = [];
+  const blocks: Loose[] = [], tw = trenchWidths(lv); // the interchange's avenues push the buildings back
   const quad = (edgeX: Loose, dirX: Loose, edgeY: Loose, dirY: Loose, extX: Loose, extY: Loose) => {
     let ox = 0;
     while (ox < extX) {
@@ -446,10 +446,10 @@ function buildCity(lv: Loose, roadHalf: Loose) {
     }
   };
   const south = roadHalf + SIDEWALK, side = APPROACH_HALF + SIDEWALK;
-  quad(-side, -1, south, 1, EXT + 300, lv.approach + 450);
-  quad(side, 1, south, 1, EXT + 300, lv.approach + 450);
-  quad(0, -1, -south, -1, EXT + 300, 520);
-  quad(0, 1, -south, -1, EXT + 300, 520);
+  quad(-side, -1, south + tw.s, 1, EXT + 300, lv.approach + 450 - tw.s);
+  quad(side, 1, south + tw.s, 1, EXT + 300, lv.approach + 450 - tw.s);
+  quad(0, -1, -south - tw.n, -1, EXT + 300, 520);
+  quad(0, 1, -south - tw.n, -1, EXT + 300, 520);
   // the street's far end, behind the start
   const endY = south + lv.approach + 260;
   blocks.push({ static: true, x: 0, y: endY + 60, a: 0, hl: side + 2, hw: 60, h: 120, height: 120, color: '#7b5cff',
@@ -475,9 +475,10 @@ function reset() {
   st.blocks = buildCity(lv, roadHalf);
   if (lv.roundabout) buildRoundabout(st, lv);
   // the boulevard's front row: shops worth their price, and building sites with a tower crane
+  const tw = trenchWidths(lv);
   if (lv.shops || lv.cranes) {
     const front = st.blocks.filter((S: Loose) => S.kind === 'building' && Math.abs(S.x) < EXT - 100 && Math.abs(S.x) > APPROACH_HALF + 80 &&
-      (Math.abs((S.y - S.hw) - south) < 12 || Math.abs((S.y + S.hw) + south) < 12));
+      (Math.abs((S.y - S.hw) - south - tw.s) < 12 || Math.abs((S.y + S.hw) + south + tw.n) < 12));
     for (let i = 0; i < (lv.cranes || 0) && front.length; i++) {
       const S = front.splice(Math.floor(rng() * front.length), 1)[0];
       st.blocks.splice(st.blocks.indexOf(S), 1);
@@ -510,6 +511,7 @@ function reset() {
   for (const dir of [1, -1]) for (let i = 0; i < lv.lanes; i++) {
     st.lanes.push({ y: laneY(lv, i, dir), dir, idx: i, timer: 0.3 + rng() * 1.5 });
   }
+  if (lv.lower) buildTrenches(st, lv);
   // pre-filled traffic
   for (const ln of st.lanes) {
     let x = -EXT + rng() * 200;
@@ -524,7 +526,7 @@ function reset() {
   st.jumpsLeft = G().jump ? tune.jumps_per_run : 0;
   // invisible walls round the map, so nothing leaves it
   const bound = (x: Loose, y: Loose, hl: Loose, hw: Loose) => st.props.push({ static: true, kind: 'bound', x, y, a: 0, hl, hw, h: 999, height: 999, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 });
-  bound(0, -south - 560, EXT + 400, 40); bound(0, south + lv.approach + 520, EXT + 400, 40);
+  bound(0, -south - tw.n - 560, EXT + 400, 40); bound(0, south + lv.approach + 520, EXT + 400, 40);
   // the tunnels at both ends of the boulevard: traffic comes out of them and goes back in; your car and the wrecks stop at the mouth
   for (const side of [-1, 1]) st.props.push({ static: true, kind: 'tunnel', x: side * (EXT + tune.tunnel_mouth + 40), y: lv.approach / 2, a: 0, hl: 40, hw: lv.approach + 700,
     h: 999, height: 999, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 });
@@ -533,7 +535,7 @@ function reset() {
   for (const [kind, x, y] of lv.pickups) st.pickups.push({ kind, x, y: south + lv.approach - (lv.approach - y), taken: false, spin: rng() * 6 });
   // oil already spilled on the boulevard (later levels)
   for (let i = 0; i < (lv.oilPatches || 0); i++) {
-    const ln = st.lanes[Math.floor(rng() * st.lanes.length)], side = rng() < 0.5 ? -1 : 1;
+    const main = st.lanes.filter((l: Loose) => !l.low), ln = main[Math.floor(rng() * main.length)], side = rng() < 0.5 ? -1 : 1; // on the boulevard
     addOil(side * (160 + rng() * 700), ln.y, tune.oil_radius * (2 + rng()), -1, false);
   }
   // camera: the intro looks at the crossroads
@@ -557,6 +559,7 @@ function spawnOn(ln: Loose, x: Loose) {
     : kind === 'truck' ? (fr ? '#f3e3c3' : uk ? '#1e5631' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
   const b = mkBody(kind, x, ln.y, ln.dir > 0 ? 0 : Math.PI, color);
   for (const o of state.bodies) if (Math.abs(o.y - ln.y) < 20 && Math.abs(o.x - x) < o.hl + b.hl + 30) return false;
+  if (ln.z) b.z = ln.z; // an avenue below the boulevard
   b.lane = ln; b.cruise = tune['speed_' + kind] * (0.9 + rng() * 0.2) * (state.lv.speedMul || 1);
   b.vx = ln.dir * b.cruise; b.id = state.nextId++;
   if (kind === 'moto') b.rider = cars[Math.floor(rng() * cars.length)];
@@ -767,7 +770,7 @@ function startEvent(type: Loose) {
     tone(660, 0.3, 'triangle', 0.15); tone(880, 0.4, 'triangle', 0.12, 0.25); events.push({ type: 'event', what: type, t: state.t });
     return;
   }
-  const st = state, ln = st.lanes[Math.floor(rng() * st.lanes.length)], x0 = -ln.dir * tune.event_dist;
+  const st = state, main = st.lanes.filter((l: Loose) => !l.low), ln = main[Math.floor(rng() * main.length)], x0 = -ln.dir * tune.event_dist; // on the boulevard
   st.bodies = st.bodies.filter((b: Loose) => isMine(b) || b.loose || Math.abs(b.y - ln.y) > 20 || Math.abs(b.x - x0) > 560);
   const col: Loose = { police: '#f8f9fa', truck: '#3d7bff', tanker: '#e03131', car: '#ff2d95' };
   const put = (kind: Loose, back: Loose, k: Loose, mod?: Loose) => {
@@ -795,7 +798,7 @@ function stepParts(sdt: Loose) {
     const q = st.parts[i];
     q.life -= sdt; if (q.life <= 0) { st.parts.splice(i, 1); continue; }
     q.x += q.vx * sdt; q.y += q.vy * sdt; q.z += q.vz * sdt;
-    if (q.type === 'spark' || q.type === 'debris') { q.vz -= 900 * sdt; if (q.z < 0) { q.z = 0; q.vz *= -0.3; q.vx *= 0.6; q.vy *= 0.6; } q.rot += sdt * 8; }
+    if (q.type === 'spark' || q.type === 'debris') { q.vz -= 900 * sdt; const g = state.trenches ? groundAt(q.x, q.y, q.z) : 0; if (q.z < g) { q.z = g; q.vz *= -0.3; q.vx *= 0.6; q.vy *= 0.6; } q.rot += sdt * 8; }
     if (q.type === 'smoke' || q.type === 'fire') { q.vx *= 0.97; q.vy *= 0.97; }
   }
   for (let i = st.floats.length - 1; i >= 0; i--) { st.floats[i].t += sdt; if (st.floats[i].t > 1.3) st.floats.splice(i, 1); }
@@ -813,7 +816,7 @@ function driveAI(b: Loose, dt: Loose) {
   let gap = Infinity, gapWreck = false;
   const rb = state.roundabout;
   for (const o of state.bodies) {
-    if (o === b || o.z > 30) continue;
+    if (o === b || o.z - b.z > 30 || b.z - o.z > 30) continue; // flying over, or on another level of the interchange
     if (rb && o.ai && o.lane && o.lane.dir !== b.lane.dir) continue; // on the roundabout each way keeps to its own side of the island: the other way's traffic is never in the way
     const rx = o.x - b.x, ry = o.y - b.y, along = rx * fx + ry * fy;
     if (along <= 0 || along > 420) continue;
@@ -846,7 +849,7 @@ function driveAI(b: Loose, dt: Loose) {
 function overtakeLane(b: Loose): Loose {
   const dir = b.lane.dir;
   for (const ln of state.lanes) {
-    if (ln === b.lane || ln.dir !== dir || Math.abs(ln.y - b.lane.y) > tune.lane_width * 1.5) continue;
+    if (ln === b.lane || ln.dir !== dir || Math.abs(ln.y - b.lane.y) > tune.lane_width * 1.5 || !ln.low !== !b.lane.low) continue; // never onto another level
     let free = true;
     for (const o of state.bodies) {
       if (o === b || Math.abs(o.y - ln.y) > o.hw + b.hw + 4) continue;
@@ -877,7 +880,7 @@ function drivePlayer(b: Loose, dt: Loose) {
   if (Math.abs(l) > 90) skid(b);
 }
 function skid(b: Loose) {
-  if (b.z > 2) return;
+  if (b.z > 2 || b.z < -10) return; // the marks are painted on the boulevard
   const c = Math.cos(b.a), s = Math.sin(b.a), x = b.x - c * b.hl * 0.7, y = b.y - s * b.hl * 0.7;
   const ox = -s * b.hw * 0.7, oy = c * b.hw * 0.7;
   const sk = state.skids;
@@ -971,11 +974,16 @@ function physics(dt: Loose) {
   const st = state, bodies = st.bodies;
   if (st.trailer) { st.trailer.px = st.trailer.x; st.trailer.py = st.trailer.y; }
   for (const b of bodies) {
-    const air = b.z > 0.5 || b.vz > 0;
+    const g = st.trenches ? groundAt(b.x, b.y, b.z) : 0; // below the boulevard in an avenue of the interchange
+    const air = b.z > g + 0.5 || b.vz > 0;
     if (air) { // flying: no grip
+      if (g < 0 && b.z > -1 && !b.fell) { // over the edge: down to the avenue
+        b.fell = true; b.inv = b.inv || b.loose; events.push({ type: 'fall', t: st.t });
+        if (!st.fallSaid || st.t - st.fallSaid > 1.5) { st.fallSaid = st.t; st.floats.push({ x: b.x, y: b.y, txt: 'CHUTE !', t: 0, color: '#74c0fc', big: true }); }
+      }
       b.vz -= tune.gravity * dt; b.z += b.vz * dt; b.roll += b.rollV * dt;
-      if (b.z <= 0) {
-        b.z = 0;
+      if (b.z <= g) {
+        b.z = g;
         if (b.vz < -200) { // a hard landing bounces and hurts
           hurt(b, -b.vz * 0.3 * tune.damage_scale * b.m * 0.2, b.x, b.y);
           if (b.vz < -320) { crunch(0.4); st.shake = Math.min(18, st.shake + 4); }
@@ -1038,8 +1046,10 @@ function physics(dt: Loose) {
         if (Math.abs(A.x - S.x) > S.hl + A.hl || Math.abs(A.y - S.y) > S.hw + A.hl) continue;
         if (A.z > S.height && S.kind !== 'building' && S.kind !== 'bound' && S.kind !== 'tunnel') continue; // nobody flies over a building
         if (S.kind === 'tunnel' && A.ai) continue; // traffic drives in and out of the tunnels
+        if (S.z0 !== undefined && (S.broken || A.z + A.height < S.z0)) continue; // the interchange: a broken parapet, or a piece above
         const c = sat(S, A); if (!c) continue;
-        const j = resolve(S, A, c);
+        const vx = A.vx, vy = A.vy, j = resolve(S, A, c);
+        if (S.kind === 'rail' && j > tune.rail_break) { breakRail(S); A.vx = vx * 0.8; A.vy = vy * 0.8; } // through it, still going
         impact(S, A, j, c, 0);
       }
     }
@@ -1048,7 +1058,7 @@ function physics(dt: Loose) {
   // oil: whoever drives onto someone else's slick spins out
   if (st.oils.length) for (const b of bodies) {
     if (b.oilT > 0) b.oilT -= dt;
-    if (b.z > 2) continue;
+    if (b.z > 2 || b.z < -10) continue; // in the air, or down in an avenue of the interchange: the oil is on the boulevard
     const spot = onOil(b);
     if (!spot) continue;
     if (!b.inv && !spot.inv) continue; // the road's own patches only catch your car and the wrecks
@@ -1202,7 +1212,7 @@ function updatePlay(dt: Loose) {
   for (let i = st.bodies.length - 1; i >= 0; i--) {
     const b = st.bodies[i];
     b.pendT -= dt;
-    if (b.leak && b.z < 2) { // a trail of oil from the impact to where it stops
+    if (b.leak && b.z < 2 && b.z > -10) { // a trail of oil from the impact to where it stops
       const sp = Math.hypot(b.vx, b.vy);
       if (Math.hypot(b.x - b.leakX, b.y - b.leakY) > tune.oil_drop_gap) { addOil(b.x, b.y, tune.oil_radius * (0.7 + rng() * 0.5), b.id); b.leakX = b.x; b.leakY = b.y; }
       if (sp < 12) { b.leak = false; addOil(b.x, b.y, tune.oil_radius * 2.3, b.id); }
@@ -1223,7 +1233,7 @@ function updatePlay(dt: Loose) {
     const q = st.parts[i];
     q.life -= sdt; if (q.life <= 0) { st.parts.splice(i, 1); continue; }
     q.x += q.vx * sdt; q.y += q.vy * sdt; q.z += q.vz * sdt;
-    if (q.type === 'spark' || q.type === 'debris') { q.vz -= 900 * sdt; if (q.z < 0) { q.z = 0; q.vz *= -0.3; q.vx *= 0.6; q.vy *= 0.6; } q.rot += sdt * 8; }
+    if (q.type === 'spark' || q.type === 'debris') { q.vz -= 900 * sdt; const g = state.trenches ? groundAt(q.x, q.y, q.z) : 0; if (q.z < g) { q.z = g; q.vz *= -0.3; q.vx *= 0.6; q.vy *= 0.6; } q.rot += sdt * 8; }
     if (q.type === 'smoke' || q.type === 'fire') { q.vx *= 0.97; q.vy *= 0.97; }
   }
   for (let i = st.floats.length - 1; i >= 0; i--) { st.floats[i].t += dt; if (st.floats[i].t > 1.3) st.floats.splice(i, 1); }
@@ -1286,12 +1296,135 @@ function drawTunnels() {
   const st = state, rh = st.roadHalf, xm = EXT + tune.tunnel_mouth, top = -st.south - 600, bot = st.south + st.lv.approach + 700, h = tune.tunnel_height;
   for (const side of [-1, 1]) {
     const xa = side * xm, xb = side * (xm + 1400);
-    prism([[Math.min(xa, xb), top], [Math.max(xa, xb), top], [Math.max(xa, xb), bot], [Math.min(xa, xb), bot]], 0, h, '#4f8a3c', '#9aa3ad');
+    const deep = st.trenches ? -Math.max(...st.trenches.map((t: Loose) => t.D)) : 0;
+    prism([[Math.min(xa, xb), top], [Math.max(xa, xb), top], [Math.max(xa, xb), bot], [Math.min(xa, xb), bot]], deep, h, '#4f8a3c', '#9aa3ad');
+    for (const t of st.trenches || []) poly([P(xa, t.y0 + 4, -t.D), P(xa, t.y1 - 4, -t.D), P(xa, t.y1 - 4, -t.D + 40), P(xa, t.y0 + 4, -t.D + 40)], '#0d0a18'); // an avenue's mouth
     const mouth = [P(xa, -rh, 0), P(xa, rh, 0), P(xa, rh, h * 0.55), P(xa, -rh, h * 0.55)];
     poly(mouth, '#0d0a18');
     poly([P(xa, -rh - 8, h * 0.55), P(xa, rh + 8, h * 0.55), P(xa, rh + 8, h * 0.68), P(xa, -rh - 8, h * 0.68)], '#ffc83d'); // the lintel
     for (let y = -rh; y < rh; y += 24) poly([P(xa, y, h * 0.55), P(xa, y + 12, h * 0.55), P(xa, y + 12, h * 0.68), P(xa, y, h * 0.68)], '#1d1a26');
   }
+}
+// ---- The interchange (Japan): avenues in trenches below the boulevard ------------------------------------------
+// A level's "lower" list digs avenues along the boulevard, each depth below it, each with its own traffic both
+// ways. The boulevard and the street stay at height 0 (the street crosses a southern avenue on a bridge); a
+// parapet runs along their edges, and a vehicle thrown hard enough against it breaks through and falls to the
+// avenue below, where the pile-up carries on. A second avenue further out ("cascade") lies deeper still, behind
+// a parapet of its own. Heights below the boulevard are negative: the view draws them lower and smaller, so the
+// avenue's near lane slips under the boulevard's edge.
+const TRENCH_SIDE = 22, TRENCH_UNDER = 40; // an avenue's footway along its far wall; how far its floor runs on under the edge above
+/** The width a level's avenues take on each side of the boulevard: { n, s }. */
+function trenchWidths(lv: Loose) {
+  const w: Loose = { n: 0, s: 0 };
+  for (const t of lv.lower || []) w[t.side === 's' ? 's' : 'n'] += t.lanes * tune.lane_width + TRENCH_SIDE;
+  return w;
+}
+/** A static piece of the interchange: a parapet or a wall, from height z0 up to top. */
+function interchangePiece(kind: string, x: number, y: number, hl: number, hw: number, z0: number, top: number): Loose {
+  return { static: true, kind, x, y, a: 0, hl, hw, h: top - z0, height: top, z0, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
+}
+/** Digs the level's avenues (st.trenches, deepest first), their lanes, parapets and walls. */
+function buildTrenches(st: Loose, lv: Loose) {
+  const LW = tune.lane_width, edge: Loose = { n: -st.south, s: st.south }, floor: Loose = { n: 0, s: 0 }, side = APPROACH_HALF + SIDEWALK;
+  const list: Loose[] = [], far = EXT + tune.tunnel_depth + 400, seg = tune.rail_segment, rh = tune.rail_height;
+  // a parapet along y from x0 to x1 (segments, each breaking on its own), at the height of the ground it stands on
+  const railX = (y: number, x0: number, x1: number, top: number) => { for (let x = x0; x < x1 - 1; x += seg) { const l = Math.min(seg, x1 - x); st.props.push(interchangePiece('rail', x + l / 2, y, l / 2 - 1, 4, top, top + rh)); } };
+  const railY = (x: number, y0: number, y1: number, top: number) => { for (let y = y0; y < y1 - 1; y += seg) { const l = Math.min(seg, y1 - y); st.props.push(interchangePiece('rail', x, y + l / 2, 4, l / 2 - 1, top, top + rh)); } };
+  for (const t of lv.lower || []) {
+    const k = t.side === 's' ? 's' : 'n', s = k === 's' ? 1 : -1, w = t.lanes * LW + TRENCH_SIDE, inner = edge[k], outer = inner + s * w, top = floor[k];
+    const tr: Loose = { y0: Math.min(inner, outer), y1: Math.max(inner, outer), D: t.depth, s, inner, outer, top, bridge: 0 };
+    // the parapet on the edge above it: on the boulevard's side a gap where the street crosses on its bridge
+    if (top === 0 && s > 0) { tr.bridge = side; railX(inner - 3, -far, -side, 0); railX(inner - 3, side, far, 0); railY(-side + 3, tr.y0, tr.y1, 0); railY(side - 3, tr.y0, tr.y1, 0); }
+    else railX(inner - s * 3, -far, far, top);
+    // its lanes, both ways, the near one a little under the edge above
+    const yc = inner + s * (t.lanes * LW / 2 - 0.3 * LW), half = t.lanes / 2;
+    for (const dir of [1, -1]) for (let i = 0; i < half; i++) st.lanes.push({ y: yc + roadSide() * dir * LW * (i + 0.5), dir, idx: i, timer: 0.3 + rng() * 1.5, z: -t.depth, low: true });
+    // walls: under the edge above (so nothing drives off under the boulevard), and its far side (taken down when a deeper avenue follows)
+    st.props.push(interchangePiece('wall', 0, inner - s * (TRENCH_UNDER + 4), far, 4, -t.depth - 60, top - 30));
+    tr.wall = interchangePiece('wall', 0, outer + s * 4, far, 4, -t.depth - 60, 0); st.props.push(tr.wall);
+    const prev = list.find((o: Loose) => o.s === s && o.outer === inner); if (prev) st.props.splice(st.props.indexOf(prev.wall), 1, interchangePiece('wall', 0, inner + s * 4, far, 4, -t.depth - 60, top - 1));
+    list.push(tr); edge[k] = outer; floor[k] = -t.depth;
+  }
+  st.trenches = list.sort((a: Loose, b: Loose) => b.D - a.D);
+}
+/** The height of the ground under (x, y) for something at height z: 0, or an avenue's floor; under the edge of the
+ * level above, an avenue's floor runs on a little (TRENCH_UNDER) for what is down there already. */
+function groundAt(x: number, y: number, z: number) {
+  const T = state.trenches; if (!T) return 0;
+  for (const t of T) { // deepest first
+    const inside = y >= t.y0 && y <= t.y1;
+    if (!inside && !(z < t.top - 10 && (t.s < 0 ? y > t.y1 && y < t.y1 + TRENCH_UNDER : y < t.y0 && y > t.y0 - TRENCH_UNDER))) continue;
+    if (t.bridge && Math.abs(x) < t.bridge && z > t.top - t.D * 0.5) return t.top; // on the street's bridge
+    return -t.D;
+  }
+  return 0;
+}
+/** A parapet gives way: a burst of concrete, a crack, and the gap stays open. */
+function breakRail(S: Loose) {
+  S.broken = true;
+  for (let i = 0; i < 10; i++) { const an = vr() * Math.PI * 2, sp = 40 + vr() * 140; addPart('debris', S.x + (vr() - 0.5) * S.hl * 2, S.y + (vr() - 0.5) * S.hw * 2, S.z0 + 6, Math.cos(an) * sp, Math.sin(an) * sp, 60 + vr() * 120, 0.6 + vr() * 0.5); }
+  crunch(0.35); events.push({ type: 'rail', t: state.t });
+}
+/** The highest avenue floor at or below height z (the deepest when none is). */
+const floorUnder = (T: Loose[], z: number) => T.reduce((best: number, t: Loose) => -t.D <= z + 1 && -t.D > best ? -t.D : best, -Math.max(...T.map((t: Loose) => t.D)));
+/** The avenues below the boulevard, drawn before it is finished: through the opening above each, its floor (the
+ * deepest first), its walls, the shadow of the edge above, the traffic down there, and the street's bridge. */
+function drawTrenches(lower: Loose[]) {
+  const st = state, T = st.trenches, LW = tune.lane_width, x0 = camDraw.x - W / cam.zoom - 200, x1 = camDraw.x + W / cam.zoom + 200;
+  ctx.save();
+  // the openings, as seen at the boulevard's height; the bridge is not one
+  ctx.beginPath();
+  for (const t of T) {
+    if (t.top !== 0) continue; // a deeper avenue opens from the one before it: the same opening, made wider below
+    const outer = T.filter((o: Loose) => o.s === t.s).reduce((a: number, o: Loose) => t.s < 0 ? Math.min(a, o.y0) : Math.max(a, o.y1), t.s < 0 ? t.y0 : t.y1);
+    const ya = Math.min(t.inner, outer), yb = Math.max(t.inner, outer), q = [P(x0, ya, 0), P(x1, ya, 0), P(x1, yb, 0), P(x0, yb, 0)];
+    ctx.moveTo(q[0][0], q[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(q[i][0], q[i][1]); ctx.closePath();
+    if (t.bridge) { const b = [P(-t.bridge, t.y0, 0), P(-t.bridge, t.y1, 0), P(t.bridge, t.y1, 0), P(t.bridge, t.y0, 0)]; ctx.moveTo(b[0][0], b[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(b[i][0], b[i][1]); ctx.closePath(); }
+  }
+  ctx.clip('evenodd');
+  for (const t of T) { // deepest first
+    const h = -t.D, k = 1 + h * cam.zoom * tune.persp; // a level plane: the ground's picture scaled about the vanishing point
+    ctx.save(); ctx.translate(VP[0], VP[1]); ctx.scale(k, k); ctx.translate(-VP[0], -VP[1]);
+    ctx.translate(W / 2, H / 2); ctx.scale(cam.zoom, cam.zoom); ctx.translate(-camDraw.x, -camDraw.y);
+    const ya = Math.min(t.inner - t.s * TRENCH_UNDER, t.outer), yb = Math.max(t.inner - t.s * TRENCH_UNDER, t.outer);
+    ctx.fillStyle = '#3f4866'; ctx.fillRect(x0, ya, x1 - x0, yb - ya); // asphalt, a shade darker down there
+    const foot = t.outer - t.s * TRENCH_SIDE; ctx.fillStyle = '#c9bd9c'; ctx.fillRect(x0, Math.min(foot, t.outer), x1 - x0, TRENCH_SIDE); // the footway by the far wall
+    ctx.fillStyle = '#efe6cc'; ctx.fillRect(x0, foot - (t.s > 0 ? 0 : 2), x1 - x0, 2); // its kerb
+    const yc = t.inner + t.s * ((t.outer - t.s * TRENCH_SIDE - t.inner) * t.s / 2 - 0.3 * LW);
+    ctx.fillStyle = '#ffd21f'; ctx.fillRect(x0, yc - 2.5, x1 - x0, 2); ctx.fillRect(x0, yc + 0.5, x1 - x0, 2); // the centre line
+    ctx.fillStyle = '#e9ecef';
+    const lanes = (st.lv.lower.find((o: Loose) => o.depth === t.D && (o.side === 's') === (t.s > 0)) || { lanes: 2 }).lanes;
+    for (let i = 1; i < lanes / 2; i++) for (const sd of [-1, 1]) for (let x = Math.floor(x0 / 50) * 50; x < x1; x += 50) ctx.fillRect(x, yc + sd * LW * i - 1, 24, 2);
+    // the shadow of the edge above, over the near lane, and the dusk at the foot of the far wall
+    const sh = (y: number, d: number, a: number) => { const g = ctx.createLinearGradient(0, y, 0, y + d); g.addColorStop(0, `rgba(10,8,25,${a})`); g.addColorStop(1, 'rgba(10,8,25,0)'); ctx.fillStyle = g; ctx.fillRect(x0, Math.min(y, y + d), x1 - x0, Math.abs(d)); };
+    sh(t.inner - t.s * TRENCH_UNDER, t.s * (TRENCH_UNDER + LW * 1.2), 0.55);
+    ctx.restore();
+    // the far wall, its face toward the view, in concrete with its seams
+    const wallTop = T.some((o: Loose) => o.s === t.s && o.inner === t.outer) ? h + 1 : 0, wy = t.outer;
+    if (wallTop > h) { // concrete, its seams, a coping on top
+      prism([[x0, wy], [x1, wy], [x1, wy + t.s * 6], [x0, wy + t.s * 6]], h, wallTop, null, '#aeb4bd');
+      ctx.strokeStyle = 'rgba(60,64,80,0.35)'; ctx.lineWidth = Math.max(1, cam.zoom); ctx.beginPath();
+      for (let x = Math.floor(x0 / 90) * 90; x < x1; x += 90) { const a = P(x, wy, h), c = P(x, wy, wallTop); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); }
+      ctx.stroke();
+      flatPoly([[x0, wy], [x1, wy], [x1, wy + t.s * 7], [x0, wy + t.s * 7]], wallTop + 0.1, '#d5d9df');
+    }
+    // the vehicles down to this floor: each on the highest floor below it (one falling between two is drawn with the lower)
+    const here = lower.filter((b: Loose) => floorUnder(T, b.z) === h).sort((a: Loose, b: Loose) => (a.z - b.z) || (a.y - b.y));
+    for (const b of here) drawShadow(b);
+    for (const b of here) drawVehicle(b);
+    // down there it is in the shade: the wall on its north side (or the boulevard's edge) casts its shadow across
+    // it, light coming from the upper left as for the vehicles' shadows, and the whole floor is dimmer
+    const yn = t.y0, len = (5 + (t.s < 0 && t.top === 0 && !T.some((o: Loose) => o.s === t.s && o.inner === t.outer) ? t.D : t.D - (t.top ? -t.top : 0)) * 0.5) * 1.2;
+    const band = (y0: number, y1: number, a: number) => poly([P(x0, y0, h), P(x1, y0, h), P(x1, y1, h), P(x0, y1, h)], `rgba(12,10,34,${a})`);
+    band(yn - TRENCH_UNDER, yn + len, 0.38); band(yn + len, yn + len + 8, 0.2); // the shadow, its soft edge
+    band(t.y0 - TRENCH_UNDER, t.y1 + TRENCH_UNDER, 0.18);
+    if (t.bridge) { // the street's bridge: its concrete sides from the avenue up, its piers
+      prism([[-t.bridge, t.y0], [t.bridge, t.y0], [t.bridge, t.y1], [-t.bridge, t.y1]], h, 0, null, '#c3c8cf');
+      prism([[-t.bridge, t.y0], [t.bridge, t.y0], [t.bridge, t.y1], [-t.bridge, t.y1]], -12, 0, null, '#8d939c'); // its deck's thickness, darker
+    }
+  }
+  ctx.restore();
+  // the avenues' ends: the tunnel mouths they come out of are drawn by drawTunnels
 }
 // ---- The T-Rex, the shops and the cranes ---------------------------------------------------
 function roar() { // a low growl falling in pitch, over noise
@@ -2031,9 +2164,9 @@ function shadowSprite(len: number, wid: number) {
   sp = { cv, cw, ch, S }; SHADOWS.set(key, sp); return sp;
 }
 function drawShadow(b: Loose) {
-  const len = b.hl * 2 + 4, wid = b.hw * 2 * Math.abs(Math.cos(b.roll)) + 4, off = 5 + b.z * 0.5;
-  const sp = shadowSprite(len, wid), p = P(b.x + off, b.y + off * 1.2, 0), k = cam.zoom / sp.S;
-  ctx.globalAlpha = Math.min(1, Math.max(0.2, 0.55 - b.z * 0.0035));
+  const g = state && state.trenches ? groundAt(b.x, b.y, b.z) : 0, up = b.z - g, len = b.hl * 2 + 4, wid = b.hw * 2 * Math.abs(Math.cos(b.roll)) + 4, off = 5 + up * 0.5;
+  const sp = shadowSprite(len, wid), p = P(b.x + off, b.y + off * 1.2, g), k = cam.zoom * (1 + g * cam.zoom * tune.persp) / sp.S;
+  ctx.globalAlpha = Math.min(1, Math.max(0.2, 0.55 - up * 0.0035));
   ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(b.a); ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.cw / 2, -sp.ch / 2); ctx.restore();
   ctx.globalAlpha = 1;
 }
@@ -2957,7 +3090,20 @@ function drawRamp() {
   }
 }
 function drawBarrier(S: Loose) {
-  if (S.kind === 'bound' || S.kind === 'tunnel' || S.kind === 'island') return; // invisible walls (the tunnels are drawn over the city; the island on the ground)
+  if (S.kind === 'bound' || S.kind === 'tunnel' || S.kind === 'island' || S.kind === 'wall') return;
+  if (S.kind === 'rail') { // a concrete parapet on the interchange's edge, a yellow band along its top; gone once broken
+    const c = P(S.x, S.y, S.z0); if (c[0] < -200 || c[0] > W + 200 || c[1] < -200 || c[1] > H + 200) return;
+    const box = (x0: number, y0: number, x1: number, y1: number) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    if (S.broken) { // stubs at its ends, the gap between them
+      const along = S.hl > S.hw, e = 6;
+      for (const d of [-1, 1]) prism(along ? box(S.x + d * S.hl - (d > 0 ? e : 0), S.y - S.hw, S.x + d * S.hl + (d > 0 ? 0 : e), S.y + S.hw) : box(S.x - S.hw, S.y + d * S.hw - (d > 0 ? e : 0), S.x + S.hw, S.y + d * S.hw + (d > 0 ? 0 : e)), S.z0, S.height - 4, '#c9ced6', '#9aa1ab');
+      return;
+    }
+    prism(box(S.x - S.hl, S.y - S.hw, S.x + S.hl, S.y + S.hw), S.z0, S.height, '#f1f3f5', '#a9b0ba');
+    const g = S.hl > S.hw ? box(S.x - S.hl, S.y - 1, S.x + S.hl, S.y + 1) : box(S.x - 1, S.y - S.hw, S.x + 1, S.y + S.hw);
+    poly(g.map((q: number[]) => P(q[0], q[1], S.height + 0.1)), '#ffc83d'); // a yellow band along its top
+    return;
+  } // invisible walls (the tunnels are drawn over the city; the island on the ground)
   if (S.ref && S.ref.monument) return; // a monument's collider, standing or fallen: the monument draws itself
   if (S.kind === 'median') { // a long concrete barrier with reflectors
     prism([[S.x - S.hl, S.y - S.hw], [S.x + S.hl, S.y - S.hw], [S.x + S.hl, S.y + S.hw], [S.x - S.hl, S.y + S.hw]], 0, S.h, '#ced4da', '#adb5bd');
@@ -3085,8 +3231,9 @@ function drawWorld() {
   for (const u of st.pickups) drawPickup(u);
   drawRamp();
   for (const S of st.props) drawBarrier(S);
-  const ground: Loose[] = [], air: Loose[] = [];
-  for (const b of st.bodies) if (visible(b, 80)) (b.z > 26 ? air : ground).push(b);
+  const ground: Loose[] = [], air: Loose[] = [], lower: Loose[] = [];
+  for (const b of st.bodies) if (visible(b, 80)) (b.z < -10 && st.trenches ? lower : b.z > 26 ? air : ground).push(b);
+  if (st.trenches) drawTrenches(lower);
   for (const b of ground) drawShadow(b);
   ground.sort((a: Loose, b: Loose) => (a.z - b.z) || (a.y - b.y));
   for (const b of ground) drawVehicle(b);
@@ -3498,7 +3645,7 @@ function drawWheelCard(i: Loose, k: Loose) {
 // Only France is ready: its 19 levels are the game's. The others show as "soon".
 const COUNTRIES: Loose[] = [
   { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: true, after: 'fr' },
-  { id: 'jp', name: 'Japon', ready: false }, { id: 'us', name: 'États-Unis', ready: false }, { id: 'br', name: 'Brésil', ready: false },
+  { id: 'jp', name: 'Japon', ready: true, after: 'uk' }, { id: 'us', name: 'États-Unis', ready: false }, { id: 'br', name: 'Brésil', ready: false },
 ];
 let countryIdx = 0, homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
 /** A country is open once the one before it has a star on its last level (France always is). */
@@ -4051,6 +4198,7 @@ install({
   press(code: Loose) { hit.add(code); },
   hold(code: Loose, on: Loose) { on ? down.add(code) : down.delete(code); },
   get events() { return events; },
+  spillOil(x: number, y: number, r: number) { addOil(x, y, r, -1, true); },
   step(n: Loose = 1, draw: Loose = true, alpha: Loose = 1) {
     for (let i = 0; i < n; i++) step();
     if (draw) { ALPHA = alpha; drawFrame(); }

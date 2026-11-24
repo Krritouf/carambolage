@@ -1048,7 +1048,7 @@ function physics(dt: Loose) {
         if (Math.abs(A.x - S.x) > S.hl + A.hl || Math.abs(A.y - S.y) > S.hw + A.hl) continue;
         if (A.z > S.height && S.kind !== 'building' && S.kind !== 'bound' && S.kind !== 'tunnel') continue; // nobody flies over a building
         if (S.kind === 'tunnel' && A.ai) continue; // traffic drives in and out of the tunnels
-        if (S.z0 !== undefined && (S.broken || A.z + A.height < S.z0)) continue; // the interchange: a broken parapet, or a piece above
+        if (S.z0 !== undefined && (S.broken || A.z + A.height < S.z0 || A.z >= S.height - 1)) continue; // the interchange: a broken parapet, a piece above, or one it stands level with or on (an avenue's wall under the street's bridge)
         const c = sat(S, A); if (!c) continue;
         const vx = A.vx, vy = A.vy, j = resolve(S, A, c);
         if (S.kind === 'rail' && j > tune.rail_break) { breakRail(S); A.vx = vx * 0.8; A.vy = vy * 0.8; } // through it, still going

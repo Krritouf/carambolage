@@ -132,3 +132,18 @@ test('in Japan the monument is a pagoda, which falls across the road and scores;
   expect(r).toMatchObject({ monument: 'pagode', fallen: true, said: true, japanese: true, british: false });
   expect(r.gained).toBeGreaterThan(0);
 });
+
+test('on every Japanese level the player\'s car can drive up the street to the crossroads, ramp or not', async ({ page }) => {
+  const stuck: number[] = [];
+  for (let level = 1; level <= 20; level++) {
+    await openJpLevel(page, level);
+    const reached = await page.evaluate(() => {
+      const g = window.game!, st = g.state as any, p = st.player;
+      g.hold('ArrowUp', true);
+      let n = 0; while (p.y > st.south && n++ < 900) { g.step(1, false); st.bodies = st.bodies.filter((b: any) => b === p); } // traffic still spawns: kept off
+      return p.y <= st.south; // on the boulevard (a median further on is a crash, not a dead end)
+    });
+    if (!reached) stuck.push(level);
+  }
+  expect(stuck).toEqual([]);
+});

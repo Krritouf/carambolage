@@ -3009,6 +3009,95 @@ function drawBritish(b: Loose, dk: string, box: Loose, L: number, Wd: number, z:
   }
   return false;
 }
+// ---- A vehicle's damage, in three stages before the wreck ------------------------------------------------------
+// Drawn over the body seen from above, in its own frame (u forward, v across), clipped to its outline, and baked
+// into the vehicle's sprite for its stage, so it costs nothing a frame:
+//   1 (a quarter): the front crumpled a little, two dents, scratches down to the metal, a cracked windscreen;
+//   2 (half): the front pushed in, the back crumpled, more dents, scraped paint to the primer, the glass starred, soot;
+//   3 (three quarters): front and back caved in, a flank stove in, the roof sagging, holes torn in the panels, the
+//     glass smashed, soot all over.
+/** The damage stage of a vehicle damaged to f of its value: 0 to 3, 4 a wreck. */
+const wearStage = (f: number) => f >= 1 ? 4 : Math.min(3, Math.round(f * 4));
+function vehicleDamage(b: Loose, f: number, L: number, Wd: number) {
+  const st = wearStage(f); if (st < 1 || st > 3) return;
+  const seed = b.dent || 1, R = (i: number, k: number) => hash01(seed, i, k), h = b.z + (b.height || 20);
+  const p = P(b.x, b.y, h), k = cam.zoom * (1 + h * cam.zoom * (PERSP ?? tune.persp));
+  const hl = L / 2, hw = Wd / 2, fwd = R(1, 1) < 0.7 ? 1 : -1; // the end that took the first blow
+  ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(b.a); ctx.scale(k, k);
+  ctx.beginPath(); ctx.roundRect(-hl, -hw, L, Wd, Math.min(L, Wd) * 0.22); ctx.clip();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // a crumpled end: a dark jagged band pushed in, folds across it, the torn paint's bright edge
+  const crumple = (end: number, depth: number, i0: number) => {
+    const n = 7, edge: number[][] = [];
+    for (let i = 0; i <= n; i++) { const v = -hw + Wd * i / n, d = depth * (0.55 + 0.9 * R(i0 + i, 3)); edge.push([end * (hl - d), v]); }
+    ctx.beginPath(); ctx.moveTo(end * (hl + 2), -hw - 2); for (const [u, v] of edge) ctx.lineTo(u, v); ctx.lineTo(end * (hl + 2), hw + 2); ctx.closePath();
+    ctx.fillStyle = 'rgba(25,18,30,0.62)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,245,225,0.8)'; ctx.lineWidth = 1.2; ctx.beginPath(); edge.forEach(([u, v], i) => i ? ctx.lineTo(u, v) : ctx.moveTo(u, v)); ctx.stroke();
+    ctx.strokeStyle = 'rgba(15,10,20,0.6)'; ctx.lineWidth = 0.7;
+    for (let j = 1; j <= 3; j++) { ctx.beginPath(); for (let i = 0; i <= n; i++) { const [u, v] = edge[i], uu = u + end * depth * 0.25 * j * (0.6 + 0.5 * R(i0 + i, 4 + j)); i ? ctx.lineTo(uu, v) : ctx.moveTo(uu, v); } ctx.stroke(); }
+  };
+  // a flank stove in
+  const flank = (side: number, depth: number, i0: number) => {
+    const u0 = (R(i0, 21) - 0.5) * L * 0.4, len = L * (0.35 + 0.2 * R(i0, 22));
+    ctx.beginPath(); ctx.moveTo(u0 - len / 2, side * (hw + 2));
+    for (let i = 0; i <= 6; i++) { const u = u0 - len / 2 + len * i / 6, d = depth * Math.sin(Math.PI * i / 6) * (0.7 + 0.6 * R(i0 + i, 23)); ctx.lineTo(u, side * (hw - d)); }
+    ctx.lineTo(u0 + len / 2, side * (hw + 2)); ctx.closePath(); ctx.fillStyle = 'rgba(25,18,30,0.5)'; ctx.fill();
+  };
+  // a dent: a shaded hollow, lit on its far rim
+  const dent = (u: number, v: number, r: number) => {
+    const g = ctx.createRadialGradient(u + r * 0.25, v + r * 0.25, 0, u, v, r);
+    g.addColorStop(0, 'rgba(20,14,28,0.55)'); g.addColorStop(0.7, 'rgba(20,14,28,0.18)'); g.addColorStop(1, 'rgba(20,14,28,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(u, v, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,250,235,0.55)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.arc(u, v, r * 0.8, Math.PI * 1.05, Math.PI * 1.65); ctx.stroke();
+  };
+  // scratches to the bare metal: a few fine parallel lines
+  const scrape = (u: number, v: number, len: number, an: number) => {
+    const c = Math.cos(an), s = Math.sin(an);
+    ctx.strokeStyle = 'rgba(205,210,218,0.85)'; ctx.lineWidth = 0.8;
+    for (let j = -1; j <= 1; j++) { const ou = -s * j * 1.1, ov = c * j * 1.1, l = len * (0.7 + 0.3 * Math.abs(j - 0.3)); ctx.beginPath(); ctx.moveTo(u + ou - c * l / 2, v + ov - s * l / 2); ctx.lineTo(u + ou + c * l / 2, v + ov + s * l / 2); ctx.stroke(); }
+  };
+  // a patch of paint scraped off to the grey primer
+  const primer = (u: number, v: number, r: number, i0: number) => {
+    ctx.beginPath(); for (let i = 0; i < 9; i++) { const an = i * Math.PI * 2 / 9, rr = r * (0.6 + 0.6 * R(i0 + i, 31)); ctx.lineTo(u + Math.cos(an) * rr * 1.4, v + Math.sin(an) * rr * 0.8); }
+    ctx.closePath(); ctx.fillStyle = 'rgba(150,152,160,0.8)'; ctx.fill(); ctx.strokeStyle = 'rgba(40,34,48,0.5)'; ctx.lineWidth = 0.5; ctx.stroke();
+  };
+  // a crack in the glass: lines out from the point of impact, a ring round it; starred, a second ring and more lines
+  const glassCrack = (u: number, v: number, r: number, star: boolean, i0: number) => {
+    ctx.strokeStyle = 'rgba(240,248,255,0.9)'; ctx.lineWidth = 0.85;
+    const n = star ? 9 : 5;
+    for (let i = 0; i < n; i++) { const an = i * Math.PI * 2 / n + R(i0 + i, 41), l = r * (0.5 + 0.7 * R(i0 + i, 42)); ctx.beginPath(); ctx.moveTo(u, v); ctx.lineTo(u + Math.cos(an) * l * 0.5 + R(i0 + i, 43) - 0.5, v + Math.sin(an) * l * 0.5); ctx.lineTo(u + Math.cos(an) * l, v + Math.sin(an) * l); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(u, v, r * 0.25, 0, Math.PI * 2); ctx.stroke();
+    if (star) { ctx.beginPath(); ctx.arc(u, v, r * 0.55, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = 'rgba(240,248,255,0.35)'; ctx.beginPath(); ctx.arc(u, v, r * 0.2, 0, Math.PI * 2); ctx.fill(); }
+  };
+  // soot: a soft black patch
+  const soot = (u: number, v: number, r: number, a: number) => {
+    const g = ctx.createRadialGradient(u, v, 0, u, v, r); g.addColorStop(0, `rgba(12,10,14,${a})`); g.addColorStop(1, 'rgba(12,10,14,0)');
+    ctx.fillStyle = g; ctx.fillRect(u - r, v - r, r * 2, r * 2);
+  };
+  // a hole torn in a panel: the dark inside, the torn bright edge
+  const hole = (u: number, v: number, r: number, i0: number) => {
+    const pts: number[][] = []; for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4 + R(i0 + i, 51) * 0.5, rr = r * (0.5 + 0.7 * R(i0 + i, 52)); pts.push([u + Math.cos(an) * rr * 1.3, v + Math.sin(an) * rr]); }
+    ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath();
+    ctx.fillStyle = '#1a1420'; ctx.fill(); ctx.strokeStyle = 'rgba(210,212,220,0.8)'; ctx.lineWidth = 0.7; ctx.stroke();
+  };
+  const at = (i: number, ku = 0.8, kv = 0.75) => [(R(i, 61) - 0.5) * L * ku, (R(i, 62) - 0.5) * Wd * kv];
+  const glassU = fwd * hl * 0.35, dr = Math.min(Wd * 0.22, 5);
+  // stage by stage, each adding to the one before
+  crumple(fwd, L * [0, 0.13, 0.2, 0.28][st], 100);
+  if (st >= 2) crumple(-fwd, L * (st === 2 ? 0.1 : 0.2), 200);
+  if (st >= 3) flank(R(5, 5) < 0.5 ? 1 : -1, Wd * 0.28, 300);
+  for (let i = 0; i < [0, 2, 3, 4][st]; i++) { const [u, v] = at(10 + i); dent(u, v, dr * (0.8 + 0.5 * R(i, 71))); }
+  for (let i = 0; i < (L < 50 ? [0, 1, 2, 2] : [0, 2, 3, 4])[st]; i++) { const [u, v] = at(20 + i); scrape(u, v, L * (0.18 + 0.12 * R(i, 72)), (R(i, 73) - 0.5) * 0.7); }
+  if (st >= 2) { const [u, v] = at(30); primer(u, v, dr * 0.9, 400); }
+  if (st >= 3) { const [u, v] = at(31); primer(u, v, dr * 1.1, 420); }
+  if (st >= 3) { soot(0, 0, Math.min(L, Wd) * 0.45, 0.45); dent(0, 0, Math.min(L * 0.3, Wd * 0.45)); } // the roof sags in the middle
+  glassCrack(glassU, (R(6, 6) - 0.5) * Wd * 0.4, Math.min(Wd * 0.45, 8), st >= 2, 500);
+  if (st >= 3) { glassCrack(-glassU * 0.8, (R(7, 7) - 0.5) * Wd * 0.4, Math.min(Wd * 0.45, 8), true, 520); ctx.fillStyle = 'rgba(20,16,30,0.35)'; ctx.beginPath(); ctx.ellipse(glassU, 0, Math.min(Wd * 0.3, 6), Wd * 0.3, 0, 0, Math.PI * 2); ctx.fill(); }
+  if (st >= 2) { const [u, v] = at(40, 0.5, 0.5); soot(u, v, dr * (st >= 3 ? 3 : 2), st >= 3 ? 0.7 : 0.5); }
+  if (st === 2) { const [u, v] = at(45, 0.5, 0.4); hole(u, v, dr * 0.55, 580); }
+  if (st >= 3) { for (let i = 0; i < 2; i++) { const [u, v] = at(50 + i, 0.6, 0.5); hole(u, v, dr * (0.8 + 0.3 * R(i, 74)), 600 + i * 20); } }
+  ctx.restore();
+}
 // ---- Vehicle sprites -------------------------------------------------------------------------
 // Each look a vehicle can have (its kind, paint, country, wear) is drawn once, shape by shape, into a canvas
 // of its own, seen straight from above; after that it is one copy, turned and scaled, a frame. A pile-up is
@@ -3028,7 +3117,7 @@ function vehicleSprite(b: Loose, stage: number) {
   const cw = Math.ceil((b.hl * 2 + SPRITE_PAD * 2) * S), ch = Math.ceil((b.hw * 2 + SPRITE_PAD * 2) * S);
   const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
   const keep = { ctx, W, H, zoom: cam.zoom, x: camDraw.x, y: camDraw.y, VP };
-  const fb = { ...b, x: 0, y: 0, a: 0, z: 0, roll: 0, braking: false, fuse: 0, dent: 137, dmg: stage >= 4 ? b.value : b.value * stage / 4 };
+  const fb = { ...b, x: 0, y: 0, a: 0, z: 0, roll: 0, braking: false, fuse: 0, dent: 137 + (b.id % 2) * 389, dmg: stage >= 4 ? b.value : b.value * stage / 4 }; // two damage patterns a look
   ctx = cv.getContext('2d')!; W = cw; H = ch; cam.zoom = S; camDraw.x = 0; camDraw.y = 0; VP = [cw / 2, ch / 2]; PERSP = 0;
   SPRITE_REC = [];
   try { drawVehicleShapes(fb); } finally {
@@ -3040,7 +3129,7 @@ function vehicleSprite(b: Loose, stage: number) {
 /** Draws a vehicle: a copy of its sprite, or shape by shape for the ones a sprite cannot hold. */
 function drawVehicle(b: Loose) {
   if (b.kind === 'player' || b.gear || b.fuse > 0) return drawVehicleShapes(b);
-  const f = Math.min(1, b.dmg / b.value), stage = f >= 1 ? 4 : Math.min(3, Math.round(f * 4));
+  const f = Math.min(1, b.dmg / b.value), stage = wearStage(f);
   const sp = vehicleSprite(b, stage), hm = b.z + (b.height || 20) * 0.6, p = P(b.x, b.y, hm);
   const k = cam.zoom * (1 + hm * cam.zoom * tune.persp) / spriteScale, rollK = Math.max(0.25, Math.abs(Math.cos(b.roll)));
   ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(b.a); ctx.scale(k, k * rollK); ctx.drawImage(sp.cv, -sp.cw / 2, -sp.ch / 2); ctx.restore();
@@ -3179,16 +3268,7 @@ function drawVehicleShapes(b: Loose) {
   }
   if (b.kind === 'player' && b.gear) drawGear(b, box, L, Wd, z);
   ROUND_FLAT = false;
-  if (f > 0.2 && b.kind !== 'moto') { // dents and scratches
-    ctx.strokeStyle = 'rgba(20,15,30,0.7)'; ctx.lineWidth = 1.5 * cam.zoom;
-    const m = Math.min(5, Math.ceil(f * 6));
-    for (let i = 0; i < m; i++) {
-      const u = (((b.dent * (i + 3) * 37) % 100) / 100 - 0.5) * L * 0.8, v = (((b.dent * (i + 7) * 53) % 100) / 100 - 0.5) * Wd * 0.8;
-      const c = Math.cos(b.a), s = Math.sin(b.a), x = b.x + c * u - s * v, y = b.y + s * u + c * v;
-      const p0 = P(x - 5, y - 2, z + 12), p1 = P(x + 4, y + 3, z + 12), p2 = P(x + 1, y + 6, z + 12);
-      ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
-    }
-  }
+  if (b.kind !== 'moto') vehicleDamage(b, f, L, Wd); // crumpled, dented, scratched, cracked: by stage
 }
 // the garage's gear on the player's vehicle: bull bar, armour plates, dynamite, rocket launcher
 function drawGear(b: Loose, box: Loose, L: Loose, Wd: Loose, z: Loose) {

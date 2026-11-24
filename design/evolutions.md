@@ -112,8 +112,15 @@ progression ; conduite à gauche ; le yen ; 20 niveaux (seuils repris du Royaume
 automatique). L'échangeur est fait : une avenue en contrebas (−120) au nord dès le niveau 1, une seconde au sud
 sous la rue d'arrivée (un pont) dès le niveau 7, une avenue plus profonde encore (−210) derrière la première dès
 le niveau 15. Un parapet casse sous un choc fort (`rail_break`), le véhicule tombe et le carambolage continue en
-bas ; la voiture du joueur peut tomber aussi. Reste : les véhicules et boutiques japonais, la tour de Tokyo,
-le kaiju, le typhon et les lanternes.
+bas ; la voiture du joueur peut tomber aussi.
+Fait aussi (2026-11-24) : le gadget **Kaminari-Go** (C, à la place du kaiju), un robot de chantier géant façon
+sumo : il arrive par la gauche de l'écran, tape du pied deux fois au milieu du carrefour (les voitures sautent, les
+parapets proches cassent, tout tombe dans les avenues), repousse les véhicules des deux paumes vers les côtés, puis
+repart. **Le combat de géants** : s'il croise le T-Rex, combat de sumo (face-à-face, corps à corps, l'un renverse
+l'autre, vainqueur tiré au sort), onde de choc, prime `sumo_bonus`, puis chacun rentre par où il est venu ; le
+compte à rebours attend la fin du combat. **La pagode** à 5 étages remplace la première grue (comme Big Ben), et
+deux boutiques japonaises, l'échoppe de ramen et le magasin de jouets (capsules), remplacent le pub et le salon de
+thé. Reste : les véhicules japonais, le typhon et les lanternes.
 
 - **Mécanique : l'échangeur sur plusieurs étages** : des voies qui se croisent en hauteur, des
   véhicules qui tombent d'un niveau à l'autre.

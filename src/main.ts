@@ -249,7 +249,7 @@ function chalProgress(c: Loose, live: Loose) {
 let best: number[] = LEVELS.map(() => 0), unlocked = 1;
 // the garage: vehicles owned, the one at the wheel, and each vehicle's own upgrades and gadgets (gear[car][item] = level)
 let up: Loose = { cars: ['sport'], car: 'sport', gear: {} }, spent = 0;
-const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, farmers: 0, nessie: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
+const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, farmers: 0, nessie: 0, mecha: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
 function G() { // what the vehicle at the wheel has, every item at 0 until bought
   const g = up.gear[up.car] || (up.gear[up.car] = {});
   for (const k in GEAR0) if (typeof g[k] !== 'number') g[k] = 0;
@@ -321,14 +321,16 @@ const SHOPS: Loose = { // m: a masculine name ("le pub"), for "DÉTRUIT"
   arc: { name: 'Arc de Triomphe', color: '#e8dcc0', m: true }, // the roundabout's monument
   pub: { name: 'Pub', color: '#8a5a3c', m: true },
   salon: { name: 'Salon de thé', color: '#f4b8c8' },
+  ramen: { name: 'Échoppe de ramen', color: '#e8590c' },
+  jouets: { name: 'Magasin de jouets', color: '#cc5de8', m: true },
   boulangerie: { name: 'Boulangerie', color: '#f4c27a' },
   boucherie: { name: 'Boucherie', color: '#ff8787' },
   bijouterie: { name: 'Bijouterie', color: '#b197fc' },
   banque: { name: 'Banque', color: '#adb5bd' },
   labo: { name: 'Laboratoire', color: '#63e6be' },
 };
-// each country's five shops, in the same order and weights (the pub and the tea room take the bakery's and the butcher's)
-const SHOP_KINDS: Loose = { fr: ['boulangerie', 'boucherie', 'bijouterie', 'banque', 'labo'], uk: ['pub', 'salon', 'bijouterie', 'banque', 'labo'] };
+// each country's five shops, in the same order and weights (the pub and the tea room, the ramen bar and the toy shop take the bakery's and the butcher's)
+const SHOP_KINDS: Loose = { fr: ['boulangerie', 'boucherie', 'bijouterie', 'banque', 'labo'], uk: ['pub', 'salon', 'bijouterie', 'banque', 'labo'], jp: ['ramen', 'jouets', 'bijouterie', 'banque', 'labo'] };
 const isMine = (b: Loose) => b.kind === 'player' || b.kind === 'trailer';
 // the player's vehicle (and its trailer) for a model, facing angle a
 function mkPlayerBodies(model: Loose, x: Loose, y: Loose, a: Loose) {
@@ -468,7 +470,7 @@ function reset() {
     phase: 'intro', introT: tune.intro_time, timeLeft: tune.approach_time,
     crashed: false, crashT: 0, crashX: 0, crashY: 0, slowT: 0, countdown: 0, bannerT: 0,
     bodies: [], blocks: [], props: [], lanes: [], pickups: [], parts: [], floats: [], skids: [], blasts: [],
-    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, nessie: null, nessieUsed: false, combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
+    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, nessie: null, nessieUsed: false, mecha: null, mechaUsed: false, sumo: null, sumoDone: false, combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
     nitroUsed: false, nitroT: 0, oilUsed: false, oilDropT: 0, oilLX: 0, oilLY: 0, jumpsLeft: 0, magnetT: 0, chal: [], stars: 0, insK: 1, rockets: [], rocketsLeft: 0, touchedOnce: false, trailer: null, oils: [], oilGrid: new Map(), scorch: [], controlT: 0, dynUsed: false, passed: false, final: 0, endReason: '',
   };
   state = st;
@@ -1133,7 +1135,17 @@ function updatePlay(dt: Loose) {
     st.floats.push({ x: p.x, y: p.y, txt: 'LE MONSTRE DU LOCH !', t: 0, color: '#38d9a9', big: true });
     roar(); events.push({ type: 'nessie', t: st.t });
   }
-  if (st.trex) stepTrex(st.trex, sdt);
+  // Kaminari-Go (C, Japan): the giant robot walks in from the left of the screen
+  if (G().mecha && country === 'jp' && !st.mechaUsed && pressed('KeyC') && (st.phase === 'drive' || st.phase === 'crash')) {
+    st.mechaUsed = true; startPileup(-EXT, 0);
+    const left = camDraw.x - W / 2 / cam.zoom - 140; // just off the screen's left edge (out of the tunnel at the most), at least a little before the middle
+    st.mecha = { x: Math.max(-EXT - tune.tunnel_depth - 80, Math.min(-420, left)), y: 0, t: 0, pt: 0, phase: 'in', dir: 1, stepT: 0, smokeT: 0, n: 0, lift: 0, leg: 1, arm: 1, reach: 0, down: 0 };
+    st.floats.push({ x: p.x, y: p.y, txt: 'KAMINARI-GO !', t: 0, color: '#ff922b', big: true });
+    mechaCall(); events.push({ type: 'mecha', t: st.t });
+  }
+  if (st.sumo) stepSumo(st.sumo, sdt); else if (st.trex) stepTrex(st.trex, sdt);
+  if (st.mecha) stepMecha(st.mecha, sdt);
+  if (st.trex && st.mecha && !st.sumo && !st.sumoDone && trexMeetsMecha(st.trex, st.mecha)) startSumo(st.trex, st.mecha);
   if (st.nessie) stepNessie(st.nessie, sdt);
   if (st.farmers) stepFarmers(st.farmers, sdt);
   if (st.trex && st.farmers && !st.combo && trexMeetsFarmers(st.trex, st.farmers)) jurassicCombo(st.trex, st.farmers);
@@ -1248,13 +1260,13 @@ function updatePlay(dt: Loose) {
     if (st.recTick % 2 === 0 && st.replay.length < 700) {
       const fr: Loose[] = []; for (const b of st.bodies) if (Math.abs(b.x - st.crashX) < 1500 && Math.abs(b.y - st.crashY) < 900) fr.push(snap(b));
       st.replay.push({ bodies: fr, fx: st.fxPending.splice(0), oilSeq: st.oilSeq, skidSeq: st.skidSeq, scorchN: st.scorch.length,
-        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t } : null, farmers: st.farmers ? { x: st.farmers.x, y: st.farmers.y, t: st.farmers.t } : null, nessie: st.nessie ? { t: st.nessie.t, a: st.nessie.a } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
+        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t, dir: st.trex.dir, down: st.trex.down } : null, mecha: st.mecha ? Object.assign({}, st.mecha) : null, farmers: st.farmers ? { x: st.farmers.x, y: st.farmers.y, t: st.farmers.t } : null, nessie: st.nessie ? { t: st.nessie.t, a: st.nessie.a } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
     }
   }
   // the countdown from the first impact; the damage is counted when it reaches zero
   if (st.crashed) {
     const before = Math.ceil(st.countdown);
-    st.countdown -= dt;
+    if (!state.sumo) st.countdown -= dt; // the bout of giants is not cut short
     if (Math.ceil(st.countdown) < before && st.countdown > 0) tone(before <= 4 ? 990 : 660, 0.09, 'square', 0.12);
     if (st.countdown <= 0) { st.countdown = 0; st.endReason = 'Fin du compte à rebours'; return endRun(); }
   }
@@ -1360,10 +1372,10 @@ function groundAt(x: number, y: number, z: number) {
   return 0;
 }
 /** A parapet gives way: a burst of concrete, a crack, and the gap stays open. */
-function breakRail(S: Loose) {
+function breakRail(S: Loose, quiet = false) {
   S.broken = true;
-  for (let i = 0; i < 10; i++) { const an = vr() * Math.PI * 2, sp = 40 + vr() * 140; addPart('debris', S.x + (vr() - 0.5) * S.hl * 2, S.y + (vr() - 0.5) * S.hw * 2, S.z0 + 6, Math.cos(an) * sp, Math.sin(an) * sp, 60 + vr() * 120, 0.6 + vr() * 0.5); }
-  crunch(0.35); events.push({ type: 'rail', t: state.t });
+  for (let i = 0; i < (quiet ? 4 : 10); i++) { const an = vr() * Math.PI * 2, sp = 40 + vr() * 140; addPart('debris', S.x + (vr() - 0.5) * S.hl * 2, S.y + (vr() - 0.5) * S.hw * 2, S.z0 + 6, Math.cos(an) * sp, Math.sin(an) * sp, 60 + vr() * 120, 0.6 + vr() * 0.5); }
+  if (!quiet) crunch(0.35); events.push({ type: 'rail', t: state.t });
 }
 /** The highest avenue floor at or below height z (the deepest when none is). */
 const floorUnder = (T: Loose[], z: number) => T.reduce((best: number, t: Loose) => -t.D <= z + 1 && -t.D > best ? -t.D : best, -Math.max(...T.map((t: Loose) => t.D)));
@@ -1433,8 +1445,9 @@ function roar() { // a low growl falling in pitch, over noise
 function stepTrex(tr: Loose, dt: number) {
   const st = state;
   tr.t += dt;
-  tr.x -= tune.trex_speed * dt; // it walks right across, and out by the left-hand tunnel
-  if (tr.x < -EXT - tune.tunnel_depth - 200) { st.trex = null; return; }
+  const dir = tr.dir || -1; // it walks right across and out by the left-hand tunnel (back to the right after a bout)
+  tr.x += dir * tune.trex_speed * dt;
+  if (dir < 0 ? tr.x < -EXT - tune.tunnel_depth - 200 : tr.x > EXT + tune.tunnel_depth + 200) { st.trex = null; return; }
   tr.stepT -= dt;
   if (tr.stepT <= 0) { // a footfall: the ground shakes, and so do the buildings round it
     tr.stepT = tune.trex_step; st.shake = Math.min(26, st.shake + tune.trex_shake); crunch(0.35, true); buzz(tune.vibe_step);
@@ -1464,7 +1477,7 @@ function stepTrex(tr: Loose, dt: number) {
     const dx = b.x - tr.x, dy = b.y - tr.y;
     if (Math.abs(dx) > hl + b.hl * 0.6 || Math.abs(dy) > hw + b.hw) continue;
     const side = dy >= 0 ? 1 : -1;
-    b.vy = side * Math.max(Math.abs(b.vy), tune.trex_push); b.vx -= tune.trex_speed * 0.6 * dt * 10; b.vz = Math.max(b.vz, 90);
+    b.vy = side * Math.max(Math.abs(b.vy), tune.trex_push); b.vx += dir * tune.trex_speed * 0.6 * dt * 10; b.vz = Math.max(b.vz, 90);
     b.w += (rng() - 0.5) * 4;
     if (isMine(b)) { if (b.control) { crash(b.x, b.y); b.control = false; b.loose = true; st.controlT = 0; } continue; }
     b.inv = true; loosen(b); hurt(b, tune.trex_damage * dt, b.x, b.y);
@@ -1477,10 +1490,11 @@ function oval(cu: number, cv: number, ru: number, rv: number, n = 12) {
 }
 /** The T-Rex, seen from above: a swaying tail, striding legs with claws, a striped back, little arms, and a big head with its jaws open. */
 function drawTrex(tr: Loose) {
-  const b: Loose = { x: tr.x, y: tr.y, a: Math.PI }, ph = Math.sin(tr.t * Math.PI * 2 / (tune.trex_step * 2));
+  const dn = tr.down || 0, HK = 1 - 0.7 * dn, fd = (tr.dir || -1) > 0 ? 1 : -1; // knocked down (the bout of giants), it lies flat
+  const b: Loose = { x: tr.x - fd * dn * 40, y: tr.y, a: fd > 0 ? 0 : Math.PI }, ph = Math.sin(tr.t * Math.PI * 2 / (tune.trex_step * 2));
   const K = 0.74; // its drawing is laid out in a 290-long frame, shrunk to its footprint on the road
   const c = Math.cos(b.a), s = Math.sin(b.a), W2 = (u: number, v: number) => [b.x + (c * u - s * v) * K, b.y + (s * u + c * v) * K];
-  const bl = (local: number[][], h: number, fill: string, k = 1, ox = 0, oy = 0) => blobScreen(local.map(([u, v]) => { const [x, y] = W2(ox + u * k, oy + v * k); return P(x, y, h); }), fill);
+  const bl = (local: number[][], h: number, fill: string, k = 1, ox = 0, oy = 0) => blobScreen(local.map(([u, v]) => { const [x, y] = W2(ox + u * k, oy + v * k); return P(x, y, h * HK); }), fill);
   const g = '#5a9e3a', gd = '#2f6624', gl = '#8ccf5c', belly = '#d9cc8f', claw = '#f1ead2';
   // its shadow on the road
   ctx.globalAlpha = 0.28;
@@ -1490,7 +1504,7 @@ function drawTrex(tr: Loose) {
   const tail: Loose[] = [];
   for (let i = 0; i <= 14; i++) {
     const k = i / 14, u = -34 - k * 120, v = Math.sin(tr.t * 5 - k * 2.6) * 16 * k;
-    const [x, y] = W2(u, v); tail.push({ x, y, z: 62 - k * 34, r: (21 * (1 - k) + 2.5) * K });
+    const [x, y] = W2(u, v); tail.push({ x, y, z: (62 - k * 34) * HK, r: (21 * (1 - k) + 2.5) * K });
   }
   tail.reverse(); tube(tail, g, gd, gl);
   // the feet, striding in turns, three claws forward
@@ -1518,7 +1532,7 @@ function drawTrex(tr: Loose) {
   }
   // the neck, then the head seen from above with its jaws wide open: the lower jaw past the snout, the mouth, teeth all round
   const neck: Loose[] = [];
-  for (let i = 0; i <= 5; i++) { const k = i / 5, [x, y] = W2(50 + k * 24, 0); neck.push({ x, y, z: 74 + k * 14, r: (21 - k * 3) * K }); }
+  for (let i = 0; i <= 5; i++) { const k = i / 5, [x, y] = W2(50 + k * 24, 0); neck.push({ x, y, z: (74 + k * 14) * HK, r: (21 - k * 3) * K }); }
   tube(neck, g, gd, gl);
   const roar = Math.abs(Math.sin(tr.t * 1.7)), o = 6 * roar; // the jaws open and close a little
   bl([[80, -17], [118, -17], [136 + o, -12], [144 + o, 0], [136 + o, 12], [118, 17], [80, 17]], 72, '#b5a66a'); // the lower jaw
@@ -1542,6 +1556,239 @@ function drawTrex(tr: Loose) {
     bl(oval(86, 15 * sd, 1.2, 3, 6), 97, '#1d1a26'); // its slit
     bl(oval(114, 5 * sd, 2.4, 1.6, 6), 95, '#1f3d17'); // a nostril
   }
+}
+// ---- Kaminari-Go (Japan's gadget): a giant building-site robot that wrestles like a sumo ------------------------
+// It walks in from the left-hand tunnel along the middle of the boulevard, crushing what is under its feet, stops at
+// the middle of the crossroads, stamps the ground (each stamp throws the traffic round it up and breaks the parapets
+// near it, so the cars fall to the avenues below), shoves the vehicles out to both sides with its palms, then walks
+// on and out by the right-hand tunnel. Orange and white with hazard stripes, one round lamp for an eye, a beacon on
+// its head, a chimney on its back: a machine, no pilot to be seen.
+function mechaCall() { tone(523, 0.14, 'square', 0.12); tone(659, 0.14, 'square', 0.12, 0.15); tone(784, 0.3, 'square', 0.12, 0.3); }
+function stomp(power: number) { crunch(0.5 * power, true); tone(62, 0.5, 'sine', 0.35 * power); buzz(tune.vibe_blast); }
+/** True when something at height z stands on the boulevard (not down in an avenue). */
+const onDeck = (b: Loose) => b.z > -40 && b.z < 60;
+/** The parapets within R of (x, y) give way, all at once and quietly (a single crunch is the stamp's own). */
+function breakRailsNear(x: number, y: number, R: number) {
+  let n = 0;
+  for (const S of state.props) {
+    if (S.kind !== 'rail' || S.broken) continue;
+    const d = Math.hypot(Math.max(Math.abs(S.x - x) - S.hl, 0), Math.max(Math.abs(S.y - y) - S.hw, 0));
+    if (d < R) { breakRail(S, true); n++; }
+  }
+  return n;
+}
+/** Everything on the boulevard round (x, y) jumps and is thrown outward: damage and push fade with distance. */
+function quake(x: number, y: number, R: number, push: number, lift: number, damage: number) {
+  for (const b of state.bodies) {
+    if (isMine(b) || !onDeck(b)) continue;
+    const d = Math.hypot(b.x - x, b.y - y);
+    if (d > R) continue;
+    const k = 1 - d / R, uy = b.y - y >= 0 ? 1 : -1, ux = d > 1 ? (b.x - x) / d : 0;
+    b.inv = true; loosen(b);
+    b.vx += ux * push * k * 0.5; b.vy += uy * push * (0.4 + k); b.vz = Math.max(b.vz, lift * (0.35 + k));
+    b.w += (rng() - 0.5) * 7 * k; b.rollV = (b.rollV || 0) + (rng() - 0.5) * 5 * k;
+    hurt(b, damage * k, b.x, b.y);
+  }
+}
+/** What is under a giant's feet (a box hl by hw round x, y) is crushed and thrown aside; dirX its way. */
+function crushUnder(x: number, y: number, hl: number, hw: number, dirX: number, push: number, damage: number, dt: number) {
+  const st = state;
+  for (const b of st.bodies) {
+    if (!onDeck(b) || b.z > 60) continue;
+    const dx = b.x - x, dy = b.y - y;
+    if (Math.abs(dx) > hl + b.hl * 0.6 || Math.abs(dy) > hw + b.hw) continue;
+    const side = dy >= 0 ? 1 : -1;
+    b.vy = side * Math.max(Math.abs(b.vy), push); b.vx += dirX * 90 * dt * 10; b.vz = Math.max(b.vz, 90);
+    b.w += (rng() - 0.5) * 4;
+    if (isMine(b)) { if (b.control) { crash(b.x, b.y); b.control = false; b.loose = true; st.controlT = 0; } continue; }
+    b.inv = true; loosen(b); hurt(b, damage * dt, b.x, b.y);
+    if (!b.leak) { b.leak = true; b.leakX = b.x; b.leakY = b.y; }
+  }
+}
+/** Kaminari-Go's time line: in (walking to the middle), stamp, slap, out (walking off); sumo while it wrestles. */
+function stepMecha(m: Loose, dt: number) {
+  const st = state, hl = tune.mecha_len / 2, hw = tune.mecha_width / 2;
+  m.t += dt; m.pt += dt;
+  m.smokeT -= dt; if (m.smokeT <= 0) { m.smokeT = 0.14; addPart('smoke', m.x - m.dir * 30, m.y + 28, 150 * (1 - 0.7 * (m.down || 0)), (vr() - 0.5) * 20, (vr() - 0.5) * 20, 40 + vr() * 30, 0.9 + vr() * 0.6); }
+  if (m.phase === 'sumo') return; // the bout moves it
+  if (m.phase === 'in' || m.phase === 'out') {
+    m.x += m.dir * tune.mecha_speed * dt;
+    m.stepT -= dt;
+    if (m.stepT <= 0) { m.stepT = tune.mecha_step; st.shake = Math.min(26, st.shake + tune.mecha_shake); crunch(0.3, true); buzz(tune.vibe_step); }
+    crushUnder(m.x, m.y, hl, hw, m.dir, tune.mecha_push, tune.mecha_damage, dt);
+    if (m.phase === 'in' && m.x >= 0) { m.x = 0; m.phase = 'stamp'; m.pt = 0; m.n = 0; }
+    if (m.phase === 'out' && (m.dir > 0 ? m.x > EXT + tune.tunnel_depth + 200 : m.x < -EXT - tune.tunnel_depth - 200)) st.mecha = null;
+    return;
+  }
+  if (m.phase === 'stamp') { // a leg goes up, and comes down hard: the shiko
+    const E = tune.mecha_stamp_every, k = m.pt - m.n * E;
+    m.leg = m.n % 2 ? -1 : 1; m.lift = k < E * 0.6 ? Math.sin(Math.min(1, k / (E * 0.6)) * Math.PI / 2) : Math.max(0, 1 - (k - E * 0.6) / (E * 0.12));
+    if (k >= E * 0.6 && !m.slammed) {
+      m.slammed = true;
+      const fx = m.x, fy = m.y + m.leg * hw * 0.6;
+      st.shake = 26; stomp(1);
+      quake(fx, fy, tune.mecha_stamp_radius, tune.mecha_stamp_push, tune.mecha_stamp_lift, tune.mecha_stamp_damage);
+      breakRailsNear(fx, fy, tune.mecha_stamp_radius);
+      for (const S of st.shops) { const d = Math.hypot(Math.max(Math.abs(S.x - fx) - S.hl, 0), Math.max(Math.abs(S.y - fy) - S.hw, 0)); if (d < tune.mecha_stamp_radius) shopHurt(S, tune.mecha_stamp_shop * (1 - d / tune.mecha_stamp_radius)); }
+      for (let i = 0; i < 18; i++) { const an = vr() * Math.PI * 2, sp = 120 + vr() * 220; addPart(i % 3 ? 'smoke' : 'debris', fx + Math.cos(an) * 30, fy + Math.sin(an) * 30, 4, Math.cos(an) * sp, Math.sin(an) * sp, 30 + vr() * 80, 0.5 + vr() * 0.6); }
+      events.push({ type: 'stamp', t: st.t });
+    }
+    if (k >= E) { m.n++; m.slammed = false; if (m.n >= tune.mecha_stamps) { m.phase = 'slap'; m.pt = 0; m.n = 0; m.lift = 0; } }
+    return;
+  }
+  if (m.phase === 'slap') { // the palms thrust out to the sides in turn: the tsuppari, out toward the avenues
+    const E = tune.mecha_slap_every, k = m.pt - m.n * E;
+    m.arm = m.n % 2 ? -1 : 1; m.reach = Math.sin(Math.min(1, k / E) * Math.PI);
+    if (k >= E * 0.4 && !m.slammed) {
+      m.slammed = true; crunch(0.3);
+      for (const b of st.bodies) {
+        if (!onDeck(b)) continue;
+        const dx = b.x - m.x, dy = (b.y - m.y) * m.arm;
+        if (Math.abs(dx) > hl + 90 || dy < 0 || dy > hw + tune.mecha_slap_reach) continue;
+        b.vy = m.arm * Math.max(Math.abs(b.vy), tune.mecha_slap_push * (0.6 + rng() * 0.6)); b.vz = Math.max(b.vz, 110); b.w += (rng() - 0.5) * 6;
+        if (isMine(b)) { if (b.control) { crash(b.x, b.y); b.control = false; b.loose = true; st.controlT = 0; } continue; }
+        b.inv = true; loosen(b); hurt(b, tune.mecha_slap_damage, b.x, b.y);
+      }
+    }
+    if (k >= E) { m.n++; m.slammed = false; if (m.n >= tune.mecha_slaps) { m.phase = 'out'; m.reach = 0; m.stepT = 0; } }
+  }
+}
+// ---- The bout of giants: the T-Rex meets Kaminari-Go ----------------------------------------------------------
+// They square up, wrestle back and forth in the middle of the crossroads crushing what is under them, then one
+// throws the other down: the fall sends a shock round that throws the traffic and breaks the parapets, and scores the
+// bout's bonus. The winner is drawn at random. Then each goes home the way it came.
+const SUMO_FACE = 0.9, SUMO_GRAPPLE = 2.2, SUMO_PUSH = 0.7, SUMO_DOWN = 1.6;
+/** True when the T-Rex's snout reaches Kaminari-Go, on the crossroads. */
+function trexMeetsMecha(tr: Loose, m: Loose): boolean {
+  return Math.abs(tr.x - m.x) < tune.trex_len / 2 + tune.mecha_len / 2 && Math.abs(tr.y - m.y) < 100 && Math.abs((tr.x + m.x) / 2) < EXT;
+}
+function startSumo(tr: Loose, m: Loose) {
+  const st = state, gap = tune.trex_len / 2 + tune.mecha_len / 2 - 10, left = m.x <= tr.x;
+  st.sumo = { t: 0, cx: (tr.x + m.x) / 2, gap, side: left ? 1 : -1, win: rng() < 0.5 ? 'trex' : 'mecha', off: 0, thrown: false };
+  m.phase = 'sumo'; m.dir = st.sumo.side; m.lift = 0; m.reach = 0; m.arm = 0; tr.dir = -st.sumo.side;
+  st.floats.push({ x: st.sumo.cx, y: -70, txt: 'COMBAT DE GÉANTS !', t: 0, color: '#ffd43b', big: true });
+  roar(); mechaCall(); events.push({ type: 'sumo', t: st.t });
+}
+function stepSumo(sm: Loose, dt: number) {
+  const st = state, tr = st.trex, m = st.mecha;
+  if (!tr || !m) { st.sumo = null; st.sumoDone = true; return; }
+  const t0 = sm.t; sm.t += dt; tr.t += dt;
+  const t = sm.t, G1 = SUMO_FACE, G2 = G1 + SUMO_GRAPPLE, G3 = G2 + SUMO_PUSH, G4 = G3 + SUMO_DOWN, lose = sm.win === 'trex' ? m : tr;
+  if (t < G1) { // the face-off: Kaminari-Go stamps once, the T-Rex roars
+    m.leg = 1; m.lift = Math.sin(Math.min(1, t / (G1 * 0.7)) * Math.PI / 2) * (t < G1 * 0.7 ? 1 : 0);
+    if (t0 < G1 * 0.7 && t >= G1 * 0.7) { st.shake = 20; stomp(0.8); }
+  } else if (t < G2) { // the grapple: back and forth, the arms locked
+    if (t0 < G1) st.floats.push({ x: sm.cx, y: -40, txt: 'HAKKEYOI !', t: 0, color: '#ffffff', big: false });
+    m.lift = 0; m.reach = 1; sm.off = Math.sin((t - G1) * 3.4) * 38;
+    st.shake = Math.max(st.shake, 6);
+    if (Math.floor(t * 10) !== Math.floor(t0 * 10)) for (let i = 0; i < 3; i++) { const an = vr() * Math.PI * 2; addPart('smoke', sm.cx + sm.off + (vr() - 0.5) * 80, (vr() - 0.5) * 90, 4, Math.cos(an) * 90, Math.sin(an) * 90, 20 + vr() * 40, 0.6 + vr() * 0.5); }
+  } else if (t < G3) { // the winner drives the other back
+    const k = (t - G2) / SUMO_PUSH, toward = sm.win === 'trex' ? -sm.side : sm.side; // which way the loser goes
+    sm.off = Math.sin(SUMO_GRAPPLE * 3.4) * 38 * (1 - k) + toward * 110 * k;
+  } else { // down it goes, lies a moment, gets up
+    if (!sm.thrown) {
+      sm.thrown = true;
+      const toward = sm.win === 'trex' ? -sm.side : sm.side, x = lose.x + toward * 40, R = tune.sumo_shock_radius;
+      st.shake = 26; stomp(1.3); roar();
+      quake(x, 0, R, tune.mecha_stamp_push * 1.4, tune.mecha_stamp_lift * 1.3, tune.mecha_stamp_damage * 2);
+      breakRailsNear(x, 0, R);
+      for (const S of st.shops) { const d = Math.hypot(Math.max(Math.abs(S.x - x) - S.hl, 0), Math.max(Math.abs(S.y) - S.hw, 0)); if (d < R) shopHurt(S, tune.mecha_stamp_shop * 2 * (1 - d / R)); }
+      const n = lose === m ? 46 : 26; // Kaminari-Go loses bolts and plates as it falls
+      for (let i = 0; i < n; i++) { const an = vr() * Math.PI * 2, sp = 140 + vr() * 320; addPart(i % 3 === 0 ? 'spark' : i % 3 === 1 ? 'debris' : 'smoke', x + (vr() - 0.5) * 60, (vr() - 0.5) * 60, 30, Math.cos(an) * sp, Math.sin(an) * sp, 120 + vr() * 260, 0.6 + vr() * 0.8); }
+      st.bonus += tune.sumo_bonus;
+      st.floats.push({ x: sm.cx, y: -90, txt: (sm.win === 'trex' ? 'LE T-REX GAGNE ! +' : 'KAMINARI-GO GAGNE ! +') + money(tune.sumo_bonus), t: 0, color: '#ffd43b', big: true });
+      events.push({ type: 'sumoWin', t: st.t, win: sm.win });
+    }
+    const k = t - G3;
+    lose.down = k < 0.35 ? k / 0.35 : k > SUMO_DOWN - 0.5 ? Math.max(0, (SUMO_DOWN - k) / 0.5) : 1;
+    m.reach = 0;
+  }
+  // the pair as one, round their middle; what is under them is crushed
+  m.x = sm.cx - sm.side * sm.gap / 2 + sm.off; tr.x = sm.cx + sm.side * sm.gap / 2 + sm.off;
+  if (t < G3) { crushUnder(m.x, m.y, tune.mecha_len / 2, tune.mecha_width / 2, 0, tune.mecha_push, tune.mecha_damage, dt); crushUnder(tr.x, tr.y, tune.trex_len / 2, tune.trex_width / 2, 0, tune.trex_push, tune.trex_damage, dt); }
+  if (t >= G4) { // each goes home the way it came
+    st.sumo = null; st.sumoDone = true; tr.down = 0; m.down = 0;
+    tr.dir = sm.side; m.dir = -sm.side; m.phase = 'out'; m.stepT = 0; tr.stepT = 0;
+  }
+}
+/** Kaminari-Go seen from above: its feet and legs, the striped belt, the orange body, the shoulder pads, the arms
+ * (hanging, thrust out to a side, or forward to grip), the white helmet with its lamp eye, ridge and beacon, the
+ * chimney, and 雷 (thunder) on its back. Knocked down, it lies flat. */
+function drawMecha(m: Loose) {
+  const dn = m.down || 0, HK = 1 - 0.72 * dn, dir = m.dir || 1, a = dir > 0 ? 0 : Math.PI, c = Math.cos(a), s = Math.sin(a);
+  const tilt = (m.leg || 1) * (m.lift || 0), ov = -tilt * 10; // on one leg, the body leans over the other
+  const b: Loose = { x: m.x - dir * dn * 34, y: m.y, a }, bu: Loose = { x: b.x - s * ov, y: b.y + c * ov, a }; // the feet's frame, the body's
+  const box = (f: Loose, ox: number, oy: number, len: number, wid: number, h0: number, h1: number, top: string | null, side: string) => prism(rect(f, ox, oy, len, wid), h0 * HK, h1 * HK, top, side);
+  const bl = (f: Loose, local: number[][], h: number, fill: string) => blob(f, local, h * HK, fill);
+  const W2 = (f: Loose, u: number, v: number, h: number) => [f.x + c * u - s * v, f.y + s * u + c * v, h * HK];
+  const walking = m.phase === 'in' || m.phase === 'out', ph = walking ? Math.sin(m.t * Math.PI * 2 / (tune.mecha_step * 2)) : 0;
+  const O = '#f76707', Od = '#c94d06', Ol = '#ffa94d', Wh = '#f8f9fa', Wd = '#ced4da', Gy = '#868e96', Gd = '#495057', Bk = '#212529';
+  ctx.globalAlpha = 0.3; blob({ x: b.x + 14, y: b.y + 18, a: 0 }, oval(0, 0, 60, 66, 14), 0, '#120b2a'); ctx.globalAlpha = 1; // its shadow
+  // the legs and feet: striding, or one leg raised high out to the side for the stamp (the shiko)
+  for (const sd of [-1, 1]) {
+    const up = m.leg === sd ? m.lift || 0 : 0, fu = ph * sd * 18, fv = sd * (36 + up * 52), fh = Math.max(0, ph * sd) * 8 + up * 70;
+    if (up > 0.05) { ctx.globalAlpha = 0.25; blob({ x: b.x, y: b.y, a }, oval(fu + 8, fv + 10, 24, 18, 10), 0, '#120b2a'); ctx.globalAlpha = 1; } // the raised foot's shadow
+    beamInk(W2(bu, 0, sd * 30, 60), W2(b, fu, fv, fh + 12), 22, Gy, '#343a40');
+    box(b, fu, fv, 44, 32, fh, fh + 13, Gd, '#343a40');
+    box(b, fu + 18, fv, 8, 32, fh, fh + 13, '#ffd43b', '#f59f00'); // the toe cap
+  }
+  // the belt in hazard stripes, the body, the white chest panel at the front
+  box(bu, 0, 0, 68, 92, 56, 70, null, '#ffd43b');
+  for (let v = -40; v <= 40; v += 20) { box(bu, 34.3, v, 0.8, 9, 56, 70, null, Bk); box(bu, -34.3, v, 0.8, 9, 56, 70, null, Bk); }
+  for (let u = -27; u <= 27; u += 18) { box(bu, u, 46.3, 9, 0.8, 56, 70, null, Bk); box(bu, u, -46.3, 9, 0.8, 56, 70, null, Bk); }
+  box(bu, 0, 0, 76, 96, 70, 118, O, Od);
+  box(bu, 38.5, 0, 1.2, 54, 78, 112, null, Wh);
+  bl(bu, [[-36, -46], [36, -46], [36, -40], [-36, -40]], 118.3, Ol); // a lit edge along the top
+  // the backpack: a grey engine block, 雷 on a white plate, the chimney
+  box(bu, -27, 0, 22, 70, 112, 132, Gd, '#343a40');
+  bl(bu, oval(-27, -14, 9.5, 9.5, 12), 132.4, Wh);
+  if (cam.zoom > 0.35 && dn < 0.5) {
+    const p = P(...(W2(bu, -27, -14, 132.5) as [number, number, number])), k = cam.zoom * (1 + 132.5 * HK * cam.zoom * tune.persp);
+    ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(a + Math.PI / 2); ctx.fillStyle = '#c92a2a'; ctx.font = `bold ${Math.round(15 * k)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('雷', 0, 1 * k); ctx.restore();
+  }
+  box(bu, -27, 20, 12, 12, 132, 160, '#343a40', Bk);
+  // the shoulder pads, with a hazard stripe
+  for (const sd of [-1, 1]) {
+    bl(bu, oval(0, sd * 54, 22, 17, 12), 114, Od); bl(bu, oval(0, sd * 54, 20, 15, 12), 128, O);
+    bl(bu, [[-6, sd * 41], [6, sd * 41], [6, sd * 67], [-6, sd * 67]], 128.4, '#ffd43b'); bl(bu, [[-2, sd * 41], [2, sd * 41], [2, sd * 67], [-2, sd * 67]], 128.6, Bk);
+  }
+  // the arms: hands ready in front, thrust out to a side (the slap) or forward (the grapple)
+  for (const sd of [-1, 1]) {
+    const r = m.phase === 'sumo' ? m.reach || 0 : 0, side = m.arm === sd ? m.reach || 0 : 0;
+    const hu = 34 - ph * sd * 10 + r * 40 - side * 26, hv = sd * (52 + side * 70 - r * 22), hh = 90 + side * 14 + r * 14;
+    beamInk(W2(bu, 0, sd * 54, 116), W2(bu, hu, hv, hh), 18, Gy, '#343a40');
+    box(bu, hu + 4, hv, 30, 30, hh - 14, hh + 12, Wh, Wd); // the big palm
+    bl(bu, [[hu + 18, hv - 13], [hu + 20, hv - 13], [hu + 20, hv + 13], [hu + 18, hv + 13]], (hh + 12.3), Wd); // its fingers' line
+  }
+  // the helmet: white, a dark visor with the lamp eye, a red ridge front to back, the beacon flashing on top
+  box(bu, 16, 0, 32, 42, 118, 142, Wh, Wd);
+  box(bu, 32.3, 0, 1, 34, 124, 138, null, '#343a40');
+  bl(bu, [[24, -16], [32, -16], [32, 16], [24, 16]], 142.3, '#343a40'); // the visor's top
+  bl(bu, oval(29, 0, 5, 7, 10), 142.6, '#ffe066'); bl(bu, oval(29.5, -1, 2, 3, 8), 142.8, '#fff9db');
+  bl(bu, oval(10, 0, 15, 4.5, 10), 146, '#c92a2a'); bl(bu, oval(9, -1, 11, 2, 8), 146.5, '#ff6b6b');
+  box(bu, 4, 13, 8, 8, 142, 151, '#ff922b', '#e8590c');
+  if (Math.sin(m.t * 12) > 0) { const p = P(...(W2(bu, 4, 13, 153) as [number, number, number])), r = 18 * cam.zoom; const g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r); g.addColorStop(0, 'rgba(255,190,60,0.9)'); g.addColorStop(1, 'rgba(255,150,0,0)'); ctx.fillStyle = g; ctx.fillRect(p[0] - r, p[1] - r, r * 2, r * 2); }
+}
+/** Three stars circling over a knocked-down giant. */
+function dizzy(x: number, y: number, h: number, t: number) {
+  for (let i = 0; i < 3; i++) {
+    const an = t * 4 + i * Math.PI * 2 / 3, p = P(x + Math.cos(an) * 34, y + Math.sin(an) * 22, h), r = 9 * cam.zoom;
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.45 : r; ctx.lineTo(p[0] + Math.cos(a) * rr, p[1] + Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fillStyle = '#ffd43b'; ctx.fill(); ctx.strokeStyle = '#7a4f00'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+}
+function mechaIcon(x: number, y: number, k: number) { // Kaminari-Go from the front: the orange body, the white helmet, the lamp eye, the beacon
+  iconStart(x, y, k);
+  tint(circ(0, -27, 5), 'rgba(255,190,60,0.6)'); ink(rr2(-3, -26, 6, 5, 1.5), '#ff922b', 1.4); // the beacon
+  ink(rr2(-24, -6, 10, 14, 5), '#f76707'); ink(rr2(14, -6, 10, 14, 5), '#f76707'); // the shoulder pads
+  ink(rr2(-15, -8, 30, 26, 5), '#f76707'); // the body
+  tint(rr2(-15, 9, 30, 5, 1), '#ffd43b'); for (const sx of [-11, -3, 5]) tint(rr2(sx, 9, 4, 5, 0), '#212529'); // the striped belt
+  ink(rr2(-11, -23, 22, 16, 5), '#f8f9fa'); // the helmet
+  tint(rr2(-1.5, -26, 3, 6, 1), '#c92a2a'); // its ridge
+  ink(circ(0, -15, 5), '#ffe066', 1.6); tint(circ(-1.5, -16.5, 1.6), '#fff9db'); // the lamp eye
+  ink(rr2(-12, 16, 9, 8, 2), '#495057'); ink(rr2(3, 16, 9, 8, 2), '#495057'); // the feet
+  ctx.restore();
 }
 // ---- The angry farmers (France's gadget) ----------------------------------------------------
 // A convoy of tractors drives in from the left-hand tunnel along the middle of the boulevard,
@@ -1881,8 +2128,8 @@ function drawCrane(c: Loose) {
   beam(base, [c.x, c.y, 3], 26, '#495057');
 }
 // each country's monument, in place of the first crane of a level, and what the screen says when it falls
-const MONUMENTS: Loose = { fr: 'eiffel', uk: 'bigben' };
-const MONUMENT_NAME: Loose = { eiffel: 'LA TOUR EIFFEL', bigben: 'BIG BEN' };
+const MONUMENTS: Loose = { fr: 'eiffel', uk: 'bigben', jp: 'pagode' };
+const MONUMENT_NAME: Loose = { eiffel: 'LA TOUR EIFFEL', bigben: 'BIG BEN', pagode: 'LA PAGODE' };
 // Big Ben (the United Kingdom's crane): a square stone tower ribbed in the Gothic way, the gilded clock
 // faces, the belfry's arches, the slate spire with its pinnacles. It stands and falls like a crane: c.theta tips it over the road.
 function drawBigBen(c: Loose) {
@@ -1923,6 +2170,39 @@ function drawBigBen(c: Loose) {
     poly([[p0[0] - w, p0[1]], [p0[0] + w, p0[1]], p1], slate); }
   beamInk(at(Hm * 0.97, 0), at(Hm, 0), 2.6, gold);
   const f = P(...(at(Hm, 0) as [number, number, number])); ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(f[0], f[1], 3 * z, 0, Math.PI * 2); ctx.fill();
+}
+// The pagoda (Japan's crane): five storeys on a stone plinth, vermilion walls with white panels and dark posts,
+// a dark tiled roof on each with its eaves turned up at the corners, each storey narrower than the one below,
+// and the bronze spire with its nine rings on top. It stands and falls like a crane: c.theta tips it over the road.
+function drawPagode(c: Loose) {
+  const Hm = tune.pagode_height, th = c.theta, cs = Math.cos(th), sn = Math.sin(th), z = cam.zoom;
+  const at = (h: number, ox: number) => [c.x + ox, c.y + c.dir * h * sn, Math.max(0, h * cs)];
+  const Q = (h: number, ox: number) => P(...(at(h, ox) as [number, number, number]));
+  const red = '#d9480f', redD = '#7a1f0a', panel = '#f3e6cc', roof = '#36454f', roofL = '#6b7f8c', roofE = '#1f2a33', gold = '#e0b13a';
+  const shaft = (h0: number, h1: number, w: number, col: string) => { const n = Math.max(1, Math.round((h1 - h0) / 12)); for (let i = 0; i < n; i++) beam(at(h0 + (h1 - h0) * i / n, 0), at(h0 + (h1 - h0) * (i + 1) / n, 0), w, col); };
+  if (!c.fallen) beam([c.x - 46, c.y, 0], [c.x + 46, c.y, 0], 20, '#8f877a'); // the stone court
+  const base = Hm * 0.05, T = Hm * 0.8, n = 5, step = (T - base) / n;
+  shaft(0, base, 82, '#6c6457'); shaft(0, base, 78, '#b5ab9a'); // the plinth
+  for (let i = 0; i < n; i++) {
+    const h0 = base + i * step, hb = h0 + step * 0.5, w = 30 - i * 3.6, R = w + 17 - i * 1.2;
+    // the storey: its walls, white panels between dark posts, a little balcony rail
+    shaft(h0, hb, w * 2 + 2.4, redD); shaft(h0, hb, w * 2, red);
+    for (const ox of [-w * 0.45, w * 0.45]) beam(at(h0 + 2, ox), at(hb - 2, ox), w * 0.42, panel);
+    for (const ox of [-w + 1.5, 0, w - 1.5]) beam(at(h0, ox), at(hb, ox), 2.4, redD);
+    beam(at(h0 + 3, -w - 3), at(h0 + 3, w + 3), 2, redD);
+    // the roof: the eaves' underside, then the tiles sweeping up to the corners' tips
+    const tipL = Q(hb + 5, -R - 6), tipR = Q(hb + 5, R + 6), lowL = Q(hb - 1, -R + 5), lowR = Q(hb - 1, R - 5), topL = Q(h0 + step, -w * 0.62), topR = Q(h0 + step, w * 0.62);
+    poly([tipL, lowL, lowR, tipR, Q(hb + 3, R - 2), Q(hb + 3, -R + 2)], roofE);
+    poly([tipL, Q(hb + 3, -R + 2), Q(hb + 3, R - 2), tipR, topR, topL], roof);
+    poly([tipL, Q(hb + 3, -R + 2), Q(hb + 3, 0), Q(h0 + step, 0), topL], roofL); // its lit half
+    beam(at(hb + 2, -R + 2), at(hb + 2, R - 2), 1.6, gold); // the gilded edge
+  }
+  // the spire: a bronze mast, nine rings, the jewel on top
+  shaft(T, T + 6, 16, roofE);
+  beamInk(at(T, 0), at(Hm, 0), 3.4, gold, '#6b4f12');
+  for (let k = 0; k < 9; k++) { const h = T + (Hm - T) * (0.12 + k * 0.075); beamInk(at(h, -6 + k * 0.3), at(h, 6 - k * 0.3), 2, gold, '#6b4f12'); }
+  const f = Q(Hm, 0); ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(f[0], f[1], 3.4 * z, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#6b4f12'; ctx.lineWidth = 1.2 * z; ctx.stroke();
 }
 // the Eiffel Tower (France's crane): four bronze legs curving to a spire, a lattice of braces, the arches at its feet,
 // three platforms with their lights. It stands and falls like a crane: c.theta tips it over the road.
@@ -1987,6 +2267,21 @@ function shopIcon(type: string, x: number, y: number, k: number) { // drawn on e
     ink(() => { ctx.ellipse(0, -8, 8, 3, 0, 0, Math.PI * 2); }, '#f8f0ff', 1.6);
     ink(circ(0, -12, 2.6), '#d6336c', 1.4);
     for (const [px, py] of [[-6, 2], [5, 6], [2, -2], [-2, 9]]) tint(circ(px, py, 1.8), '#f783ac');
+  } else if (type === 'ramen') { // a red bowl of noodles, a soft egg, chopsticks, steam
+    ctx.strokeStyle = '#adb5bd'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-6, -10); ctx.quadraticCurveTo(-10, -15, -6, -20); ctx.moveTo(0, -10); ctx.quadraticCurveTo(-4, -15, 0, -20); ctx.stroke();
+    ink(() => { ctx.moveTo(-18, -1); ctx.lineTo(18, -1); ctx.quadraticCurveTo(16, 16, 0, 16); ctx.quadraticCurveTo(-16, 16, -18, -1); ctx.closePath(); }, '#e03131');
+    tint(rr2(-15, 4, 30, 2.4, 1), '#fff5f5');
+    ink(() => { ctx.ellipse(0, -1, 18, 5, 0, 0, Math.PI * 2); }, '#f4c26b', 1.8);
+    ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 1.6; ctx.beginPath(); for (const o of [-10, -5, 0]) { ctx.moveTo(o - 3, -3); ctx.quadraticCurveTo(o, 1, o + 3, -3); } ctx.stroke();
+    tint(circ(8, -1, 3.6), '#ffffff'); tint(circ(8, -1, 1.8), '#ffa94d');
+    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-2, -2); ctx.lineTo(16, -22); ctx.moveTo(3, -1); ctx.lineTo(20, -19); ctx.stroke();
+  } else if (type === 'jouets') { // a toy capsule, half pink half clear, a sparkle
+    ink(circ(0, 2, 15), '#f8f9fa');
+    tint(() => { ctx.moveTo(-15, 2); ctx.arc(0, 2, 15, Math.PI, 0); ctx.closePath(); }, '#e64980');
+    tint(() => { ctx.ellipse(-6, -5, 4, 2.4, -0.6, 0, Math.PI * 2); }, '#fcc2d7');
+    ctx.strokeStyle = '#2b2536'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(-15, 2); ctx.lineTo(15, 2); ctx.moveTo(15, 2); ctx.arc(0, 2, 15, 0, Math.PI * 2); ctx.stroke();
+    tint(circ(4, 9, 3), '#ffd43b'); // a little toy inside
+    ctx.fillStyle = '#ffd43b'; ctx.beginPath(); for (let k = 0; k < 8; k++) { const an = k * Math.PI / 4, r = k % 2 ? 2 : 6; ctx.lineTo(15 + Math.cos(an) * r, -13 + Math.sin(an) * r); } ctx.closePath(); ctx.fill();
   } else if (type === 'boulangerie') { // a baguette across a round loaf
     ink(() => { ctx.ellipse(-4, 6, 13, 9, 0, 0, Math.PI * 2); }, '#c98a3c');
     tint(() => { ctx.ellipse(-7, 3, 7, 3.5, -0.3, 0, Math.PI * 2); }, '#e8b56a');
@@ -3249,7 +3544,7 @@ function drawWorld() {
   const d = (S: Loose) => { const p = P(S.x, S.y, 0); return (p[0] - VP[0]) ** 2 + (p[1] - VP[1]) ** 2; };
   blocks.sort((a: Loose, b: Loose) => d(b) - d(a));
   for (const S of blocks) S.kind === 'arc' ? drawArc(S) : drawBuilding(S);
-  for (const c of st.cranes) c.monument === 'eiffel' ? drawEiffel(c) : c.monument === 'bigben' ? drawBigBen(c) : drawCrane(c);
+  for (const c of st.cranes) c.monument === 'eiffel' ? drawEiffel(c) : c.monument === 'bigben' ? drawBigBen(c) : c.monument === 'pagode' ? drawPagode(c) : drawCrane(c);
   drawTunnels();
   for (const b of air) { drawShadow(b); }
   air.sort((a: Loose, b: Loose) => a.z - b.z);
@@ -3258,6 +3553,8 @@ function drawWorld() {
   if (st.farmers) drawFarmers(st.farmers);
   if (st.nessie) drawNessie(st.nessie);
   if (st.trex) drawTrex(st.trex); // after the tractors: the T-Rex, far taller, steps over them
+  if (st.mecha) drawMecha(st.mecha); // taller still
+  if (st.sumo && st.sumo.thrown && st.trex && st.mecha) { const L = st.sumo.win === 'trex' ? st.mecha : st.trex; if (L.down > 0.6) dizzy(L.x - (L.dir || -1) * 30, L.y, 60, st.sumo.t); }
   drawParts(true);
   if (NIGHT) { // the dark, then headlight beams added on top
     ctx.fillStyle = 'rgba(8,6,32,0.6)'; ctx.fillRect(0, 0, W, H);
@@ -3374,6 +3671,7 @@ function drawHUD() {
   if (G().trex && !st.trexUsed) gearHud.push([trexIcon, 'T : APPEL DU JURASSIQUE', '#b4e33d']);
   if (G().farmers && country === 'fr' && !st.farmersUsed) gearHud.push([farmersIcon, 'C : TRACTEURS', '#ffa94d']);
   if (G().nessie && country === 'uk' && !st.nessieUsed) gearHud.push([nessieIcon, 'C : MONSTRE DU LOCH', '#38d9a9']);
+  if (G().mecha && country === 'jp' && !st.mechaUsed) gearHud.push([mechaIcon, 'C : KAMINARI-GO', '#ff922b']);
   if (st.phase !== 'intro' && !TOUCH) gearHud.forEach(([ic, label, c]: Loose, i: Loose) => {
     const y = 130 + i * 44;
     panel(W - 236, y, 220, 38); ic(W - 206, y + 19, 0.7); text(label, W - 112, y + 19, 15, c, 'center', 'bold');
@@ -3536,6 +3834,8 @@ const GARAGE = [
     desc: () => 'T : un T-Rex traverse le boulevard, écrase les véhicules et ébranle les commerces (lance le compte à rebours)' },
   { id: 'nessie', name: 'Le monstre du loch', max: 1, icon: nessieIcon, cost: () => tune.nessie_cost, country: 'uk',
     desc: () => 'C : un monstre surgit au milieu du carrefour et balaie le boulevard d\'un tour de queue' },
+  { id: 'mecha', name: 'Kaminari-Go', max: 1, icon: mechaIcon, cost: () => tune.mecha_cost, country: 'jp',
+    desc: () => 'C : un robot géant arrive par la gauche, tape du pied au milieu du carrefour et pousse les véhicules vers les avenues du dessous' },
   { id: 'farmers', name: 'Agriculteurs pas contents', max: 1, icon: farmersIcon, cost: () => tune.farmers_cost, country: 'fr',
     desc: () => 'C : des tracteurs déboulent par la gauche, bousculent tout et sèment du foin, sans toucher aux bâtiments' },
 ];
@@ -3549,7 +3849,7 @@ const rowY = (i: number) => 200 + i * rowH();
 const GARAGE_BY = Object.fromEntries(GARAGE.map((g: Loose) => [g.id, g]));
 const TABS: Loose = [
   { name: 'AMÉLIORATIONS', items: ['engine', 'bullbar', 'armor', 'extratime', 'extratime2', 'insurance', 'magnet'] },
-  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex', 'farmers', 'nessie'] }, // an item with a country shows only in it
+  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex', 'farmers', 'nessie', 'mecha'] }, // an item with a country shows only in it
   { name: 'VÉHICULES', cars: true },
 ];
 const carStars = (id: Loose) => id === 'sport' ? 0 : tune['my_stars_' + id]; // stars it takes to unlock a vehicle
@@ -4058,11 +4358,11 @@ const scenes: Loose = {
       const st = state, f = st.replay[st.rp.idx] || st.replay[0], live = st.bodies, oils = st.oils, skids = st.skids, scorch = st.scorch;
       // the road as it was at that moment: only the oil, skid marks and scorches made so far
       st.bodies = f.bodies; st.oils = oils.filter((o: Loose) => o.seq <= f.oilSeq); st.skids = skids.filter((k: Loose) => k[4] <= f.skidSeq); st.scorch = scorch.slice(0, f.scorchN);
-      const trex = st.trex, farmers = st.farmers, nessie = st.nessie, thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
-      st.trex = f.trex; st.farmers = f.farmers || null; st.nessie = f.nessie || null; st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
+      const trex = st.trex, farmers = st.farmers, nessie = st.nessie, mecha = st.mecha, thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
+      st.trex = f.trex; st.farmers = f.farmers || null; st.nessie = f.nessie || null; st.mecha = f.mecha || null; st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
       st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = f.shops[i]; });
       try { drawWorld(); } finally {
-        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex; st.farmers = farmers; st.nessie = nessie;
+        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex; st.farmers = farmers; st.nessie = nessie; st.mecha = mecha;
         st.cranes.forEach((c: Loose, i: number) => { [c.theta, c.falling] = thetas[i]; }); st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = shops[i]; });
       }
       ctx.fillStyle = '#0b0818'; ctx.fillRect(0, 0, W, 54); ctx.fillRect(0, H - 54, W, 54);
@@ -4123,6 +4423,7 @@ function drawTouch() {
       if (G().trex && !st.trexUsed) { gadget(W - 206, ry, 'T-REX', 'KeyT', trexIcon, 'rgba(60,120,30,0.85)'); ry += gh + 8; }
       if (G().farmers && country === 'fr' && !st.farmersUsed) gadget(W - 206, ry, 'TRACTEURS', 'KeyC', farmersIcon, 'rgba(170,90,20,0.85)');
       if (G().nessie && country === 'uk' && !st.nessieUsed) gadget(W - 206, ry, 'MONSTRE', 'KeyC', nessieIcon, 'rgba(20,120,110,0.85)');
+      if (G().mecha && country === 'jp' && !st.mechaUsed) gadget(W - 206, ry, 'MÉCA', 'KeyC', mechaIcon, 'rgba(190,80,10,0.85)');
     }
   }); else if (scene === 'title') {
     for (let i = 0; i < LEVELS.length; i++) { // tap the facing card to play, a side card to turn the wheel to it

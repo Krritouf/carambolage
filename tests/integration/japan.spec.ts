@@ -68,3 +68,67 @@ test('the pile-up\'s oil on the boulevard does not reach the traffic in the aven
   });
   expect(loose).toBe(0);
 });
+
+/** A save with these gadgets bought on the sports car, in Japan. */
+const jpGear = (gear: Record<string, number>) => JSON.stringify({ lv: 3, countries: { jp: { unlocked: 20, up: { cars: ['sport'], car: 'sport', gear: { sport: gear } } } } });
+
+test('Kaminari-Go walks in from the left, stamps in the middle breaking the parapets, shoves the traffic and walks off', async ({ page }) => {
+  await page.addInitScript((s: string) => localStorage.setItem('carambolage', s), jpGear({ mecha: 1 }));
+  await openJpLevel(page, 1);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any, rails = () => st.props.filter((S: any) => S.kind === 'rail' && S.broken).length;
+    g.step(60, false); g.press('KeyC'); g.step(1, false);
+    const m = st.mecha, fromLeft = !!m && m.x < 0, pileup = st.crashed, phases = new Set<string>();
+    const railsBefore = rails();
+    let n = 0;
+    while (st.mecha && st.mecha.phase !== 'out' && g.scene === 'play' && n++ < 2000) {
+      g.step(1, false); phases.add(st.mecha.phase);
+    }
+    return { fromLeft, pileup, phases: [...phases], stoppedAt: Math.round(m.x), railsBroken: rails() - railsBefore, damage: st.damage, again: (g.press('KeyC'), g.step(1, false), st.mecha === m) };
+  });
+  expect(r).toMatchObject({ fromLeft: true, pileup: true, stoppedAt: 0, again: true });
+  expect(r.phases).toEqual(expect.arrayContaining(['in', 'stamp', 'slap', 'out']));
+  expect(r.railsBroken).toBeGreaterThan(2);
+  expect(r.damage).toBeGreaterThan(0);
+});
+
+test('Kaminari-Go is Japan\'s: in the United Kingdom, C with it bought does nothing', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('carambolage', JSON.stringify({ lv: 3, countries: { uk: { unlocked: 20, up: { cars: ['sport'], car: 'sport', gear: { sport: { mecha: 1 } } } } } })));
+  await page.goto(build('manual=1&seed=7&scene=play&drive&country=uk&level=4'));
+  await expect.poll(() => page.evaluate(() => typeof window.game?.step)).toBe('function');
+  expect(await page.evaluate(() => { const g = window.game!; g.press('KeyC'); g.step(1, false); return !!(g.state as any).mecha; })).toBe(false);
+});
+
+test('the T-Rex meeting Kaminari-Go: one bout of sumo, a winner, the bonus, then each goes home', async ({ page }) => {
+  await page.addInitScript((s: string) => localStorage.setItem('carambolage', s), jpGear({ mecha: 1, trex: 1 }));
+  await openJpLevel(page, 1);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    g.step(60, false); g.press('KeyC'); g.press('KeyT'); g.step(1, false);
+    let n = 0; while (!st.sumo && g.scene === 'play' && n++ < 3000) g.step(1, false);
+    const met = !!st.sumo, win = st.sumo && st.sumo.win, cd0 = st.countdown;
+    g.step(60, false); const held = st.countdown === cd0; // the countdown waits for the bout
+    let said = false;
+    while (st.sumo && n++ < 3000) { g.step(1, false); said = said || st.floats.some((f: any) => /GAGNE !/.test(f.txt)); }
+    return { met, win, held, done: st.sumoDone, bonus: st.bonus, said,
+      trexHome: st.trex ? st.trex.dir > 0 : true, mechaHome: st.mecha ? st.mecha.dir < 0 && st.mecha.phase === 'out' : true,
+      once: (g.step(120, false), !st.sumo) };
+  });
+  expect(r).toMatchObject({ met: true, held: true, done: true, said: true, trexHome: true, mechaHome: true, once: true });
+  expect(['trex', 'mecha']).toContain(r.win);
+  expect(r.bonus).toBeGreaterThanOrEqual(400000);
+});
+
+test('in Japan the monument is a pagoda, which falls across the road and scores; the shops are ramen bars and toy shops', async ({ page }) => {
+  await openJpLevel(page, 10);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any, c = st.cranes[0], kinds = new Set(st.shops.map((S: any) => S.shop));
+    st.bodies = st.bodies.filter((b: any) => b === st.player);
+    const before = st.damage; c.falling = true; c.w = 0.3;
+    let n = 0; while (!c.fallen && n++ < 600) g.step(1, false);
+    return { monument: c.monument, fallen: c.fallen, gained: st.damage - before, said: st.floats.some((f: any) => f.txt.startsWith('LA PAGODE')),
+      japanese: kinds.has('ramen') || kinds.has('jouets'), british: kinds.has('pub') || kinds.has('salon') };
+  });
+  expect(r).toMatchObject({ monument: 'pagode', fallen: true, said: true, japanese: true, british: false });
+  expect(r.gained).toBeGreaterThan(0);
+});

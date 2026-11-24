@@ -7,7 +7,7 @@
 import { CONFIG, LEVELS_BY, tune } from './config';
 import { crunch, engineSound, isMuted, setMuted, startAudio, tone } from './audio';
 import { rng, setSeed, vr } from './game/random';
-import { finalScore, fmt, impactDamage, levelTargets, money as moneyIn, priceFor, starsAt } from './game/rules';
+import { finalScore, fmt, impactDamage, levelTargets, money as moneyIn, priceFor, roundIn, starsAt } from './game/rules';
 import { countriesFromSave, SAVE_VERSION } from './game/save';
 import type { Loose } from './game/types';
 import { clock, install, manual, params, seedFrom } from './hook';
@@ -18,8 +18,13 @@ import splashUrl from '../assets/splash.png'; // the app's opening picture (tool
 let country = 'fr', LEVELS: Loose[] = LEVELS_BY.fr;
 const PREFIX: Loose = { fr: '', uk: 'uk_', jp: 'jp_' }; // a country's keys in data/config.json: uk_threshold_3...
 const CURRENCY: Loose = { fr: '€', uk: '£', jp: '¥' }; // each country's money
+/** A country's money for one euro (data/config.json: rate, uk_rate, jp_rate). Every amount is kept in euros and
+ * shown in the country's money: the pound is near enough the euro to stay at 1, the yen is about 175. */
+const rateOf = (id: string) => tune[PREFIX[id] + 'rate'];
 /** An amount in the country's money, written the way the player's language writes it (1 000 £, £1,000). */
-const money = (n: number) => moneyIn(n, CURRENCY[country] || '€', getLang());
+const money = (n: number) => moneyIn(n * rateOf(country), CURRENCY[country] || '€', getLang());
+/** A level's three star targets in a country, round in its money. */
+const targetsIn = (level: number, id: string): number[] => levelTargets(level, tune, PREFIX[id]).map((t: number) => roundIn(t, rateOf(id)));
 
 // ---- Built to be checked ----------------------------------------------------------------
 const STEP = 1 / 60;            // simulation step in seconds; motion is per second, never per frame
@@ -230,12 +235,12 @@ function dailyLevel() {
   return dailyCache;
 }
 const curLevel = () => daily ? dailyLevel() : LEVELS[levelIdx];
-const TH = () => daily ? dailyLevel().threshold : tune[PREFIX[country] + 'threshold_' + (levelIdx + 1)];
+const TH = () => daily ? dailyLevel().threshold : targetsIn(levelIdx + 1, country)[0];
 const bestNow = () => daily ? (dailyRec.date === today() ? dailyRec.score : 0) : best[levelIdx];
 // the run's three targets [1, 2, 3 stars]: the level's own (levelTargets), or the daily's objective times the shared ratios
-const targetsNow = (): number[] => daily ? [TH(), TH() * tune.star2, TH() * tune.star3] : levelTargets(levelIdx + 1, tune, PREFIX[country]);
-const TH_OF = (i: number) => tune[PREFIX[country] + 'threshold_' + (i + 1)]; // a level's 1-star score in this country
-const levelStars = (i: number) => starsAt(best[i], levelTargets(i + 1, tune, PREFIX[country])); // the stars a level's best has won
+const targetsNow = (): number[] => daily ? [TH(), TH() * tune.star2, TH() * tune.star3] : targetsIn(levelIdx + 1, country);
+const TH_OF = (i: number) => targetsIn(i + 1, country)[0]; // a level's 1-star score in this country
+const levelStars = (i: number) => starsAt(best[i], targetsIn(i + 1, country)); // the stars a level's best has won
 const SINGULAR: Loose = { car: 'voiture', taxi: 'taxi', moto: 'moto', bus: 'bus', truck: 'camion', tanker: 'citerne', police: 'voiture de police', ambulance: 'ambulance', fire: 'camion de pompiers' };
 const PLURAL: Loose = { car: 'voitures', taxi: 'taxis', moto: 'motos', bus: 'bus', truck: 'camions', tanker: 'citernes', police: 'voitures de police', ambulance: 'ambulances', fire: 'camions de pompiers' };
 function chalLabel(c: Loose) {
@@ -288,7 +293,7 @@ function storeCountry() { COUNTRY_SAVES[country] = { best, unlocked, up, spent, 
 /** A country's progress, whether it is the one being played or not. */
 const progressOf = (id: string): Loose => { if (id === country) storeCountry(); return COUNTRY_SAVES[id] || {}; };
 /** The stars won in a country. */
-const starsIn = (id: string) => LEVELS_BY[id].reduce((a: number, _: Loose, i: number) => a + starsAt((progressOf(id).best || [])[i] || 0, levelTargets(i + 1, tune, PREFIX[id])), 0);
+const starsIn = (id: string) => LEVELS_BY[id].reduce((a: number, _: Loose, i: number) => a + starsAt((progressOf(id).best || [])[i] || 0, targetsIn(i + 1, id)), 0);
 loadCountry('fr');
 const credit = () => best.reduce((a: Loose, b: Loose) => a + b, 0) + challengeBank() + dailyBank - spent;
 function challengeBank() { let t = 0; LEVELS.forEach((lv: Loose, i: Loose) => (lv.challenges || []).forEach((c: Loose, ci: Loose) => { if (done[i + ':' + ci]) t += c.reward; })); return t; }
@@ -3861,7 +3866,7 @@ const carStars = (id: Loose) => id === 'sport' ? 0 : tune['my_stars_' + id]; // 
 const totalStars = () => LEVELS.reduce((a: Loose, lv: Loose, i: Loose) => a + levelStars(i), 0);
 const priceK = () => tune['my_price_' + up.car] || 1; // a better vehicle pays more for each item
 const carDmgK = (id: string = up.car) => id === 'sport' ? 1 : tune['my_dmg_' + id] || 1; // a bigger vehicle's damage scores more
-const priceOf = (g: Loose, lv: number) => priceFor(g.cost(lv), priceK());
+const priceOf = (g: Loose, lv: number) => roundIn(priceFor(g.cost(lv), priceK()), rateOf(country)); // round in the country's money
 function carDesc(id: Loose) {
   const n: number = (Object.values(up.gear[id] || {}) as number[]).reduce((a: Loose, b: Loose) => a + (b || 0), 0);
   const m = id === 'sport' ? tune.mass_player : tune['my_mass_' + id], sp = id === 'sport' ? 1 : tune['my_speed_' + id], st = id === 'sport' ? 1 : tune['my_steer_' + id];
@@ -3960,7 +3965,7 @@ const OPEN_ALL = params.get('open') === 'all' || import.meta.env.VITE_OPEN_ALL =
 function countryOpen(c: Loose): boolean {
   if (!c.after || OPEN_ALL) return true;
   const last = LEVELS_BY[c.after].length, b = (progressOf(c.after).best || [])[last - 1] || 0;
-  return starsAt(b, levelTargets(last, tune, PREFIX[c.after])) >= 1;
+  return starsAt(b, targetsIn(last, c.after)) >= 1;
 }
 /** A country's flag, flat, in the box x, y, w, h. */
 function flag(id: string, x: number, y: number, w: number, h: number) {

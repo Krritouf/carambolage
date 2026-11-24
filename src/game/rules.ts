@@ -40,6 +40,18 @@ export function starsAt(score: number, targets: readonly number[]): number {
   return score >= targets[2] ? 3 : score >= targets[1] ? 2 : score >= targets[0] ? 1 : 0;
 }
 
+/**
+ * An amount kept in the game's base unit (the euro) whose value in a country's money (times its exchange rate) is
+ * a round figure: three significant figures, never finer than the thousand (2 073 750 000 -> 2 070 000 000).
+ * A rate of 1 leaves it as it is. Star targets and garage prices go through it, so what the screen shows is the
+ * exact target or price.
+ */
+export function roundIn(n: number, rate: number): number {
+  if (rate === 1 || !n) return n;
+  const v = n * rate, step = Math.max(1000, Math.pow(10, Math.floor(Math.log10(Math.abs(v))) - 2));
+  return Math.round(v / step) * step / rate;
+}
+
 /** A garage price for the vehicle at the wheel: the base price x the vehicle's factor, to the nearest 500. */
 export function priceFor(base: number, vehicleFactor: number): number {
   return Math.round(base * vehicleFactor / 500) * 500;

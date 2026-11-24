@@ -1,7 +1,7 @@
 // Vitest: the scoring rules in src/game/, run in Node with no browser.
 import { describe, expect, it } from 'vitest';
 import config from '../../data/config.json';
-import { finalScore, fmt, impactDamage, levelTargets, money, priceFor, starsAt } from '../../src/game/rules';
+import { finalScore, fmt, impactDamage, levelTargets, money, priceFor, roundIn, starsAt } from '../../src/game/rules';
 import { rng, setSeed } from '../../src/game/random';
 
 
@@ -81,4 +81,17 @@ describe('priceFor', () => {
 
 describe('fmt', () => {
   it('splits thousands with spaces', () => { expect(fmt(1234567.4)).toBe('1 234 567'); });
+});
+
+describe('roundIn', () => {
+  it('leaves an amount alone at a rate of 1 (euro, pound)', () => {
+    expect(roundIn(16128000, 1)).toBe(16128000);
+  });
+  it('makes a yen amount three significant figures, never finer than the thousand', () => {
+    const rate = config.jp_rate.value;
+    expect(roundIn(11850000, rate) * rate).toBeCloseTo(2070000000, 0); // 2 073 750 000 shown as 2 070 000 000
+    expect(roundIn(41000, rate) * rate).toBeCloseTo(7180000, 0); // 7 175 000 -> 7 180 000
+    expect(roundIn(26000, rate) * rate).toBeCloseTo(4550000, 0); // already round
+    expect(roundIn(3, rate) * rate).toBeCloseTo(1000, 0); // the thousand at the least
+  });
 });

@@ -120,7 +120,10 @@ repart. **Le combat de géants** : s'il croise le T-Rex, combat de sumo (face-à
 l'autre, vainqueur tiré au sort), onde de choc, prime `sumo_bonus`, puis chacun rentre par où il est venu ; le
 compte à rebours attend la fin du combat. **La pagode** à 5 étages remplace la première grue (comme Big Ben), et
 deux boutiques japonaises, l'échoppe de ramen et le magasin de jouets (capsules), remplacent le pub et le salon de
-thé. Reste : les véhicules japonais, le typhon et les lanternes.
+thé. **Le yen** : tous les montants restent comptés en euros et s'affichent au taux du pays (`jp_rate` = 175 ;
+`uk_rate` = 1, la livre étant proche de l'euro) : dégâts, bonus, crédit, prix du garage, objectifs. Les objectifs
+d'étoiles et les prix du garage sont arrondis à 3 chiffres significatifs dans la monnaie du pays (au moins au
+millier), pour des cibles rondes. Reste : les véhicules japonais, le typhon et les lanternes.
 
 - **Mécanique : l'échangeur sur plusieurs étages** : des voies qui se croisent en hauteur, des
   véhicules qui tombent d'un niveau à l'autre.

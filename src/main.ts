@@ -3649,8 +3649,11 @@ const COUNTRIES: Loose[] = [
 ];
 let countryIdx = 0, homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
 /** A country is open once the one before it has a star on its last level (France always is). */
+// for trying a country without playing the ones before it: ?open=all in the address, or a test build made with
+// VITE_OPEN_ALL=1 (npm run build:test). The players' builds have neither.
+const OPEN_ALL = params.get('open') === 'all' || import.meta.env.VITE_OPEN_ALL === '1';
 function countryOpen(c: Loose): boolean {
-  if (!c.after) return true;
+  if (!c.after || OPEN_ALL) return true;
   const last = LEVELS_BY[c.after].length, b = (progressOf(c.after).best || [])[last - 1] || 0;
   return starsAt(b, levelTargets(last, tune, PREFIX[c.after])) >= 1;
 }

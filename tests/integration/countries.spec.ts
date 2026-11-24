@@ -26,7 +26,7 @@ test('a country still to come stays on the home screen', async ({ page }) => {
   await open(page);
   const scene = await page.evaluate(() => {
     const g = window.game!;
-    for (let i = 0; i < 3; i++) { g.press('ArrowRight'); g.step(1, false); } // the United States
+    for (let i = 0; i < 4; i++) { g.press('ArrowRight'); g.step(1, false); } // Brazil
     g.press('Enter'); g.step(1, false);
     return g.scene;
   });

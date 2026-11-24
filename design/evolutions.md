@@ -140,6 +140,21 @@ millier), pour des cibles rondes. Reste : les véhicules japonais, le typhon et 
 
 #### États-Unis (Amérique)
 
+**En cours (2026-11-24)** : ouverts quand le niveau 20 du Japon a au moins 1 étoile ; le dollar (`us_rate` = 1) ;
+20 niveaux (`data/levels-us.json`, seuils repris du Japon en attendant le pilote automatique). Faits :
+- **le passage à niveau** (choisi à la place des seuls boulevards larges) : une voie ferrée traverse le boulevard
+  (niveaux 1 à 6 : une, à x = 480 ; 7 à 14 : deux ; 15 à 20 : deux, dont une double avec un train dans chaque sens).
+  Cloches, barrières qui se baissent, la circulation attend avant la voie, puis un long train de marchandises
+  (locomotive, conteneurs sur deux étages, trémies, wagons-citernes). Ce que le carambolage jette sur la voie est
+  balayé ; un wagon-citerne pris dans une explosion ou heurté fort saute (`train_tank_value`), et ses voisins après lui ;
+- **la tornade** (C) : arrive par la gauche de l'écran, aspire, fait tourner en montant et projette les véhicules,
+  arrache les toits des boutiques, ciel assombri ; **le T-Rex volant** : la tornade avale le T-Rex, le fait tourner
+  en l'air et le lâche au milieu du carrefour (onde de choc, prime `twister_bonus`), puis il repart, étourdi ;
+- **la statue de la Liberté** à la place de la première grue (les lettres d'Hollywood sont une marque déposée) ;
+- les boutiques : diner, boutique de donuts, station-service (qui explose comme le labo, qu'elle remplace).
+Reste : les véhicules américains (bus scolaires, pick-ups, semi-remorques à long nez, camions de glaces), le monster
+truck, l'alerte tornade, le défilé.
+
 - **Mécanique : les très larges boulevards** à 8 voies et beaucoup de véhicules lourds : le pays des
   records de dégâts.
 - Circulation : taxis jaunes, bus scolaires, gros pick-ups, semi-remorques à long nez, camions de glaces.

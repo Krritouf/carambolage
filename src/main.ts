@@ -53,7 +53,7 @@ function buzz(ms: number): void {
 
 // ---- Screen ---------------------------------------------------------------------------
 const canvas = document.getElementById('game') as HTMLCanvasElement;
-const ctx = canvas.getContext('2d')!;
+let ctx = canvas.getContext('2d')!; // pointed at a sprite's own canvas while one is drawn (vehicleSprite)
 let baseR = 1;
 function fit() {
   // a phone is wider than 16:9: widen the world to fill it instead of leaving black bars
@@ -397,15 +397,25 @@ function drawRoundaboutGround(st: Loose) {
   ctx.fillStyle = '#e8dcc0'; ctx.fillRect(-rb.ri * 0.75, -5, rb.ri * 1.5, 10); ctx.fillRect(-5, -rb.ri * 0.75, 10, rb.ri * 1.5); // the paths to the Arc
   for (let i = 0; i < 24; i++) { const an = i * Math.PI / 12, r = rb.ri - 10; ctx.fillStyle = i % 2 ? '#ff6b6b' : '#fcc419'; ctx.beginPath(); ctx.arc(Math.cos(an) * r, Math.sin(an) * r, 4, 0, Math.PI * 2); ctx.fill(); } // flowers
 }
-/** The Arc de Triomphe: two great piers, the vault between them, the attic on top; rubble once ruined. */
+/** The Arc de Triomphe: two great piers with carved panels, the vault between them, a cornice, the attic with its
+ * frieze, a balustrade round its roof; rubble once ruined. */
 function drawArc(S: Loose) {
   const b: Loose = { x: S.x, y: S.y, a: 0 }, stone = S.ruined ? '#8f8778' : mix('#e8dcc0', '#3a3533', Math.min(1, S.dmg / S.value) * 0.5), side = shade(stone, 0.8);
-  const box = (ox: number, len: number, wid: number, h0: number, h1: number, top: string, sd: string) => prism(rect(b, ox, 0, len, wid), h0, h1, top, sd);
-  if (S.ruined) { box(0, 96, 46, 0, 18, stone, side); box(-20, 30, 34, 18, 30, stone, side); return; }
-  box(-33, 28, 40, 0, 60, stone, side); box(33, 28, 40, 0, 60, stone, side); // the piers
-  box(0, 92, 40, 60, 74, stone, side); // over the vault
-  box(0, 96, 44, 74, 84, shade(stone, 1.06), side); // the attic
-  flat(b, 0, 0, 38, 40, 59.9, '#3b3326'); // the vault's shadow
+  const box = (ox: number, len: number, wid: number, h0: number, h1: number, top: string | null, sd: string, oy = 0) => prism(rect(b, ox, oy, len, wid), h0, h1, top, sd);
+  if (S.ruined) { box(0, 96, 46, 0, 18, stone, side); box(-20, 30, 34, 18, 30, stone, side); box(24, 18, 20, 18, 24, shade(stone, 0.9), side); return; }
+  box(0, 104, 52, 0, 4, shade(stone, 0.85), shade(stone, 0.7)); // its plinth
+  flat(b, 0, 0, 38, 40, 4.05, '#3b3326'); // the vault's shadow on the plinth, seen between the piers
+  for (const ox of [-33, 33]) {
+    box(ox, 28, 40, 4, 60, null, side); // the piers
+    for (const oy of [-20.6, 20.6]) box(ox, 18, 1.2, 16, 46, null, shade(stone, 0.62), oy); // the carved panels on their faces
+  }
+  box(0, 92, 40, 58, 66, null, side); // over the vault
+  box(0, 98, 44, 66, 70, shade(stone, 1.12), shade(stone, 0.95)); // the cornice
+  box(0, 94, 41, 70, 84, null, side); // the attic
+  for (let i = 0; i < 10; i++) box(-42 + i * 9.4, 2, 1.2, 73, 80, null, shade(stone, 0.65), -20.8); // its frieze of shields
+  box(0, 96, 43, 84, 86, shade(stone, 1.08), shade(stone, 0.9)); // the attic's top
+  flat(b, 0, 0, 88, 37, 86.1, shade(stone, 0.95));
+  for (let i = 0; i < 12; i++) for (const oy of [-19.5, 19.5]) box(-44 + i * 8, 4, 2, 86, 89, shade(stone, 1.15), shade(stone, 0.85), oy); // the balustrade round the roof
   const c = P(S.x, S.y, 92); text(SHOPS.arc.name.toUpperCase(), c[0], c[1] - 10, Math.max(9, Math.round(13 * cam.zoom)), '#1b1530', 'center', 'bold');
   text(money(S.value - S.dmg), c[0], c[1] + 6, Math.max(9, Math.round(12 * cam.zoom)), '#1b1530', 'center', 'bold');
 }
@@ -1326,25 +1336,77 @@ function stepTrex(tr: Loose, dt: number) {
     if (!b.leak) { b.leak = true; b.leakX = b.x; b.leakY = b.y; }
   }
 }
+/** An oval's outline in a body's frame, as [along, across] points: centre (cu, cv), half sizes ru, rv. */
+function oval(cu: number, cv: number, ru: number, rv: number, n = 12) {
+  return Array.from({ length: n }, (_, i) => { const an = i * Math.PI * 2 / n; return [cu + Math.cos(an) * ru, cv + Math.sin(an) * rv]; });
+}
+/** The T-Rex, seen from above: a swaying tail, striding legs with claws, a striped back, little arms, and a big head with its jaws open. */
 function drawTrex(tr: Loose) {
-  const b: Loose = { x: tr.x, y: tr.y, a: Math.PI }, ph = Math.sin(tr.t * Math.PI * 2 / (tune.trex_step * 2)) * 1;
-  const box = (ox: number, len: number, wid: number, h0: number, h1: number, top: string, side: string, oy = 0) => prism(rect(b, ox, oy, len, wid), h0, h1, top, side);
-  ctx.globalAlpha = 0.3; poly(rect(b, 0, 0, tune.trex_len, tune.trex_width).map((q: Loose) => P(q[0] + 14, q[1] + 18, 0)), '#120b2a'); ctx.globalAlpha = 1;
-  const g = '#4c9a3c', gd = '#33702a', gl = '#6cc04f';
-  // the tail tapers behind
-  prism([[0, 0], [0, 0], [0, 0], [0, 0]].map((_, i) => { const c = Math.cos(b.a), s2 = Math.sin(b.a), ox = [-40, -120, -120, -40][i], oy = [18, 4, -4, -18][i] + (i === 1 || i === 2 ? ph * 10 : 0);
-    return [b.x + c * ox - s2 * oy, b.y + s2 * ox + c * oy]; }), 36, 52, gl, gd);
-  // the legs take turns
-  box(-6 + ph * 9, 26, 14, 0, 40, gd, gd, 22); box(-6 - ph * 9, 26, 14, 0, 40, gd, gd, -22);
-  box(0, 92, 54, 38, 74, g, gd); // the body
-  for (const o of [-30, -12, 6, 24]) flat(b, o, 0, 8, 22, 74.2, gd); // the stripes down its back
-  box(46, 22, 30, 60, 80, g, gd); // the neck
-  box(70, 42, 36, 66, 90, g, gd); // the head
-  box(80, 30, 30, 56, 66, gl, gd); // the jaw
-  for (const o of [-10, -4, 2, 8]) flat(b, 90, o, 3, 3, 66.2, '#f8f9fa'); // teeth
-  flat(b, 66, 11, 6, 5, 90.2, '#ffe066'); flat(b, 66, -11, 6, 5, 90.2, '#ffe066'); // the eyes
-  flat(b, 66, 11, 2, 3, 90.4, '#1d1a26'); flat(b, 66, -11, 2, 3, 90.4, '#1d1a26');
-  box(40, 12, 6, 50, 56, gl, gd, 22); box(40, 12, 6, 50, 56, gl, gd, -22); // the little arms
+  const b: Loose = { x: tr.x, y: tr.y, a: Math.PI }, ph = Math.sin(tr.t * Math.PI * 2 / (tune.trex_step * 2));
+  const K = 0.74; // its drawing is laid out in a 290-long frame, shrunk to its footprint on the road
+  const c = Math.cos(b.a), s = Math.sin(b.a), W2 = (u: number, v: number) => [b.x + (c * u - s * v) * K, b.y + (s * u + c * v) * K];
+  const bl = (local: number[][], h: number, fill: string, k = 1, ox = 0, oy = 0) => blobScreen(local.map(([u, v]) => { const [x, y] = W2(ox + u * k, oy + v * k); return P(x, y, h); }), fill);
+  const g = '#5a9e3a', gd = '#2f6624', gl = '#8ccf5c', belly = '#d9cc8f', claw = '#f1ead2';
+  // its shadow on the road
+  ctx.globalAlpha = 0.28;
+  bl([[-150, 0], [-60, 34], [20, 40], [80, 26], [130, 18], [132, -18], [80, -26], [20, -40], [-60, -34]], 0, '#120b2a', 1, -19, -24);
+  ctx.globalAlpha = 1;
+  // the tail: a round tube that tapers and sways as it walks
+  const tail: Loose[] = [];
+  for (let i = 0; i <= 14; i++) {
+    const k = i / 14, u = -34 - k * 120, v = Math.sin(tr.t * 5 - k * 2.6) * 16 * k;
+    const [x, y] = W2(u, v); tail.push({ x, y, z: 62 - k * 34, r: (21 * (1 - k) + 2.5) * K });
+  }
+  tail.reverse(); tube(tail, g, gd, gl);
+  // the feet, striding in turns, three claws forward
+  for (const sd of [1, -1]) {
+    const st = -6 + sd * ph * 18;
+    bl([[14, -9], [30, -11], [38, -6], [40, 0], [38, 6], [30, 11], [14, 9], [4, 0]], 1.5, gd, 1, st, sd * 48);
+    for (const t2 of [-7, 0, 7]) bl([[38, t2 - 2.5], [46, t2], [38, t2 + 2.5]], 2, claw, 1, st, sd * 48);
+  }
+  // the body: a pale belly showing at the sides, then the big thighs bulging out, the back, its light, the stripes, the bumps down the spine
+  bl([[-58, 0], [-40, -34], [0, -38], [40, -28], [66, -18], [72, 0], [66, 18], [40, 28], [0, 38], [-40, 34]], 54, belly);
+  for (const sd of [1, -1]) {
+    const st = -6 + sd * ph * 18;
+    bl(oval(st * 0.4, 0, 28, 17, 12), 58, gd, 1, 0, sd * 32);
+    bl(oval(st * 0.4 - 2, -3 * sd, 22, 12, 12), 62, g, 1, 0, sd * 32);
+    bl(oval(st * 0.4 - 6, -6 * sd, 10, 5, 8), 63, gl, 1, 0, sd * 32);
+  }
+  bl([[-56, 0], [-38, -30], [0, -33], [38, -24], [62, -15], [68, 0], [62, 15], [38, 24], [0, 33], [-38, 30]], 70, g);
+  bl(oval(0, -7, 42, 14, 14), 75, gl);
+  for (const o of [-34, -18, -2, 14, 30]) bl([[o - 3, -23], [o + 3, -23], [o + 6, 0], [o + 3, 23], [o - 3, 23], [o, 0]], 74, '#3d7a2b');
+  for (let i = 0; i < 8; i++) bl(oval(-48 + i * 13, 0, 4.5, 3.2, 6), 77, i % 2 ? gd : '#46852f');
+  // the little arms, with two claws each
+  for (const sd of [1, -1]) {
+    bl([[40, 24 * sd], [56, 30 * sd], [64, 38 * sd], [56, 42 * sd], [38, 34 * sd]], 71, gd);
+    for (const t2 of [36, 41]) bl(oval(66, t2 * sd, 3, 1.8, 6), 71, claw);
+  }
+  // the neck, then the head seen from above with its jaws wide open: the lower jaw past the snout, the mouth, teeth all round
+  const neck: Loose[] = [];
+  for (let i = 0; i <= 5; i++) { const k = i / 5, [x, y] = W2(50 + k * 24, 0); neck.push({ x, y, z: 74 + k * 14, r: (21 - k * 3) * K }); }
+  tube(neck, g, gd, gl);
+  const roar = Math.abs(Math.sin(tr.t * 1.7)), o = 6 * roar; // the jaws open and close a little
+  bl([[80, -17], [118, -17], [136 + o, -12], [144 + o, 0], [136 + o, 12], [118, 17], [80, 17]], 72, '#b5a66a'); // the lower jaw
+  bl([[98, -13], [128, -12], [136 + o, -7], [139 + o, 0], [136 + o, 7], [128, 12], [98, 13]], 74, '#7d1626'); // the mouth
+  bl(oval(122 + o * 0.6, 0, 11, 5, 8), 74.5, '#d9485f'); // the tongue
+  for (const sd of [1, -1]) for (let i = 0; i < 5; i++) { // the lower teeth round the jaw's rim, pointing in
+    const u = 112 + i * 6 + o * i / 5, v = (14 - i * 1.7) * sd;
+    bl([[u - 2.2, v], [u + 2.2, v], [u, v - 4 * sd]], 75, claw);
+  }
+  const head = [[70, -20], [88, -22], [104, -18], [114, -13], [120, -6], [122, 0], [120, 6], [114, 13], [104, 18], [88, 22], [70, 20], [64, 0]];
+  bl(head, 92, gd, 1.05, -3, 0);
+  for (const sd of [1, -1]) for (let i = 0; i < 6; i++) { // the upper teeth hanging past the snout's edge
+    const an = (-0.95 + i * 0.32) * sd, u = 112 + Math.cos(an) * 10, v = Math.sin(an) * 14 * 1.05 + 2 * sd;
+    bl([[u - 1.6, v - 1.6 * sd], [u + 1.6, v + 1.6 * sd], [u + 4.5, v + 1.5 * sd]], 93, claw);
+  }
+  bl(head, 94, g);
+  bl(oval(88, -4, 17, 9, 10), 95, gl);
+  for (const sd of [1, -1]) {
+    bl(oval(84, 16 * sd, 9, 4.5, 8), 96, gd); // the brow
+    bl(oval(86, 15 * sd, 5, 3.4, 8), 96.5, '#ffd43b'); // the eye
+    bl(oval(86, 15 * sd, 1.2, 3, 6), 97, '#1d1a26'); // its slit
+    bl(oval(114, 5 * sd, 2.4, 1.6, 6), 95, '#1f3d17'); // a nostril
+  }
 }
 // ---- The angry farmers (France's gadget) ----------------------------------------------------
 // A convoy of tractors drives in from the left-hand tunnel along the middle of the boulevard,
@@ -1447,12 +1509,21 @@ function drawFarmers(fm: Loose) {
     }
   } });
 }
-function farmersIcon(x: number, y: number, k: number) { // a tractor in profile
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-18, -4], [16, -4], [20, 6], [-18, 6]], '#2f9e44'); poly([[-16, -24], [2, -24], [2, -4], [-16, -4]], '#2f9e44');
-  poly([[-13, -21], [-1, -21], [-1, -10], [-13, -10]], '#a5d8ff'); poly([[10, -16], [13, -16], [13, -4], [10, -4]], '#495057');
-  ctx.fillStyle = '#1d1a26'; ctx.beginPath(); ctx.arc(-10, 8, 12, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(15, 12, 7, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#ffc83d'; ctx.beginPath(); ctx.arc(-10, 8, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(15, 12, 2.5, 0, Math.PI * 2); ctx.fill();
+function farmersIcon(x: number, y: number, k: number) { // a green tractor in profile, a big back wheel, a puff from its exhaust
+  iconStart(x, y, k);
+  tint(circ(16, -24, 3.5), 'rgba(120,120,130,0.7)'); tint(circ(21, -28, 2.6), 'rgba(120,120,130,0.5)');
+  ink(rr2(11, -22, 3.4, 14, 1), '#495057', 1.6); // the exhaust
+  ink(() => { ctx.moveTo(-20, 6); ctx.lineTo(-20, -6); ctx.lineTo(2, -6); ctx.lineTo(4, -2); ctx.lineTo(20, -2); ctx.quadraticCurveTo(24, -2, 24, 2); ctx.lineTo(24, 8); ctx.lineTo(-20, 8); ctx.closePath(); }, '#2f9e44');
+  ink(() => { ctx.moveTo(-18, -6); ctx.lineTo(-16, -26); ctx.lineTo(2, -26); ctx.lineTo(4, -6); ctx.closePath(); }, '#2f9e44');
+  tint(() => { ctx.moveTo(-14, -9); ctx.lineTo(-12.5, -22); ctx.lineTo(-1, -22); ctx.lineTo(0, -9); ctx.closePath(); }, '#a5d8ff');
+  tint(rr2(-13, -21, 2.6, 10, 1.2), '#e7f5ff');
+  tint(rr2(5, 0, 17, 2.5, 1.2), '#69db7c');
+  ink(rr2(-19, -28, 24, 3.5, 1.5), '#e03131', 1.6); // the roof
+  for (const [cx, cy, r] of [[-10, 9, 12], [16, 12, 7]]) {
+    ink(circ(cx, cy, r), '#2b2536');
+    ctx.strokeStyle = '#4a4357'; ctx.lineWidth = 1.6; ctx.setLineDash([2.5, 2.5]); ctx.beginPath(); ctx.arc(cx, cy, r - 1.6, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    ink(circ(cx, cy, r * 0.42), '#ffc83d', 1.4); tint(circ(cx - r * 0.12, cy - r * 0.12, r * 0.15), '#fff3bf');
+  }
   ctx.restore();
 }
 // ---- The loch monster (the United Kingdom's gadget) ----------------------------------------------
@@ -1485,43 +1556,102 @@ function stepNessie(ns: Loose, dt: number) {
     if (!ns.hit.has(b)) { ns.hit.add(b); crunch(0.25); }
   }
 }
+/** The loch monster: a dark pool with ripples, humps that break the water in a ring of foam, paddles, spots,
+ * and a long neck curving up to a small horned head. It turns round the middle of the crossroads. */
 function drawNessie(ns: Loose) {
-  const up = nessieUp(ns), a = ns.a === undefined ? nessieAngle(ns) : ns.a, c = Math.cos(a), sn = Math.sin(a), L = tune.nessie_len;
-  const at = (r: number, z: number) => [c * r, sn * r, z * up];
-  // the dark water it comes out of
-  const w0 = P(0, 0, 0); ctx.fillStyle = 'rgba(20,60,90,0.75)'; ctx.beginPath(); ctx.ellipse(w0[0], w0[1], 70 * cam.zoom * Math.max(0.3, up), 46 * cam.zoom * Math.max(0.3, up), 0, 0, Math.PI * 2); ctx.fill();
-  const green = '#2f9e83', dark = '#1e6b59';
-  // the humps along its back, out from the middle
-  for (let k = 0; k < 4; k++) {
-    const r0 = 40 + k * (L - 80) / 4, r1 = r0 + (L - 80) / 4 * 0.8, n = 6;
-    for (let i = 0; i < n; i++) {
-      const u0 = i / n, u1 = (i + 1) / n, h0 = Math.sin(u0 * Math.PI) * 30, h1 = Math.sin(u1 * Math.PI) * 30;
-      beam(at(r0 + (r1 - r0) * u0, h0), at(r0 + (r1 - r0) * u1, h1), 22, i % 2 ? green : dark);
-    }
+  const up = nessieUp(ns), a = ns.a === undefined ? nessieAngle(ns) : ns.a, c = Math.cos(a), sn = Math.sin(a), L = tune.nessie_len, z = cam.zoom;
+  const at = (r: number, v: number) => [c * r - sn * v, sn * r + c * v];
+  const g = '#2f9e83', gd = '#16584a', gl = '#6fd6b5', spot = '#1f7a66', foam = 'rgba(235,250,255,0.85)';
+  // the pool it comes out of: deep water, a lighter rim, ripples running out
+  const w0 = P(0, 0, 0), R = Math.max(0.3, up);
+  ctx.fillStyle = 'rgba(16,58,88,0.85)'; ctx.beginPath(); ctx.ellipse(w0[0], w0[1], 78 * z * R, 54 * z * R, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(40,110,150,0.7)'; ctx.beginPath(); ctx.ellipse(w0[0] - 6 * z, w0[1] - 5 * z, 56 * z * R, 36 * z * R, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 2 * z;
+  for (const k of [0, 0.5]) {
+    const f = (ns.t * 0.7 + k) % 1; ctx.strokeStyle = `rgba(200,235,255,${0.55 * (1 - f)})`;
+    ctx.beginPath(); ctx.ellipse(w0[0], w0[1], (60 + f * 70) * z * R, (40 + f * 48) * z * R, 0, 0, Math.PI * 2); ctx.stroke();
   }
-  // the neck and the head at the far end
-  beam(at(L - 50, 0), at(L - 20, 60), 18, green); beam(at(L - 20, 60), at(L, 70), 16, green);
-  const h = P(...(at(L + 6, 72) as [number, number, number]));
-  ctx.fillStyle = green; ctx.beginPath(); ctx.ellipse(h[0], h[1], 16 * cam.zoom, 11 * cam.zoom, a, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(h[0] + 4 * cam.zoom, h[1] - 4 * cam.zoom, 3 * cam.zoom, 0, Math.PI * 2); ctx.fill();
-  // spray where it cuts the road
-  ctx.fillStyle = 'rgba(200,235,255,0.6)';
-  for (let k = 1; k < 6; k++) { const q = P(c * (L * k / 6) - sn * 18, sn * (L * k / 6) + c * 18, 4); ctx.beginPath(); ctx.arc(q[0], q[1], 5 * cam.zoom * up, 0, Math.PI * 2); ctx.fill(); }
+  // a wake of foam along the road beside the body, on the side it comes from
+  ctx.fillStyle = 'rgba(230,245,255,0.5)';
+  for (let k = 1; k < 9; k++) { const [x, y] = at(L * k / 9, 22 + (k % 3) * 4), q = P(x, y, 0.5); ctx.beginPath(); ctx.ellipse(q[0], q[1], 9 * z * up + 0.1, 4 * z * up + 0.1, a, 0, Math.PI * 2); ctx.fill(); }
+  // the humps: each an arch of round body, foam where it meets the water
+  const humps = 4, span = (L - 110) / humps;
+  for (let k = 0; k < humps; k++) {
+    const r0 = 40 + k * span, r1 = r0 + span * 0.74, hh = (34 - k * 3) * up, rad = (15 - k) * Math.max(0.6, up);
+    const arch: Loose[] = [];
+    for (let i = 0; i <= 10; i++) { const u = i / 10, [x, y] = at(r0 + (r1 - r0) * u, 0); arch.push({ x, y, z: Math.sin(u * Math.PI) * hh, r: rad }); }
+    for (const e of [arch[0], arch[10]]) { const q = P(e.x, e.y, 0.5); ctx.fillStyle = foam; ctx.beginPath(); ctx.ellipse(q[0], q[1], rad * 1.5 * z, rad * 1.1 * z, a, 0, Math.PI * 2); ctx.fill(); }
+    tube(arch, g, gd, gl);
+    for (const i of [3, 5, 7]) { const q = P(arch[i].x, arch[i].y, arch[i].z + rad * 0.6); ctx.fillStyle = spot; ctx.beginPath(); ctx.arc(q[0] + (i - 5) * z, q[1], 2.6 * z, 0, Math.PI * 2); ctx.fill(); }
+  }
+  // two pairs of paddles, beating
+  const flap = Math.sin(ns.t * 6) * 0.5;
+  for (const [r, sd] of [[L * 0.3, 1], [L * 0.3, -1], [L * 0.62, 1], [L * 0.62, -1]]) {
+    const an = sd * (0.5 + flap), ca = Math.cos(an), sa = Math.sin(an);
+    blobScreen([[-6, 0], [6, 0], [10, 14], [2, 26], [-8, 20]].map(([u, v]) => {
+      const vv0 = v * sd, uu = u * ca - vv0 * sa, vv = u * sa + vv0 * ca, [x, y] = at(r + uu, sd * 14 + vv); return P(x, y, 2);
+    }), gd);
+  }
+  // the neck rises from the last hump and curves over to the head
+  const neck: Loose[] = [];
+  for (let i = 0; i <= 14; i++) { const u = i / 14, [x, y] = at(L - 70 + u * 62, Math.sin(u * Math.PI) * 10); neck.push({ x, y, z: Math.sin(u * Math.PI / 2) * 82 * up, r: 12 - u * 4 }); }
+  const q0 = P(neck[0].x, neck[0].y, 0.5); ctx.fillStyle = foam; ctx.beginPath(); ctx.ellipse(q0[0], q0[1], 18 * z, 13 * z, a, 0, Math.PI * 2); ctx.fill();
+  tube(neck, g, gd, gl);
+  // the head: a rounded snout, two little horns, eyes and nostrils, looking ahead along its body
+  const hz = 84 * up, [hx, hy] = at(L + 4, 4), hb: Loose = { x: hx, y: hy, a };
+  blob(hb, oval(0, 0, 19, 12, 12), hz, gd, 1.08);
+  blob(hb, [[-16, -10], [4, -12], [18, -7], [22, 0], [18, 7], [4, 12], [-16, 10]], hz + 1, g);
+  blob(hb, oval(-2, -3, 10, 5, 10), hz + 2, gl);
+  for (const sd of [1, -1]) {
+    blob(hb, oval(-12, 8 * sd, 3, 3, 8), hz + 6, gd); blob(hb, oval(-12, 8 * sd, 1.6, 1.6, 6), hz + 7, '#a8e6cf'); // the horns
+    blob(hb, oval(2, 9 * sd, 4.5, 3.5, 8), hz + 2.5, '#fff4c2'); blob(hb, oval(3, 9.5 * sd, 2, 2, 6), hz + 3, '#1d1a26'); // the eyes
+    blob(hb, oval(19, 3.5 * sd, 1.4, 1, 6), hz + 1.5, '#0e3b31'); // the nostrils
+  }
+  // spray thrown up where it cuts through, on the side it sweeps toward
+  for (let k = 0; k < 10; k++) {
+    const rr = 50 + ((k * 97 + Math.floor(ns.t * 12) * 31) % 100) / 100 * (L - 60), [x, y] = at(rr, -18 - (k % 3) * 7), q = P(x, y, 6 + (k % 4) * 6);
+    ctx.fillStyle = k % 2 ? 'rgba(220,242,255,0.75)' : 'rgba(170,215,245,0.6)'; ctx.beginPath(); ctx.arc(q[0], q[1], (2 + (k % 3)) * z * up + 0.1, 0, Math.PI * 2); ctx.fill();
+  }
 }
-function nessieIcon(x: number, y: number, k: number) { // three humps and a head out of the water
+function nessieIcon(x: number, y: number, k: number) { // three humps and a horned head over a wave, outlined
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  ctx.fillStyle = '#4dabf7'; ctx.fillRect(-26, 8, 52, 6);
-  ctx.fillStyle = '#2f9e83';
-  for (const o of [-16, -2]) { ctx.beginPath(); ctx.arc(o, 8, 7, Math.PI, 0); ctx.fill(); }
-  ctx.beginPath(); ctx.moveTo(10, 8); ctx.lineTo(14, -12); ctx.lineTo(22, -14); ctx.lineTo(24, -9); ctx.lineTo(18, -8); ctx.lineTo(17, 8); ctx.closePath(); ctx.fill();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  const body = () => {
+    ctx.beginPath();
+    ctx.moveTo(-26, 9); ctx.quadraticCurveTo(-21, -4, -15, 9); ctx.moveTo(-12, 9); ctx.quadraticCurveTo(-5, -7, 2, 9);
+    ctx.moveTo(5, 9); ctx.bezierCurveTo(8, -4, 12, -14, 17, -15); ctx.quadraticCurveTo(26, -16, 26, -10);
+  };
+  ctx.strokeStyle = '#0d3d33'; ctx.lineWidth = 9.5; body(); ctx.stroke();
+  ctx.strokeStyle = '#2f9e83'; ctx.lineWidth = 6.5; body(); ctx.stroke();
+  ctx.strokeStyle = '#6fd6b5'; ctx.lineWidth = 2; ctx.beginPath();
+  ctx.moveTo(-23, 3); ctx.quadraticCurveTo(-21, 0, -19, 3); ctx.moveTo(-8, 1); ctx.quadraticCurveTo(-5, -2, -2, 1); ctx.moveTo(10, -6); ctx.quadraticCurveTo(13, -12, 17, -13); ctx.stroke();
+  ctx.fillStyle = '#0d3d33'; ctx.beginPath(); ctx.arc(15, -19, 2, 0, Math.PI * 2); ctx.fill(); // a horn
+  ctx.fillStyle = '#fff4c2'; ctx.beginPath(); ctx.arc(20, -13, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1d1a26'; ctx.beginPath(); ctx.arc(20.6, -13, 1.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4dabf7'; ctx.beginPath(); ctx.moveTo(-28, 8);
+  for (let i = 1; i <= 8; i++) ctx.quadraticCurveTo(-28 + i * 7 - 3.5, i % 2 ? 5 : 11, -28 + i * 7, 8);
+  ctx.lineTo(28, 15); ctx.lineTo(-28, 15); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#d0ebff'; for (const o of [-20, -6, 8, 20]) ctx.fillRect(o, 10.5, 4, 1.6);
   ctx.restore();
 }
-function trexIcon(x: number, y: number, k: number) { // a T-Rex head in profile, jaws open
+function trexIcon(x: number, y: number, k: number) { // a T-Rex head in profile, jaws open wide, outlined
   ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-22, -4], [-6, -16], [16, -14], [24, -6], [6, -4], [22, 4], [10, 12], [-8, 10], [-22, 14]], '#4c9a3c');
-  poly([[6, -4], [22, 4], [10, 12]], '#33702a');
-  for (const tx of [9, 14, 19]) poly([[tx, -4], [tx + 2, -1], [tx + 4, -4]], '#f8f9fa');
-  poly([[2, -12], [6, -12], [6, -9], [2, -9]], '#ffe066'); ctx.restore();
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = '#8f1d2c'; ctx.beginPath(); ctx.moveTo(-10, 4); ctx.lineTo(24, -2); ctx.lineTo(20, 10); ctx.lineTo(-12, 8); ctx.closePath(); ctx.fill(); // the mouth
+  ctx.fillStyle = '#f1ead2'; // the teeth
+  for (const tx of [8, 13, 18, 23]) { ctx.beginPath(); ctx.moveTo(tx - 2, -1.5); ctx.lineTo(tx, 2.5); ctx.lineTo(tx + 2, -1.5); ctx.fill(); }
+  for (const tx of [6, 11, 16]) { ctx.beginPath(); ctx.moveTo(tx - 2, 8.5); ctx.lineTo(tx, 4.5); ctx.lineTo(tx + 2, 8.5); ctx.fill(); }
+  ctx.strokeStyle = '#1f3d17'; ctx.lineWidth = 2.4;
+  ctx.fillStyle = '#d9cc8f'; ctx.beginPath(); ctx.moveTo(-14, 6); ctx.bezierCurveTo(-6, 4, 4, 6, 20, 10); ctx.lineTo(19, 13); ctx.bezierCurveTo(6, 15, -8, 15, -20, 12); ctx.closePath(); ctx.fill(); ctx.stroke(); // the lower jaw
+  ctx.fillStyle = '#5a9e3a'; ctx.beginPath(); ctx.moveTo(-24, 6); ctx.bezierCurveTo(-24, -10, -12, -18, 2, -17); ctx.bezierCurveTo(14, -16, 24, -12, 26, -6);
+  ctx.lineTo(25, -2); ctx.lineTo(4, -1); ctx.bezierCurveTo(-2, 0, -8, 4, -12, 10); ctx.closePath(); ctx.fill(); ctx.stroke(); // the skull
+  ctx.fillStyle = '#8ccf5c'; ctx.beginPath(); ctx.ellipse(-2, -11, 12, 3.5, -0.08, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3d7a2b'; for (const o of [-18, -12]) { ctx.beginPath(); ctx.moveTo(o, -6); ctx.lineTo(o + 3, -12); ctx.lineTo(o + 5, -5); ctx.fill(); }
+  ctx.fillStyle = '#2f6624'; ctx.beginPath(); ctx.ellipse(4, -12, 5, 2.4, 0, 0, Math.PI * 2); ctx.fill(); // the brow
+  ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.ellipse(5, -9.5, 3, 2.3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1d1a26'; ctx.fillRect(4.6, -11.5, 1.2, 4);
+  ctx.beginPath(); ctx.arc(22, -9, 1.2, 0, Math.PI * 2); ctx.fill(); // a nostril
+  ctx.restore();
 }
 // a shop takes damage; ruined, it collapses (and a laboratory blows up)
 function shopHurt(S: Loose, amount: number) {
@@ -1578,101 +1708,183 @@ function beam(a: number[], b: number[], wd: number, color: string) {
   const dx = p1[0] - p0[0], dy = p1[1] - p0[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l * wd * cam.zoom / 2, ny = dx / l * wd * cam.zoom / 2;
   poly([[p0[0] + nx, p0[1] + ny], [p1[0] + nx, p1[1] + ny], [p1[0] - nx, p1[1] - ny], [p0[0] - nx, p0[1] - ny]], color);
 }
+/** A girder with a dark edge: the band in its colour over a slightly wider dark one, so each piece reads on any ground. */
+function beamInk(a: number[], b: number[], wd: number, color: string, edge = '#2b2310') { beam(a, b, wd + 2.2, edge); beam(a, b, wd, color); }
 function drawCrane(c: Loose) {
   const Hm = tune.crane_height, J = tune.crane_jib, th = c.theta, cs = Math.cos(th), sn = Math.sin(th);
   const base = [c.x, c.y, 0], top = [c.x, c.y + c.dir * Hm * sn, Hm * cs];
-  const along = (d: number, up: number) => [top[0], top[1] + c.dir * (d * cs + up * sn), Math.max(0, top[2] - d * sn + up * cs)];
-  // the mast: yellow lattice, banded dark every so often
-  const n = 8;
-  for (let i = 0; i < n; i++) {
-    const a = [c.x, c.y + c.dir * Hm * sn * i / n, Hm * cs * i / n], b = [c.x, c.y + c.dir * Hm * sn * (i + 1) / n, Hm * cs * (i + 1) / n];
-    beam(a, b, 12, i % 2 ? '#ffc83d' : '#e0a800');
+  const mast = (h: number, ox: number) => [c.x + ox, c.y + c.dir * h * sn, h * cs];
+  const along = (d: number, up: number, ox = 0) => [top[0] + ox, top[1] + c.dir * (d * cs + up * sn), Math.max(0, top[2] - d * sn + up * cs)];
+  const Y = '#ffc83d', YD = '#d99a00';
+  if (!c.fallen) prism([[c.x - 18, c.y - 18], [c.x + 18, c.y - 18], [c.x + 18, c.y + 18], [c.x - 18, c.y + 18]], 0, 5, '#adb5bd', '#868e96'); // its concrete footing
+  // the mast: two yellow rails and a zigzag of braces between them
+  const n = 10, w = 6;
+  for (const ox of [-w, w]) beamInk(mast(0, ox), mast(Hm, ox), 3.2, ox < 0 ? YD : Y);
+  for (let i = 0; i < n; i++) beam(mast(Hm * i / n, i % 2 ? -w : w), mast(Hm * (i + 1) / n, i % 2 ? w : -w), 1.8, YD);
+  // the peak over the mast, its ties to the two arms' ends
+  const peak = along(0, 22);
+  beamInk(top, peak, 3, Y);
+  beam(peak, along(J * 0.92, 0), 1.2, '#495057'); beam(peak, along(-86, 0), 1.2, '#495057');
+  // the jib over the road: two rails, braces; the counter-jib behind, with its concrete blocks
+  for (const ox of [-4, 4]) beamInk(along(0, 0, ox), along(J, 0, ox), 2.6, Y);
+  for (let i = 0; i < 12; i++) beam(along(J * i / 12, 0, i % 2 ? -4 : 4), along(J * (i + 1) / 12, 0, i % 2 ? 4 : -4), 1.4, YD);
+  for (const ox of [-4, 4]) beamInk(along(0, 0, ox), along(-90, 0, ox), 2.6, YD);
+  for (const d of [-88, -76]) {
+    const q = along(d, 0); prism([[q[0] - 9, q[1] - 5], [q[0] + 9, q[1] - 5], [q[0] + 9, q[1] + 5], [q[0] - 9, q[1] + 5]], Math.max(0, q[2] - 12), q[2] + 1, '#ced4da', '#868e96');
   }
-  beam(top, along(J, 0), 8, '#ffc83d'); // the jib, over the road
-  beam(top, along(-90, 0), 8, '#e0a800'); // the counter-jib
-  const cw = along(-84, 0); prism([[cw[0] - 9, cw[1] - 9], [cw[0] + 9, cw[1] - 9], [cw[0] + 9, cw[1] + 9], [cw[0] - 9, cw[1] + 9]], Math.max(0, cw[2] - 10), cw[2], '#868e96', '#495057');
-  const cab = along(6, 0); prism([[cab[0] - 7, cab[1] - 7], [cab[0] + 7, cab[1] - 7], [cab[0] + 7, cab[1] + 7], [cab[0] - 7, cab[1] + 7]], Math.max(0, cab[2] - 14), cab[2], '#f8f9fa', '#ced4da');
-  if (!c.falling) { // the hook on its cable
-    const tip = along(J * 0.85, 0); beam(tip, [tip[0], tip[1], 40], 2, '#1d1a26');
-    prism([[tip[0] - 5, tip[1] - 5], [tip[0] + 5, tip[1] - 5], [tip[0] + 5, tip[1] + 5], [tip[0] - 5, tip[1] + 5]], 30, 40, '#e03131', '#a61e1e');
+  // the driver's cab, with its windows
+  const cab = along(8, -2);
+  prism([[cab[0] - 7, cab[1] - 6], [cab[0] + 7, cab[1] - 6], [cab[0] + 7, cab[1] + 6], [cab[0] - 7, cab[1] + 6]], Math.max(0, cab[2] - 14), cab[2], '#f8f9fa', '#5c8fd6');
+  if (!c.falling) { // the trolley, the cable, the hook block striped red and white
+    const tip = along(J * 0.8, 0);
+    prism([[tip[0] - 6, tip[1] - 5], [tip[0] + 6, tip[1] - 5], [tip[0] + 6, tip[1] + 5], [tip[0] - 6, tip[1] + 5]], tip[2] - 3, tip[2] + 1, '#495057', '#343a40');
+    beam(tip, [tip[0], tip[1], 42], 1.2, '#1d1a26');
+    prism([[tip[0] - 5, tip[1] - 4], [tip[0] + 5, tip[1] - 4], [tip[0] + 5, tip[1] + 4], [tip[0] - 5, tip[1] + 4]], 30, 42, '#e03131', '#a61e1e');
+    flat({ x: tip[0], y: tip[1], a: 0 }, 0, 0, 10, 2.5, 42.1, '#f8f9fa');
+    beam([tip[0], tip[1], 30], [tip[0], tip[1] + 3, 24], 2, '#495057'); // the hook
   }
   beam(base, [c.x, c.y, 3], 26, '#495057');
 }
 // each country's monument, in place of the first crane of a level, and what the screen says when it falls
 const MONUMENTS: Loose = { fr: 'eiffel', uk: 'bigben' };
 const MONUMENT_NAME: Loose = { eiffel: 'LA TOUR EIFFEL', bigben: 'BIG BEN' };
-// Big Ben (the United Kingdom's crane): a square stone tower, the clock faces, the belfry and the
-// spire. It stands and falls like a crane: c.theta tips it over the road.
+// Big Ben (the United Kingdom's crane): a square stone tower ribbed in the Gothic way, the gilded clock
+// faces, the belfry's arches, the slate spire with its pinnacles. It stands and falls like a crane: c.theta tips it over the road.
 function drawBigBen(c: Loose) {
-  const Hm = tune.bigben_height, th = c.theta, cs = Math.cos(th), sn = Math.sin(th);
+  const Hm = tune.bigben_height, th = c.theta, cs = Math.cos(th), sn = Math.sin(th), z = cam.zoom;
   const at = (h: number, ox: number) => [c.x + ox, c.y + c.dir * h * sn, Math.max(0, h * cs)];
-  const stone = '#d6bd84', dark = '#a88a52', roof = '#5f7a74', gold = '#e0b13a', W2 = 26;
+  const stone = '#d9c08a', light = '#ecd9a8', dark = '#a88a52', slate = '#4f6b66', slateL = '#7a9a92', gold = '#e0b13a', W2 = 26;
   const shaft = (h0: number, h1: number, w: number, col: string) => { const n = Math.max(1, Math.round((h1 - h0) / 12)); for (let i = 0; i < n; i++) beam(at(h0 + (h1 - h0) * i / n, 0), at(h0 + (h1 - h0) * (i + 1) / n, 0), w, col); };
-  shaft(0, Hm * 0.62, W2 * 2, stone); // the tower
-  for (const side of [-1, 1]) beam(at(0, side * (W2 - 3)), at(Hm * 0.62, side * (W2 - 3)), 4, dark); // its corners
-  for (let k = 1; k < 6; k++) beam(at(Hm * 0.62 * k / 6, -W2), at(Hm * 0.62 * k / 6, W2), 2, dark); // the floors' bands
-  shaft(Hm * 0.62, Hm * 0.74, W2 * 2.3, stone); // the clock stage, a little wider
-  // the clock face: a white disc with its two hands, facing the screen while it stands
-  const cc = P(...(at(Hm * 0.68, 0) as [number, number, number])), r = 17 * cam.zoom * Math.max(0.35, cs);
-  ctx.fillStyle = '#f8f4e6'; ctx.beginPath(); ctx.ellipse(cc[0], cc[1], r, r * Math.max(0.35, cs), 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = gold; ctx.lineWidth = 2.5 * cam.zoom; ctx.stroke();
-  ctx.strokeStyle = '#1d1a26'; ctx.lineWidth = 2 * cam.zoom; ctx.beginPath();
-  ctx.moveTo(cc[0], cc[1]); ctx.lineTo(cc[0] + r * 0.55, cc[1] - r * 0.2 * cs); ctx.moveTo(cc[0], cc[1]); ctx.lineTo(cc[0] - r * 0.1, cc[1] - r * 0.8 * cs); ctx.stroke();
-  shaft(Hm * 0.74, Hm * 0.8, W2 * 1.8, dark); // the belfry
-  for (const ox of [-W2 * 0.5, 0, W2 * 0.5]) beam(at(Hm * 0.745, ox), at(Hm * 0.795, ox), 5, '#3b3326'); // its arches
-  // the spire: a tall pointed roof, a gold finial on top
-  const b0 = P(...(at(Hm * 0.8, -W2 * 0.9) as [number, number, number])), b1 = P(...(at(Hm * 0.8, W2 * 0.9) as [number, number, number])), tip = P(...(at(Hm * 0.97, 0) as [number, number, number]));
-  poly([b0, b1, tip], roof);
-  beam(at(Hm * 0.97, 0), at(Hm, 0), 3, gold);
-  if (!c.fallen) beam([c.x - 36, c.y, 0], [c.x + 36, c.y, 0], 18, '#6c6253'); // the base
+  if (!c.fallen) beam([c.x - 40, c.y, 0], [c.x + 40, c.y, 0], 20, '#6c6253'); // the base
+  const T = Hm * 0.62;
+  shaft(0, T, W2 * 2 + 2.4, '#5a4a2c'); shaft(0, T, W2 * 2, stone); // the tower, outlined
+  beam(at(0, -W2 * 0.55), at(T, -W2 * 0.55), W2 * 0.7, light); // its lit side
+  for (const ox of [-W2 + 3, -W2 * 0.4, W2 * 0.4, W2 - 3]) beam(at(0, ox), at(T, ox), ox === -W2 + 3 || ox === W2 - 3 ? 4 : 2, dark); // the ribs
+  for (let k = 1; k < 8; k++) { const h = T * k / 8; beam(at(h, -W2), at(h, W2), 2, dark); // the floors' bands, a pair of windows on each
+    for (const ox of [-W2 * 0.7, W2 * 0.7]) beam(at(h - T / 16 - 4, ox), at(h - T / 16 + 4, ox), 5, '#3b3326'); }
+  // the clock stage, a little wider, its corner pinnacles
+  shaft(T, Hm * 0.75, W2 * 2.5, '#5a4a2c'); shaft(T, Hm * 0.75, W2 * 2.3, light);
+  for (const ox of [-W2 * 1.15, W2 * 1.15]) { beamInk(at(T, ox), at(Hm * 0.78, ox), 4, stone); beam(at(Hm * 0.78, ox), at(Hm * 0.8, ox), 2, gold); }
+  // the clock face: a gilded square, the white dial, its twelve marks and two hands
+  const cc = P(...(at(Hm * 0.685, 0) as [number, number, number])), fy = Math.max(0.35, cs), r = 17 * z;
+  ctx.fillStyle = gold; ctx.fillRect(cc[0] - r * 1.25, cc[1] - r * 1.25 * fy, r * 2.5, r * 2.5 * fy);
+  ctx.fillStyle = '#5a4a2c'; ctx.beginPath(); ctx.ellipse(cc[0], cc[1], r * 1.08, r * 1.08 * fy, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fbf6e6'; ctx.beginPath(); ctx.ellipse(cc[0], cc[1], r, r * fy, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#1d1a26'; ctx.lineWidth = 1.4 * z; ctx.beginPath();
+  for (let i = 0; i < 12; i++) { const an = i * Math.PI / 6, c0 = Math.cos(an), s0 = Math.sin(an); ctx.moveTo(cc[0] + c0 * r * 0.78, cc[1] + s0 * r * 0.78 * fy); ctx.lineTo(cc[0] + c0 * r * 0.92, cc[1] + s0 * r * 0.92 * fy); }
+  ctx.stroke();
+  ctx.lineWidth = 2.2 * z; ctx.lineCap = 'round'; ctx.beginPath();
+  ctx.moveTo(cc[0], cc[1]); ctx.lineTo(cc[0] + r * 0.5, cc[1] - r * 0.2 * fy); ctx.moveTo(cc[0], cc[1]); ctx.lineTo(cc[0] - r * 0.08, cc[1] - r * 0.75 * fy); ctx.stroke(); ctx.lineCap = 'butt';
+  // the belfry and its arches
+  shaft(Hm * 0.75, Hm * 0.81, W2 * 1.9, dark);
+  for (const ox of [-W2 * 0.6, 0, W2 * 0.6]) beam(at(Hm * 0.755, ox), at(Hm * 0.8, ox), 6, '#2b2418');
+  beam(at(Hm * 0.81, -W2 * 1.05), at(Hm * 0.81, W2 * 1.05), 3, gold);
+  // the spire: a lit face and a shaded one, gold bands, four little pinnacles, the gold finial
+  const b0 = P(...(at(Hm * 0.815, -W2 * 0.95) as [number, number, number])), b1 = P(...(at(Hm * 0.815, W2 * 0.95) as [number, number, number]));
+  const mid = P(...(at(Hm * 0.815, 0) as [number, number, number])), tip = P(...(at(Hm * 0.97, 0) as [number, number, number]));
+  poly([b0, mid, tip], slateL); poly([mid, b1, tip], slate);
+  for (const k of [0.3, 0.6]) beam(at(Hm * (0.815 + 0.155 * k), -W2 * 0.95 * (1 - k)), at(Hm * (0.815 + 0.155 * k), W2 * 0.95 * (1 - k)), 2, gold);
+  for (const ox of [-W2 * 0.85, W2 * 0.85]) { const p0 = P(...(at(Hm * 0.815, ox) as [number, number, number])), p1 = P(...(at(Hm * 0.86, ox) as [number, number, number])), w = 3 * z;
+    poly([[p0[0] - w, p0[1]], [p0[0] + w, p0[1]], p1], slate); }
+  beamInk(at(Hm * 0.97, 0), at(Hm, 0), 2.6, gold);
+  const f = P(...(at(Hm, 0) as [number, number, number])); ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(f[0], f[1], 3 * z, 0, Math.PI * 2); ctx.fill();
 }
-// the Eiffel Tower (France's crane): four bronze legs tapering to a spire, two platforms, the
-// arches at its feet. It stands and falls like a crane: c.theta tips it over the road.
+// the Eiffel Tower (France's crane): four bronze legs curving to a spire, a lattice of braces, the arches at its feet,
+// three platforms with their lights. It stands and falls like a crane: c.theta tips it over the road.
 function drawEiffel(c: Loose) {
   const Hm = tune.eiffel_height, th = c.theta, cs = Math.cos(th), sn = Math.sin(th);
   const at = (h: number, ox: number, oy = 0) => [c.x + ox, c.y + c.dir * (h * sn + oy * cs), Math.max(0, h * cs - oy * sn)];
   const half = (h: number) => { const u = h / Hm; return 64 * Math.pow(1 - u, 2.2) + 4; }; // the legs' curve
-  const dark = '#6b4f36', mid = '#8c6a48', light = '#a8835a';
-  // the two pairs of legs, the far pair first
+  const dark = '#5e4530', mid = '#8c6a48', light = '#b08b5e', edge = '#2e2016';
+  if (!c.fallen) beam([c.x - 46, c.y, 0], [c.x + 46, c.y, 0], 20, '#6b8f4e'); // the lawn of the Champ-de-Mars
+  // the two pairs of legs, the far pair first, each a pair of rails braced across
   for (const oy of [14, -14]) {
     const col = oy > 0 ? dark : mid;
     for (const side of [-1, 1]) {
       const n = 10;
       for (let i = 0; i < n; i++) {
-        const h0 = Hm * 0.62 * i / n, h1 = Hm * 0.62 * (i + 1) / n, d0 = oy * (1 - h0 / Hm), d1 = oy * (1 - h1 / Hm);
-        beam(at(h0, side * half(h0), d0), at(h1, side * half(h1), d1), 11 - i * 0.6, col);
+        const h0 = Hm * 0.62 * i / n, h1 = Hm * 0.62 * (i + 1) / n, d0 = oy * (1 - h0 / Hm), d1 = oy * (1 - h1 / Hm), wd = 11 - i * 0.6;
+        beamInk(at(h0, side * half(h0), d0), at(h1, side * half(h1), d1), wd, col, edge);
+        if (oy < 0) beam(at(h0, side * (half(h0) - wd * 0.25), d0), at(h1, side * (half(h1) - wd * 0.25), d1), wd * 0.25, light); // the light on its edge
       }
     }
   }
-  // the lattice between the legs: an X in each section of the base
-  for (let i = 0; i < 4; i++) {
-    const h0 = Hm * 0.62 * i / 4, h1 = Hm * 0.62 * (i + 1) / 4;
-    beam(at(h0, -half(h0)), at(h1, half(h1)), 3, dark); beam(at(h0, half(h0)), at(h1, -half(h1)), 3, dark);
+  // the lattice: crossed braces up the base, and up the spire
+  for (let i = 0; i < 6; i++) {
+    const h0 = Hm * 0.62 * i / 6, h1 = Hm * 0.62 * (i + 1) / 6;
+    beam(at(h0, -half(h0)), at(h1, half(h1)), 2.2, dark); beam(at(h0, half(h0)), at(h1, -half(h1)), 2.2, dark);
   }
-  // the arch between the feet
-  const arch = 9;
+  // the great arch between the feet
+  const arch = 12;
   for (let i = 0; i < arch; i++) {
     const a0 = Math.PI * i / arch, a1 = Math.PI * (i + 1) / arch, w0 = half(0) * 0.8, rise = Hm * 0.1;
-    beam(at(18 + Math.sin(a0) * rise, -Math.cos(a0) * w0), at(18 + Math.sin(a1) * rise, -Math.cos(a1) * w0), 4, light);
+    beamInk(at(18 + Math.sin(a0) * rise, -Math.cos(a0) * w0), at(18 + Math.sin(a1) * rise, -Math.cos(a1) * w0), 4, light, edge);
   }
-  // the spire above the second platform
-  beam(at(Hm * 0.62, -half(Hm * 0.62)), at(Hm * 0.93, -3), 5, mid); beam(at(Hm * 0.62, half(Hm * 0.62)), at(Hm * 0.93, 3), 5, mid);
-  for (let i = 0; i < 4; i++) { const h = Hm * (0.66 + i * 0.07); beam(at(h, -half(h) - 1), at(h, half(h) + 1), 2, dark); }
-  beam(at(Hm * 0.93, 0), at(Hm, 0), 3, dark); // the antenna
-  // the platforms: the first, wide; the second; the top
-  const deck = (h: number, w: number, t: number) => { beam(at(h, -w), at(h, w), t, light); beam(at(h + t * 0.6, -w * 0.9), at(h + t * 0.6, w * 0.9), 2, dark); };
-  deck(Hm * 0.2, half(Hm * 0.2) + 6, 8); deck(Hm * 0.4, half(Hm * 0.4) + 4, 6); deck(Hm * 0.9, 6, 5);
-  if (!c.fallen) beam([c.x - 40, c.y, 0], [c.x + 40, c.y, 0], 18, '#495057'); // the base
+  // the spire above the second platform, braced
+  beamInk(at(Hm * 0.62, -half(Hm * 0.62)), at(Hm * 0.93, -3), 5, mid, edge); beamInk(at(Hm * 0.62, half(Hm * 0.62)), at(Hm * 0.93, 3), 5, light, edge);
+  for (let i = 0; i < 6; i++) { const h0 = Hm * (0.62 + i * 0.05), h1 = h0 + Hm * 0.05; beam(at(h0, -half(h0)), at(h1, half(h1)), 1.6, dark); beam(at(h0, half(h0)), at(h1, -half(h1)), 1.6, dark); }
+  // the platforms: a deck, its railing, a row of golden lights; the top with its little lantern
+  const deck = (h: number, w: number, t: number) => {
+    beamInk(at(h, -w), at(h, w), t, light, edge); beam(at(h + t * 0.7, -w * 0.95), at(h + t * 0.7, w * 0.95), 1.4, dark);
+    ctx.fillStyle = '#ffe066'; const n = Math.max(3, Math.round(w / 9));
+    for (let i = 0; i <= n; i++) { const p = P(...(at(h, -w + 2 * w * i / n) as [number, number, number])); ctx.beginPath(); ctx.arc(p[0], p[1], 1.6 * cam.zoom, 0, Math.PI * 2); ctx.fill(); }
+  };
+  deck(Hm * 0.2, half(Hm * 0.2) + 6, 8); deck(Hm * 0.4, half(Hm * 0.4) + 4, 6); deck(Hm * 0.9, 7, 5);
+  beamInk(at(Hm * 0.93, 0), at(Hm, 0), 2.4, dark, edge); // the antenna
+  const f = P(...(at(Hm, 0) as [number, number, number])); ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.arc(f[0], f[1], 2.4 * cam.zoom, 0, Math.PI * 2); ctx.fill();
 }
-function shopIcon(type: string, x: number, y: number, k: number) { // drawn on each shop's roof
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  if (type === 'pub') { poly([[-10, -12], [8, -12], [8, 12], [-10, 12]], '#f2a541'); poly([[-10, -16], [8, -16], [8, -10], [-10, -10]], '#f8f9fa'); poly([[8, -6], [16, -6], [16, 6], [8, 6], [8, 3], [13, 3], [13, -3], [8, -3]], '#f2a541'); } // a pint
-  else if (type === 'salon') { poly([[-14, -6], [10, -6], [8, 10], [-12, 10]], '#f8f9fa'); poly([[10, -2], [17, -4], [16, 2], [10, 4]], '#f8f9fa'); poly([[-4, -12], [2, -12], [2, -6], [-4, -6]], '#d6336c'); } // a teapot
-  else if (type === 'boulangerie') { poly([[-18, 4], [-12, -6], [12, -8], [18, 2], [12, 8], [-12, 8]], '#e0a85a'); for (const o of [-8, 0, 8]) poly([[o - 3, -5], [o + 1, -6], [o + 3, 4], [o - 1, 5]], '#b97a2e'); }
-  else if (type === 'boucherie') { poly([[-16, -6], [6, -10], [16, -2], [12, 8], [-10, 10], [-18, 2]], '#d6336c'); poly([[-6, -2], [0, -4], [4, 2], [-2, 4]], '#fff0f6'); }
-  else if (type === 'bijouterie') { poly([[-8, -4], [8, -4], [12, 2], [0, 14], [-12, 2]], '#74c0fc'); poly([[-8, -4], [8, -4], [0, -12]], '#ffd43b'); poly([[-4, -4], [4, -4], [0, 6]], '#d0ebff'); }
-  else if (type === 'banque') { poly([[-18, -4], [0, -14], [18, -4]], '#dee2e6'); for (const o of [-12, -4, 4, 12]) poly([[o - 2, -4], [o + 2, -4], [o + 2, 8], [o - 2, 8]], '#f8f9fa'); poly([[-18, 8], [18, 8], [18, 12], [-18, 12]], '#dee2e6'); }
-  else { poly([[-4, -14], [4, -14], [4, -4], [14, 12], [-14, 12], [-4, -4]], '#e9ecef'); poly([[-8, 4], [8, 4], [12, 11], [-12, 11]], '#40c057'); poly([[-2, 0], [2, 0], [2, 3], [-2, 3]], '#b2f2bb'); }
+function shopIcon(type: string, x: number, y: number, k: number) { // drawn on each shop's roof: a round sign with the trade's picture
+  iconStart(x, y, k);
+  const rim = SHOPS[type] ? shade(SHOPS[type].color, 0.55) : '#495057';
+  tint(circ(1.5, 2, 21), 'rgba(20,14,30,0.3)'); // the sign's shadow
+  ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fillStyle = '#fffaf0'; ctx.fill(); ctx.strokeStyle = rim; ctx.lineWidth = 3; ctx.stroke();
+  ctx.scale(0.72, 0.72);
+  if (type === 'pub') { // a pint of ale, its foam spilling
+    ink(() => { ctx.moveTo(-10, -10); ctx.lineTo(8, -10); ctx.lineTo(7, 15); ctx.lineTo(-9, 15); ctx.closePath(); }, '#e8962e');
+    tint(() => { ctx.moveTo(-7, -6); ctx.lineTo(-5, -6); ctx.lineTo(-5, 12); ctx.lineTo(-6.5, 12); ctx.closePath(); }, '#ffcf7a');
+    ink(() => { ctx.moveTo(8, -4); ctx.quadraticCurveTo(17, -4, 16, 4); ctx.quadraticCurveTo(15, 10, 7.5, 9); }, 'rgba(0,0,0,0)', 3);
+    ink(() => { ctx.moveTo(-12, -9); ctx.arc(-7, -12, 5, Math.PI, 0); ctx.arc(1, -14, 5, Math.PI, 0); ctx.arc(8, -11, 4, Math.PI * 1.1, Math.PI * 0.4); ctx.lineTo(-11, -8); ctx.closePath(); }, '#fffdf5', 1.8);
+  } else if (type === 'salon') { // a pink-spotted teapot, steam rising
+    ctx.strokeStyle = '#adb5bd'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-2, -18); ctx.quadraticCurveTo(-6, -22, -2, -26); ctx.moveTo(4, -18); ctx.quadraticCurveTo(0, -22, 4, -26); ctx.stroke();
+    ink(() => { ctx.moveTo(12, 0); ctx.quadraticCurveTo(22, -4, 22, -12); ctx.lineTo(18, -10); ctx.quadraticCurveTo(16, -4, 11, -5); ctx.closePath(); }, '#ffffff');
+    ink(() => { ctx.moveTo(-13, 0); ctx.quadraticCurveTo(-22, -2, -18, 6); ctx.quadraticCurveTo(-16, 10, -12, 8); }, 'rgba(0,0,0,0)', 2.6);
+    ink(() => { ctx.ellipse(0, 3, 14, 11, 0, 0, Math.PI * 2); }, '#ffffff');
+    ink(() => { ctx.ellipse(0, -8, 8, 3, 0, 0, Math.PI * 2); }, '#f8f0ff', 1.6);
+    ink(circ(0, -12, 2.6), '#d6336c', 1.4);
+    for (const [px, py] of [[-6, 2], [5, 6], [2, -2], [-2, 9]]) tint(circ(px, py, 1.8), '#f783ac');
+  } else if (type === 'boulangerie') { // a baguette across a round loaf
+    ink(() => { ctx.ellipse(-4, 6, 13, 9, 0, 0, Math.PI * 2); }, '#c98a3c');
+    tint(() => { ctx.ellipse(-7, 3, 7, 3.5, -0.3, 0, Math.PI * 2); }, '#e8b56a');
+    ctx.save(); ctx.rotate(-0.5);
+    ink(rr2(-20, -8, 40, 9, 4.5), '#e0a85a');
+    tint(rr2(-17, -7, 34, 2.4, 1.2), '#f6d08e');
+    ctx.strokeStyle = '#9c6524'; ctx.lineWidth = 1.8; for (const o of [-11, -3, 5, 13]) { ctx.beginPath(); ctx.moveTo(o - 2, -2); ctx.lineTo(o + 2, -6); ctx.stroke(); }
+    ctx.restore();
+  } else if (type === 'boucherie') { // a ham, its white bone and fat
+    ink(() => { ctx.moveTo(-14, 10); ctx.quadraticCurveTo(-22, -4, -6, -12); ctx.quadraticCurveTo(8, -16, 12, -4); ctx.quadraticCurveTo(14, 8, -14, 10); ctx.closePath(); }, '#d6336c');
+    tint(() => { ctx.moveTo(-12, 6); ctx.quadraticCurveTo(-17, -4, -6, -9); ctx.quadraticCurveTo(-12, -2, -10, 6); ctx.closePath(); }, '#f783ac');
+    tint(() => { ctx.ellipse(-2, 0, 5, 3.5, -0.4, 0, Math.PI * 2); }, '#fff0f6');
+    ink(rr2(9, -7, 12, 4, 2), '#fffdf5', 1.6); ink(circ(21, -7, 3), '#fffdf5', 1.6); ink(circ(21, -3, 3), '#fffdf5', 1.6);
+  } else if (type === 'bijouterie') { // a cut diamond with its facets and a sparkle
+    ink(() => { ctx.moveTo(-15, -4); ctx.lineTo(-8, -12); ctx.lineTo(8, -12); ctx.lineTo(15, -4); ctx.lineTo(0, 15); ctx.closePath(); }, '#74c0fc');
+    tint(() => { ctx.moveTo(-15, -4); ctx.lineTo(-8, -12); ctx.lineTo(8, -12); ctx.lineTo(15, -4); ctx.closePath(); }, '#d0ebff');
+    tint(() => { ctx.moveTo(-15, -4); ctx.lineTo(-5, -4); ctx.lineTo(0, 15); ctx.closePath(); }, '#a5d8ff');
+    tint(() => { ctx.moveTo(5, -4); ctx.lineTo(15, -4); ctx.lineTo(0, 15); ctx.closePath(); }, '#4dabf7');
+    ctx.strokeStyle = '#1c7ed6'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-15, -4); ctx.lineTo(15, -4); ctx.moveTo(-5, -4); ctx.lineTo(0, -12); ctx.lineTo(5, -4); ctx.stroke();
+    tint(() => { ctx.moveTo(14, -20); ctx.lineTo(15.5, -16); ctx.lineTo(19.5, -14.5); ctx.lineTo(15.5, -13); ctx.lineTo(14, -9); ctx.lineTo(12.5, -13); ctx.lineTo(8.5, -14.5); ctx.lineTo(12.5, -16); ctx.closePath(); }, '#ffd43b');
+  } else if (type === 'banque') { // a columned front under a pediment, a gold coin
+    ink(() => { ctx.moveTo(-19, -6); ctx.lineTo(0, -17); ctx.lineTo(19, -6); ctx.closePath(); }, '#dee2e6');
+    ink(rr2(-19, -7, 38, 3.5, 1), '#ced4da', 1.6);
+    for (const o of [-13, -4.5, 4.5, 13]) { ink(rr2(o - 2.4, -3, 4.8, 13, 1), '#f8f9fa', 1.4); }
+    ink(rr2(-20, 10, 40, 4, 1), '#ced4da', 1.6);
+    ink(circ(0, -10, 3.4), '#ffc83d', 1.4);
+  } else { // the laboratory: a bubbling flask
+    tint(circ(-4, -19, 2.2), '#8ce99a'); tint(circ(2, -24, 1.6), '#b2f2bb');
+    ink(() => { ctx.moveTo(-4, -15); ctx.lineTo(4, -15); ctx.lineTo(4, -5); ctx.lineTo(15, 12); ctx.quadraticCurveTo(16, 15, 12, 15); ctx.lineTo(-12, 15); ctx.quadraticCurveTo(-16, 15, -15, 12); ctx.lineTo(-4, -5); ctx.closePath(); }, '#f1f3f5');
+    tint(() => { ctx.moveTo(-9.5, 3); ctx.lineTo(9.5, 3); ctx.lineTo(14, 12); ctx.quadraticCurveTo(14.5, 13.5, 12, 13.5); ctx.lineTo(-12, 13.5); ctx.quadraticCurveTo(-14.5, 13.5, -14, 12); ctx.closePath(); }, '#40c057');
+    tint(circ(-3, 8, 1.8), '#b2f2bb'); tint(circ(4, 10, 1.3), '#b2f2bb');
+    ink(rr2(-6, -18, 12, 3.5, 1.2), '#adb5bd', 1.4);
+  }
   ctx.restore();
 }
 function endRun() {
@@ -1708,9 +1920,10 @@ function endRun() {
 
 // ---- Drawing: projection and prisms --------------------------------------------------------
 let VP = [W / 2, H / 2], camDraw = { x: 0, y: 0 }, NIGHT = false;
+let PERSP: number | null = null; // while a sprite is drawn, its own perspective in place of tune.persp (which cannot be set)
 function P(x: Loose, y: Loose, h: Loose) {
   const sx = (x - camDraw.x) * cam.zoom + W / 2, sy = (y - camDraw.y) * cam.zoom + H / 2;
-  const k = h * cam.zoom * tune.persp;
+  const k = h * cam.zoom * (PERSP ?? tune.persp);
   return [sx + (sx - VP[0]) * k, sy + (sy - VP[1]) * k];
 }
 function poly(pts: Loose, fill: Loose) {
@@ -1750,7 +1963,7 @@ function prism(pts: Loose, h0: Loose, h1: Loose, top: Loose, side: Loose, window
       ctx.fillStyle = NIGHT ? 'rgba(255,214,110,0.95)' : f > 0.75 ? 'rgba(255,248,210,0.55)' : 'rgba(30,40,90,0.45)'; ctx.fill();
     }
   }
-  poly(r, top);
+  if (top) poly(r, top); // no top: something drawn over it covers it anyway
   return r;
 }
 // a rectangle in a body's frame: centre (ox, oy) along/across, size len x wid
@@ -1760,13 +1973,65 @@ function rect(b: Loose, ox: Loose, oy: Loose, len: Loose, wid: Loose) {
   return [[x + c * hl - s * hw, y + s * hl + c * hw], [x + c * hl + s * hw, y + s * hl - c * hw],
     [x - c * hl + s * hw, y - s * hl - c * hw], [x - c * hl - s * hw, y - s * hl + c * hw]];
 }
-function flat(b: Loose, ox: Loose, oy: Loose, len: Loose, wid: Loose, h: Loose, color: Loose) { poly(rect(b, ox, oy, len, wid).map((p: Loose) => P(p[0], p[1], h)), color); }
+let ROUND_FLAT = false; // set while a vehicle is drawn close up: its roofs and panels get rounded corners
+function flat(b: Loose, ox: Loose, oy: Loose, len: Loose, wid: Loose, h: Loose, color: Loose) {
+  const pts = ROUND_FLAT && len * wid > 60 ? rrect(b, ox, oy, len, wid, Math.min(len, wid) * 0.22) : rect(b, ox, oy, len, wid);
+  poly(pts.map((p: Loose) => P(p[0], p[1], h)), color);
+}
+/** A rounded rectangle in a body's frame (like rect): each corner an arc of radius rad, 3 points a corner. dx, dy shift it in the world. */
+function rrect(b: Loose, ox: number, oy: number, len: number, wid: number, rad: number, dx = 0, dy = 0) {
+  const c = Math.cos(b.a), s = Math.sin(b.a), hl = len / 2 - rad, hw = wid / 2 - rad, out: number[][] = [];
+  for (const [sx, sy, a0] of RR_CORNERS) for (let k = 0; k < 3; k++) {
+    const an = a0 + k * Math.PI / 4, u = ox + sx * hl + Math.cos(an) * rad, v = oy + sy * hw + Math.sin(an) * rad;
+    out.push([b.x + c * u - s * v + dx, b.y + s * u + c * v + dy]);
+  }
+  return out;
+}
+/** Below this zoom the small details (plinths, panel grids, hoops, pots, fans) are left out: too small to see, and a pile-up draws a lot. */
+const FINE_ZOOM = 0.72;
+const RR_CORNERS: number[][] = [[1, 1, 0], [-1, 1, Math.PI / 2], [-1, -1, Math.PI], [1, -1, Math.PI * 1.5]];
+/** A smooth closed curve through screen points (quadratics through the midpoints), filled. */
+function blobScreen(pts: number[][], fill: string) {
+  const n = pts.length; ctx.beginPath();
+  ctx.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2);
+  for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n]; ctx.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+}
+/** A smooth shape drawn flat at height h: its outline given as [along, across] points in b's frame, scaled by k. */
+function blob(b: Loose, local: number[][], h: number, fill: string, k = 1, ox = 0, oy = 0) {
+  const c = Math.cos(b.a), s = Math.sin(b.a);
+  blobScreen(local.map(([u0, v0]) => { const u = ox + u0 * k, v = oy + v0 * k; return P(b.x + c * u - s * v, b.y + s * u + c * v, h); }), fill);
+}
+/** A round tube along world points {x, y, z, r}: an outline, the body, and a highlight on the lit side, so it looks round. */
+function tube(pts: Loose[], col: string, dark: string, light: string) {
+  const z = cam.zoom, pass = (fill: string, grow: number, k: number, off: number) => {
+    ctx.fillStyle = fill; ctx.beginPath();
+    for (const q of pts) { const p = P(q.x, q.y, q.z), r = Math.max(0.5, (q.r * k + grow) * z); ctx.moveTo(p[0] - off * q.r * z + r, p[1] - off * q.r * z * 1.2); ctx.arc(p[0] - off * q.r * z, p[1] - off * q.r * z * 1.2, r, 0, Math.PI * 2); }
+    ctx.fill();
+  };
+  pass(dark, 1.6, 1, 0); pass(col, 0, 1, 0); pass(light, 0, 0.45, 0.32);
+}
+/** A number from 0 to 1 fixed by a place and a salt: decorations that stay put without touching the level's random draws. */
+function hash01(x: number, y: number, k: number) { const v = Math.sin(x * 12.9898 + y * 78.233 + k * 37.719) * 43758.5453; return v - Math.floor(v); }
 
+const SHADOWS = new Map<string, Loose>();
+/** A vehicle's shadow: a soft-edged rounded patch, drawn once for each size (rings fading outward) and then copied. */
+function shadowSprite(len: number, wid: number) {
+  const S = 2, blur = 5, key = Math.round(len) + '|' + Math.round(wid);
+  let sp = SHADOWS.get(key); if (sp) return sp;
+  const cw = Math.ceil((len + blur * 2) * S), ch = Math.ceil((wid + blur * 2) * S), cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+  const g = cv.getContext('2d')!; g.fillStyle = '#120b2a';
+  for (let k = 0; k < 6; k++) { // from the widest, faintest ring in to the core
+    const e = blur * (1 - k / 5) * S, w = len * S + 2 * e, h = wid * S + 2 * e;
+    g.globalAlpha = k === 5 ? 0.55 : 0.09; g.beginPath(); g.roundRect((cw - w) / 2, (ch - h) / 2, w, h, Math.min(w, h) * 0.35); g.fill();
+  }
+  sp = { cv, cw, ch, S }; SHADOWS.set(key, sp); return sp;
+}
 function drawShadow(b: Loose) {
-  const pts = rect(b, 0, 0, b.hl * 2 + 4, b.hw * 2 * Math.abs(Math.cos(b.roll)) + 4);
-  const off = 5 + b.z * 0.5;
-  ctx.globalAlpha = Math.max(0.12, 0.32 - b.z * 0.002);
-  poly(pts.map((p: Loose) => P(p[0] + off, p[1] + off * 1.2, 0)), '#120b2a');
+  const len = b.hl * 2 + 4, wid = b.hw * 2 * Math.abs(Math.cos(b.roll)) + 4, off = 5 + b.z * 0.5;
+  const sp = shadowSprite(len, wid), p = P(b.x + off, b.y + off * 1.2, 0), k = cam.zoom / sp.S;
+  ctx.globalAlpha = Math.min(1, Math.max(0.2, 0.55 - b.z * 0.0035));
+  ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(b.a); ctx.scale(k, k); ctx.drawImage(sp.cv, -sp.cw / 2, -sp.ch / 2); ctx.restore();
   ctx.globalAlpha = 1;
 }
 // ---- France's vehicles: the same bodies, drawn the French way ---------------------------------
@@ -1782,7 +2047,7 @@ function flatTurned(b: Loose, ox: number, oy: number, len: number, wid: number, 
 function drawFrench(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean): boolean {
   const lights = (h: number) => { // headlights in front, brake lights behind
     flat(b, L / 2 - 2, Wd * 0.3, 3, 5, z + h, '#fff3bf'); flat(b, L / 2 - 2, -Wd * 0.3, 3, 5, z + h, '#fff3bf');
-    flat(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e'); flat(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e');
+    brakeLight(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + h); brakeLight(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + h);
   };
   const paint = (c: string) => wreck ? col : mix(c, '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
   if (dk === 'car' && b.id % 2 === 0) { // the little round car with the canvas roof
@@ -1792,7 +2057,7 @@ function drawFrench(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: 
     flat(b, -L * 0.08, 0, L * 0.4, Wd * 0.62, z + 20.1, '#495057'); // the canvas roof, rolled half back
     flat(b, -L * 0.2, 0, L * 0.12, Wd * 0.66, z + 20.3, '#343a40');
     flat(b, L / 2 - 3, Wd * 0.32, 4, 4, z + 9, '#fff3bf'); flat(b, L / 2 - 3, -Wd * 0.32, 4, 4, z + 9, '#fff3bf'); // round eyes
-    flat(b, -L / 2 + 1.5, Wd * 0.3, 2, 4, z + 10, b.braking ? '#ff1e1e' : '#a61e1e'); flat(b, -L / 2 + 1.5, -Wd * 0.3, 2, 4, z + 10, b.braking ? '#ff1e1e' : '#a61e1e');
+    brakeLight(b, -L / 2 + 1.5, Wd * 0.3, 2, 4, z + 10); brakeLight(b, -L / 2 + 1.5, -Wd * 0.3, 2, 4, z + 10);
     return true;
   }
   if (dk === 'car' || dk === 'taxi' || dk === 'police') { // the boxy little car of the seventies (and the taxi, the police)
@@ -1874,7 +2139,7 @@ function checks(b: Loose, L: number, Wd: number, h: number, c1: string, c2: stri
 function drawBritish(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean): boolean {
   const lights = (h: number) => {
     flat(b, L / 2 - 2, Wd * 0.3, 3, 5, z + h, '#fff3bf'); flat(b, L / 2 - 2, -Wd * 0.3, 3, 5, z + h, '#fff3bf');
-    flat(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e'); flat(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + h, b.braking ? '#ff1e1e' : '#a61e1e');
+    brakeLight(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + h); brakeLight(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + h);
   };
   if (dk === 'car' && b.id % 2 === 0) { // the little British car: short, rounded, a white roof
     box(0, L * 0.86, Wd, 3, 11, col, col);
@@ -1932,13 +2197,76 @@ function drawBritish(b: Loose, dk: string, box: Loose, L: number, Wd: number, z:
   }
   return false;
 }
+// ---- Vehicle sprites -------------------------------------------------------------------------
+// Each look a vehicle can have (its kind, paint, country, wear) is drawn once, shape by shape, into a canvas
+// of its own, seen straight from above; after that it is one copy, turned and scaled, a frame. A pile-up is
+// hundreds of vehicles and each is twenty-odd shapes: the copies cost far less. What changes as it is
+// watched (brake lights, sirens) is drawn over the copy. The player's car, a tanker with its fuse lit and
+// the garage's models are still drawn shape by shape.
+const SPRITES = new Map<string, Loose>();
+let SPRITE_REC: Loose[] | null = null, spriteScale = 0;
+const SPRITE_PAD = 6, SPRITE_MAX = 300; // world units round the body (wheels, bars); sprites kept before the cache starts again
+/** The sprite for b's look at a wear stage (0 to 3, 4 a wreck), drawn the first time it is asked for. */
+function vehicleSprite(b: Loose, stage: number) {
+  const S = Math.min(3, Math.max(1.5, Math.ceil(baseR * 1.6 * 2) / 2)); // pixels a world unit: sharp up close, capped for a phone's memory
+  if (S !== spriteScale) { SPRITES.clear(); spriteScale = S; }
+  const key = country + '|' + b.kind + '|' + b.color + '|' + (b.id % 2) + '|' + (b.rider || '') + '|' + (b.stripe || '') + '|' + (b.wide ? 1 : 0) + '|' + stage;
+  let sp = SPRITES.get(key); if (sp) return sp;
+  if (SPRITES.size >= SPRITE_MAX) SPRITES.clear();
+  const cw = Math.ceil((b.hl * 2 + SPRITE_PAD * 2) * S), ch = Math.ceil((b.hw * 2 + SPRITE_PAD * 2) * S);
+  const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+  const keep = { ctx, W, H, zoom: cam.zoom, x: camDraw.x, y: camDraw.y, VP };
+  const fb = { ...b, x: 0, y: 0, a: 0, z: 0, roll: 0, braking: false, fuse: 0, dent: 137, dmg: stage >= 4 ? b.value : b.value * stage / 4 };
+  ctx = cv.getContext('2d')!; W = cw; H = ch; cam.zoom = S; camDraw.x = 0; camDraw.y = 0; VP = [cw / 2, ch / 2]; PERSP = 0;
+  SPRITE_REC = [];
+  try { drawVehicleShapes(fb); } finally {
+    sp = { cv, cw, ch, live: SPRITE_REC }; SPRITE_REC = null;
+    ctx = keep.ctx; W = keep.W; H = keep.H; cam.zoom = keep.zoom; camDraw.x = keep.x; camDraw.y = keep.y; VP = keep.VP; PERSP = null;
+  }
+  SPRITES.set(key, sp); return sp;
+}
+/** Draws a vehicle: a copy of its sprite, or shape by shape for the ones a sprite cannot hold. */
 function drawVehicle(b: Loose) {
+  if (b.kind === 'player' || b.gear || b.fuse > 0) return drawVehicleShapes(b);
+  const f = Math.min(1, b.dmg / b.value), stage = f >= 1 ? 4 : Math.min(3, Math.round(f * 4));
+  const sp = vehicleSprite(b, stage), hm = b.z + (b.height || 20) * 0.6, p = P(b.x, b.y, hm);
+  const k = cam.zoom * (1 + hm * cam.zoom * tune.persp) / spriteScale, rollK = Math.max(0.25, Math.abs(Math.cos(b.roll)));
+  ctx.save(); ctx.translate(p[0], p[1]); ctx.rotate(b.a); ctx.scale(k, k * rollK); ctx.drawImage(sp.cv, -sp.cw / 2, -sp.ch / 2); ctx.restore();
+  for (const r of sp.live) {
+    if (r.t === 'siren') sirenLamps(b, r.ox, r.wid * rollK, r.h);
+    else if (b.braking) flat(b, r.ox, r.oy * rollK, r.len, r.wid * rollK, b.z + r.h, '#ff1e1e');
+  }
+}
+function drawVehicleShapes(b: Loose) {
   const f = Math.min(1, b.dmg / b.value), wreck = f >= 1;
   const col = wreck ? '#3a3533' : mix(b.color, '#2a2230', f * 0.55);
   const L = b.hl * 2, Wd = b.hw * 2 * Math.max(0.25, Math.abs(Math.cos(b.roll))), z = b.z;
   const glass = '#22305a', dark = '#1d1a26';
-  const box = (ox: Loose, len: Loose, wid: Loose, h0: Loose, h1: Loose, top: Loose, side: Loose, oy: Loose = 0) => prism(rect(b, ox, oy, len, wid), z + h0, z + h1, top, side);
+  // close enough to see them: rounded corners, a rim of light on the main body, a thin outline, wheels, glints on the glass.
+  // A pile-up is hundreds of vehicles: the extras go on the body only, the wheels in two fills, none on a wreck
+  const detail = L * cam.zoom > 30, body = L * Wd * 0.45;
+  ROUND_FLAT = detail;
+  const box = (ox: Loose, len: Loose, wid: Loose, h0: Loose, h1: Loose, top: Loose, side: Loose, oy: Loose = 0) => {
+    if (!detail || len < 6 || wid < 6) return prism(rect(b, ox, oy, len, wid), z + h0, z + h1, top, side);
+    const rad = Math.min(len, wid) * 0.24, panel = !wreck && typeof top === 'string' && top[0] === '#' && top !== glass && len * wid > body;
+    const R = prism(rrect(b, ox, oy, len, wid, rad), z + h0, z + h1, panel ? shade(top, 0.8) : top, side);
+    if (panel) { // the panel's top: lit toward the light (up and left), shaded away from it, so it looks rounded
+      poly(rrect(b, ox, oy, len - 2, wid - 2, rad * 0.9, -0.7, -0.9).map((q: Loose) => P(q[0], q[1], z + h1 + 0.02)), shade(top, 1.22));
+      poly(rrect(b, ox, oy, len - 3.4, wid - 3.4, rad * 0.85, 0.35, 0.45).map((q: Loose) => P(q[0], q[1], z + h1 + 0.04)), top);
+    } else if (top === glass && h1 - h0 > 4) { // a glint across the glass
+      poly([[ox + len * 0.34, -wid * 0.4], [ox + len * 0.44, -wid * 0.4], [ox + len * 0.16, wid * 0.4], [ox + len * 0.06, wid * 0.4]]
+        .map(([u, v]) => { const c = Math.cos(b.a), s = Math.sin(b.a); return P(b.x + c * u - s * (v + oy), b.y + s * u + c * (v + oy), z + h1 + 0.03); }), 'rgba(190,215,255,0.35)');
+    }
+    if (len * wid > body) { ctx.strokeStyle = 'rgba(16,10,30,0.5)'; ctx.lineWidth = Math.max(0.6, 0.8 * cam.zoom); ctx.beginPath(); ctx.moveTo(R[0][0], R[0][1]); for (let i = 1; i < R.length; i++) ctx.lineTo(R[i][0], R[i][1]); ctx.closePath(); ctx.stroke(); }
+    return R;
+  };
   const dk = b.kind === 'player' ? MODELS[b.model || 'sport'].draw : b.kind; // what it looks like
+  if (detail && !wreck && dk !== 'moto' && dk !== 'hay' && dk !== 'farmtractor') { // the tyres, just out from under the body
+    const wl = Math.max(7, Math.min(13, L * 0.2)), axles = dk === 'trailer' ? [-0.3, -0.42] : L > 80 ? [0.38, -0.18, -0.36] : [0.31, -0.31];
+    const tyres: number[][][] = [], hubs: number[][][] = [];
+    for (const ax of axles) for (const sd of [1, -1]) { tyres.push(rect(b, L * ax, sd * (Wd / 2 - 1.4), wl, 4.6)); hubs.push(rect(b, L * ax, sd * (Wd / 2 + 0.2), wl * 0.45, 1.4)); }
+    prisms(tyres, z, z + 7, '#2b2833', '#14121a'); flats(hubs, z + 7.05, '#6b6577'); // the hubs, seen from above
+  }
   if (country === 'fr' && drawFrench(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the French way */ }
   else if (country === 'uk' && drawBritish(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the British way */ }
   else if (dk === 'hay') { // a straw bale with its two strings
@@ -2023,8 +2351,8 @@ function drawVehicle(b: Loose) {
     box(co, cl, Wd * 0.84, low ? 10 : 11, ch, glass, glass); // the cabin: glass all round
     flat(b, co - cl * 0.08, 0, cl * 0.7, Wd * 0.7, z + ch + 0.1, shade(col, 1.12)); // its roof
     flat(b, L / 2 - 2, Wd * 0.3, 3, 5, z + (low ? 10 : 11), '#fff3bf'); flat(b, L / 2 - 2, -Wd * 0.3, 3, 5, z + (low ? 10 : 11), '#fff3bf');
-    flat(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + (low ? 10 : 11), b.braking ? '#ff1e1e' : '#a61e1e');
-    flat(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + (low ? 10 : 11), b.braking ? '#ff1e1e' : '#a61e1e');
+    brakeLight(b, -L / 2 + 1.5, Wd * 0.3, 2, 5, z + (low ? 10 : 11));
+    brakeLight(b, -L / 2 + 1.5, -Wd * 0.3, 2, 5, z + (low ? 10 : 11));
     if (b.kind === 'police') { // blue bands and a light bar
       flat(b, 0, Wd / 2 - 2.5, L * 0.92, 3, z + 11.1, '#1c4ed8'); flat(b, 0, -Wd / 2 + 2.5, L * 0.92, 3, z + 11.1, '#1c4ed8');
       flat(b, L * 0.33, 0, L * 0.2, Wd * 0.55, z + 11.1, '#1c4ed8');
@@ -2038,6 +2366,7 @@ function drawVehicle(b: Loose) {
     }
   }
   if (b.kind === 'player' && b.gear) drawGear(b, box, L, Wd, z);
+  ROUND_FLAT = false;
   if (f > 0.2 && b.kind !== 'moto') { // dents and scratches
     ctx.strokeStyle = 'rgba(20,15,30,0.7)'; ctx.lineWidth = 1.5 * cam.zoom;
     const m = Math.min(5, Math.ceil(f * 6));
@@ -2084,8 +2413,16 @@ function drawRocket(r: Loose) {
   flat(rb, -13, 0, 7, 4, r.z, vr() < 0.5 ? '#ffe066' : '#ff922b'); // the flame
 }
 function siren(b: Loose, ox: Loose, wid: Loose, h: Loose) { // a light bar: red and blue halves taking turns, dark once wrecked
-  const live = b.dmg < b.value, red = Math.floor(((state && state.t) || 0) * 7 + b.id) % 2 === 0;
   prism(rect(b, ox, 0, 5, wid), b.z + h, b.z + h + 3, '#343a40', '#212529');
+  if (SPRITE_REC) { // into a sprite: the lamps unlit, lit over it as it is drawn
+    flat(b, ox, wid / 4, 4, wid / 2 - 1, b.z + h + 3.1, '#6b1e1e'); flat(b, ox, -wid / 4, 4, wid / 2 - 1, b.z + h + 3.1, '#1e2f6b');
+    SPRITE_REC.push({ t: 'siren', ox, wid, h }); return;
+  }
+  sirenLamps(b, ox, wid, h);
+}
+/** A light bar's lamps, red and blue taking turns, and their glow on the road; dark once the vehicle is wrecked. */
+function sirenLamps(b: Loose, ox: number, wid: number, h: number) {
+  const live = b.dmg < b.value, red = Math.floor(((state && state.t) || 0) * 7 + b.id) % 2 === 0;
   flat(b, ox, wid / 4, 4, wid / 2 - 1, b.z + h + 3.1, live && red ? '#ff4040' : '#6b1e1e');
   flat(b, ox, -wid / 4, 4, wid / 2 - 1, b.z + h + 3.1, live && !red ? '#4a7dff' : '#1e2f6b');
   if (live) { // the glow on the road
@@ -2093,15 +2430,29 @@ function siren(b: Loose, ox: Loose, wid: Loose, h: Loose) { // a light bar: red 
     ctx.beginPath(); ctx.arc(c[0], c[1], 40 * cam.zoom, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
   }
 }
+/** A brake light: dark red, bright while the driver brakes. Into a sprite it goes in unlit, and is lit over the copy. */
+function brakeLight(b: Loose, ox: number, oy: number, len: number, wid: number, h: number) {
+  flat(b, ox, oy, len, wid, h, b.braking ? '#ff1e1e' : '#a61e1e');
+  if (SPRITE_REC) SPRITE_REC.push({ t: 'brake', ox, oy, len, wid, h: h - b.z });
+}
 function drawBuilding(S: Loose) {
-  const pts = [[S.x - S.hl, S.y - S.hw], [S.x + S.hl, S.y - S.hw], [S.x + S.hl, S.y + S.hw], [S.x - S.hl, S.y + S.hw]];
+  const box4 = (x0: number, y0: number, x1: number, y1: number) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const pts = box4(S.x - S.hl, S.y - S.hw, S.x + S.hl, S.y + S.hw);
   const col = S.shop ? (S.ruined ? '#4a4248' : mix(S.color, '#2a2230', (S.dmg / S.value) * 0.6)) : S.color;
-  const r = prism(pts, 0, S.h, col, col, !S.ruined);
+  const top = S.ruined ? S.h : S.h - 6; // a cornice runs round the top
+  const base = cam.zoom >= FINE_ZOOM ? 9 : 0; // close up, a darker plinth at street level (its top is under the building)
+  if (base) prism(pts, 0, base, null, shade(col, 0.72));
+  let r = prism(pts, base, top, S.ruined ? col : null, col, !S.ruined); // the cornice's top covers this one's
+  if (!S.ruined) { // the cornice: a lighter band that juts out a little, the parapet's rim on top
+    r = prism(box4(S.x - S.hl - 2.5, S.y - S.hw - 2.5, S.x + S.hl + 2.5, S.y + S.hw + 2.5), top, S.h, shade(col, 1.2), shade(col, 1.1));
+  }
+  const roofAt = (ins: number, c: string, h = S.h + 0.05) => poly(box4(S.x - S.hl + ins, S.y - S.hw + ins, S.x + S.hl - ins, S.y + S.hw - ins).map((q: Loose) => P(q[0], q[1], h)), c);
   if (S.shop) {
     if (!S.ruined) {
-      poly([[S.x - S.hl + 7, S.y - S.hw + 7], [S.x + S.hl - 7, S.y - S.hw + 7], [S.x + S.hl - 7, S.y + S.hw - 7], [S.x - S.hl + 7, S.y + S.hw - 7]].map((q: Loose) => P(q[0], q[1], S.h)), shade(col, 1.15));
-      const c = P(S.x, S.y - 8, S.h), z = cam.zoom;
-      shopIcon(S.shop, c[0], c[1], 1.3 * z);
+      roofAt(7, shade(col, 1.15));
+      drawAwning(S, col);
+      const c = P(S.x, S.y - 8, S.h), z = cam.zoom, ci = P(S.x, S.y - 16, S.h);
+      shopIcon(S.shop, ci[0], ci[1], 1.2 * z);
       text(SHOPS[S.shop].name.toUpperCase(), c[0], c[1] + 30 * z, Math.max(9, Math.round(14 * z)), '#1b1530', 'center', 'bold');
       text(money(S.value - S.dmg), c[0], c[1] + 48 * z, Math.max(9, Math.round(13 * z)), '#1b1530', 'center', 'bold');
       if (S.dmg / S.value > 0.25) { // cracks across the roof
@@ -2115,15 +2466,169 @@ function drawBuilding(S: Loose) {
     }
     return r;
   }
-  // a parapet: the roof inset a shade lighter
-  const ins = 7;
-  poly([[S.x - S.hl + ins, S.y - S.hw + ins], [S.x + S.hl - ins, S.y - S.hw + ins], [S.x + S.hl - ins, S.y + S.hw - ins], [S.x - S.hl + ins, S.y + S.hw - ins]]
-    .map((p: Loose) => P(p[0], p[1], S.h)), shade(S.color, 1.15));
-  if (S.ac) {
-    const ax = S.x + S.ac[0] * S.hl * 2, ay = S.y + S.ac[1] * S.hw * 2;
-    prism([[ax - 14, ay - 10], [ax + 14, ay - 10], [ax + 14, ay + 10], [ax - 14, ay + 10]], S.h, S.h + 12, '#e9ecef', '#adb5bd');
-  }
+  // the roof: gravel inside the parapet, the parapet's shadow along its lit edges
+  const ins = 6, x0 = S.x - S.hl + ins, x1 = S.x + S.hl - ins, y0 = S.y - S.hw + ins, y1 = S.y + S.hw - ins;
+  roofAt(ins, shade(S.color, 0.92));
+  poly([[x0, y0], [x1, y0], [x1, y0 + 6], [x0 + 6, y0 + 6], [x0 + 6, y1], [x0, y1]].map((q: Loose) => P(q[0], q[1], S.h + 0.1)), shade(S.color, 0.78));
+  drawRoofTop(S, x0 + 6, y0 + 6, x1, y1);
   return r;
+}
+/** Many small prisms (footprints in world units) in one go: every wall that faces the view in one fill, every top in another.
+ * Cheaper than prism() one by one for the little things on a roof, at the price of one shade for all the walls. */
+function prisms(list: number[][][], h0: number, h1: number, top: string | null, side: string) {
+  ctx.beginPath();
+  for (const pts of list) {
+    const n = pts.length; let cx = 0, cy = 0;
+    for (const q of pts) { cx += q[0]; cy += q[1]; } cx /= n; cy /= n;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n, gi = P(pts[i][0], pts[i][1], h0), gj = P(pts[j][0], pts[j][1], h0);
+      let wx = pts[j][1] - pts[i][1], wy = -(pts[j][0] - pts[i][0]);
+      if (wx * ((pts[i][0] + pts[j][0]) / 2 - cx) + wy * ((pts[i][1] + pts[j][1]) / 2 - cy) < 0) { wx = -wx; wy = -wy; }
+      if (wx * (VP[0] - (gi[0] + gj[0]) / 2) + wy * (VP[1] - (gi[1] + gj[1]) / 2) <= 0) continue;
+      const ri = P(pts[i][0], pts[i][1], h1), rj = P(pts[j][0], pts[j][1], h1);
+      ctx.moveTo(gi[0], gi[1]); ctx.lineTo(gj[0], gj[1]); ctx.lineTo(rj[0], rj[1]); ctx.lineTo(ri[0], ri[1]); ctx.closePath();
+    }
+  }
+  ctx.fillStyle = side; ctx.fill();
+  if (!top) return;
+  ctx.beginPath();
+  for (const pts of list) { const p0 = P(pts[0][0], pts[0][1], h1); ctx.moveTo(p0[0], p0[1]); for (let i = 1; i < pts.length; i++) { const p = P(pts[i][0], pts[i][1], h1); ctx.lineTo(p[0], p[1]); } ctx.closePath(); }
+  ctx.fillStyle = top; ctx.fill();
+}
+/** Flat shapes (world footprints) at height h, all in one fill. */
+function flats(list: number[][][], h: number, fill: string) {
+  ctx.beginPath();
+  for (const pts of list) { const p0 = P(pts[0][0], pts[0][1], h); ctx.moveTo(p0[0], p0[1]); for (let i = 1; i < pts.length; i++) { const p = P(pts[i][0], pts[i][1], h); ctx.lineTo(p[0], p[1]); } ctx.closePath(); }
+  ctx.fillStyle = fill; ctx.fill();
+}
+/** Discs (world centres, radius in world units) at height h, all in one fill. */
+function discs(list: number[][], h: number, r: number, fill: string) {
+  ctx.beginPath(); const rr = Math.max(0.5, r * cam.zoom);
+  for (const [x, y, k] of list) { const p = P(x, y, h), q = rr * (k || 1); ctx.moveTo(p[0] + q, p[1]); ctx.arc(p[0], p[1], q, 0, Math.PI * 2); }
+  ctx.fillStyle = fill; ctx.fill();
+}
+const rectXY = (cx: number, cy: number, hx: number, hy: number) => [[cx - hx, cy - hy], [cx + hx, cy - hy], [cx + hx, cy + hy], [cx - hx, cy + hy]];
+/** What stands on a roof, the same every time for a building: a water tank, a garden, solar panels or a stair housing
+ * and a skylight, an air unit, and the country's chimneys. Each thing is a sprite (roofItem): drawn once, copied after. */
+function drawRoofTop(S: Loose, x0: number, y0: number, x1: number, y1: number) {
+  const h = S.h, w = x1 - x0, d = y1 - y0, k = hash01(S.x, S.y, 1), at = (u: number, v: number) => [x0 + w * u, y0 + d * v];
+  const u = 0.25 + hash01(S.x, S.y, 2) * 0.5, v = 0.25 + hash01(S.x, S.y, 3) * 0.5, [cx, cy] = at(u, v);
+  if (k < 0.2 && w > 60 && d > 60) roofItem('tank', 15, 15, 36, roofTank, cx, cy, h);
+  else if (k < 0.36 && w > 70 && d > 60) { // the garden's size in steps of 5, and one of four ways of setting its trees
+    const gw = Math.round(Math.min(w * 0.55, 90) / 10) * 5, gd = Math.round(Math.min(d * 0.55, 70) / 10) * 5, t = Math.floor(hash01(S.x, S.y, 4) * 4);
+    roofItem('garden|' + gw + '|' + gd + '|' + t, gw + 4, gd + 4, 18, (x: number, y: number, z: number) => roofGarden(x, y, z, gw, gd, t), cx, cy, h);
+  } else if (k < 0.52 && w > 50 && d > 40) {
+    const rows = Math.min(3, Math.max(1, Math.floor((d * 0.6) / 16))), pw = Math.round(Math.min(w * 0.6, 100) / 10) * 10;
+    roofItem('solar|' + rows + '|' + pw, pw / 2 + 1, rows * 8 + 1, 4, (x: number, y: number, z: number) => roofSolar(x, y, z, rows, pw), cx, cy, h);
+  } else {
+    roofItem('stairs|' + S.color, 15, 12, 16, (x: number, y: number, z: number) => roofStairs(x, y, z, S.color), cx, cy, h);
+    const [sx, sy] = at(1 - u, 1 - v); roofItem('skylight', 11, 8, 3, roofSkylight, sx, sy, h);
+  }
+  if (S.ac) roofItem('ac', 15, 11, 10, roofAc, Math.max(x0 + 16, Math.min(x1 - 16, S.x + S.ac[0] * S.hl * 2)), Math.max(y0 + 12, Math.min(y1 - 12, S.y + S.ac[1] * S.hw * 2)), h);
+  // the chimneys: in France pale stacks with orange pots, in the United Kingdom a brick stack with a row of pots
+  const ck = hash01(S.x, S.y, 5);
+  if (country === 'fr' && ck < 0.7) for (let i = 0; i < 2 + Math.floor(ck * 3); i++) {
+    const [qx, qy] = at(0.1 + 0.8 * hash01(S.x, S.y, 30 + i), i % 2 ? 0.06 : 0.94); roofItem('fr-chimney', 9, 6, 19, roofChimneyFr, qx, qy, h);
+  } else if (country === 'uk' && ck < 0.8) {
+    const [qx, qy] = at(0.15 + 0.7 * hash01(S.x, S.y, 31), ck < 0.4 ? 0.06 : 0.94), n = 3 + Math.floor(ck * 3);
+    roofItem('uk-chimney|' + n, n * 3.5 + 3, 6, 24, (x: number, y: number, z: number) => roofChimneyUk(x, y, z, n), qx, qy, h);
+  }
+}
+// ---- Roof item sprites ------------------------------------------------------------------------------
+// Each thing on a roof is drawn once into a small canvas of its own, seen from above and a little from the upper
+// left (its height leans it toward the lower right, the walls toward the light show), then copied onto every roof
+// that has one. The copies keep its look at any zoom and cost one drawImage each.
+const ITEMS = new Map<string, Loose>(), ITEM_S = 3, ITEM_LEAN = 0.12; // pixels a world unit; the lean, a world unit for each of height
+function roofItem(key: string, hx: number, hy: number, tall: number, draw: (x: number, y: number, h: number) => void, x: number, y: number, h: number) {
+  let sp = ITEMS.get(key);
+  if (!sp) {
+    const pad = 2, lean = tall * ITEM_LEAN, cw = Math.ceil((hx * 2 + lean + pad * 2) * ITEM_S), ch = Math.ceil((hy * 2 + lean + pad * 2) * ITEM_S);
+    const ax = (pad + hx) * ITEM_S, ay = (pad + hy) * ITEM_S, cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    const keep = { ctx, W, H, zoom: cam.zoom, x: camDraw.x, y: camDraw.y, VP, NIGHT };
+    // P(0, 0, 0) lands on (ax, ay); a vanishing point far up and left makes height a near-even lean down and right
+    ctx = cv.getContext('2d')!; W = cw; H = ch; cam.zoom = ITEM_S; camDraw.x = (cw / 2 - ax) / ITEM_S; camDraw.y = (ch / 2 - ay) / ITEM_S;
+    VP = [ax - 1e5, ay - 1e5]; PERSP = ITEM_LEAN / 1e5; NIGHT = false;
+    try { draw(0, 0, 0); } finally {
+      ctx = keep.ctx; W = keep.W; H = keep.H; cam.zoom = keep.zoom; camDraw.x = keep.x; camDraw.y = keep.y; VP = keep.VP; PERSP = null; NIGHT = keep.NIGHT;
+    }
+    sp = { cv, ax, ay, cw, ch }; ITEMS.set(key, sp);
+  }
+  const p = P(x, y, h), k = cam.zoom * (1 + h * cam.zoom * tune.persp) / ITEM_S;
+  ctx.drawImage(sp.cv, p[0] - sp.ax * k, p[1] - sp.ay * k, sp.cw * k, sp.ch * k);
+}
+function roofTank(cx: number, cy: number, h: number) { // a wooden water tank, a hoop round it, a cone roof
+  const R = 13, oct = (rr: number) => Array.from({ length: 8 }, (_, i) => [cx + Math.cos(i * Math.PI / 4 + 0.39) * rr, cy + Math.sin(i * Math.PI / 4 + 0.39) * rr]);
+  prisms([oct(R)], h, h + 26, null, '#a8794a');
+  prisms([oct(R + 0.6)], h + 14, h + 16, null, '#6b4a2e');
+  const tip = P(cx, cy, h + 36), ring = oct(R + 1).map((q: Loose) => P(q[0], q[1], h + 26));
+  for (const [lit, col] of [[true, '#d2ae84'], [false, '#9c7a55']] as Loose) { // the cone: its lit half, its shaded half
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) if ((Math.cos(i * Math.PI / 4 - 2.4) > 0) === lit) { ctx.moveTo(ring[i][0], ring[i][1]); ctx.lineTo(ring[(i + 1) % 8][0], ring[(i + 1) % 8][1]); ctx.lineTo(tip[0], tip[1]); ctx.closePath(); }
+    ctx.fillStyle = col; ctx.fill();
+  }
+}
+function roofGarden(cx: number, cy: number, h: number, gw: number, gd: number, t: number) { // a lawn in a planter, a path, round trees
+  prisms([rectXY(cx, cy, gw, gd)], h, h + 3, '#69b34c', '#8a6a4e');
+  flats([rectXY(cx, cy, gw - 2, 2.5)], h + 3.1, '#e2cf9a');
+  const n = 2 + (t % 3), trees: number[][] = [], shadows: number[][] = [];
+  for (let i = 0; i < n; i++) {
+    const tx = cx - gw + 9 + (gw * 2 - 18) * hash01(t, gw, 10 + i), ty = i % 2 ? cy - gd + 8 : cy + gd - 8, sz = 0.85 + hash01(t, gd, 20 + i) * 0.4;
+    trees.push([tx, ty, sz]); shadows.push([tx + 3, ty + 4, sz]);
+  }
+  discs(shadows, h + 3.2, 7, 'rgba(20,40,20,0.35)'); discs(trees, h + 16, 7, '#2f7d32');
+  discs(trees.map(([x, y, s2]) => [x - 2, y - 2.4, s2 * 0.65]), h + 17, 7, '#4caf50');
+  discs(trees.map(([x, y, s2]) => [x - 3, y - 3.6, s2 * 0.3]), h + 18, 7, '#7fd36b');
+}
+function roofSolar(cx: number, cy: number, h: number, rows: number, pw: number) { // rows of panels, their cells
+  const py0 = cy - rows * 8, panels: number[][][] = [];
+  for (let i = 0; i < rows; i++) panels.push(rectXY(cx, py0 + i * 16 + 5.5, pw / 2, 5.5));
+  prisms(panels, h, h + 4, '#2c3e8c', '#1d2a5e');
+  ctx.strokeStyle = 'rgba(160,190,255,0.5)'; ctx.lineWidth = 0.7 * cam.zoom; ctx.beginPath();
+  for (let i = 0; i < rows; i++) {
+    const py = py0 + i * 16;
+    for (let x = cx - pw / 2 + 9; x < cx + pw / 2; x += 9) { const a = P(x, py, h + 4), b = P(x, py + 11, h + 4); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+    const a = P(cx - pw / 2, py + 5.5, h + 4), b = P(cx + pw / 2, py + 5.5, h + 4); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+  }
+  ctx.stroke();
+}
+function roofStairs(cx: number, cy: number, h: number, col: string) { // a stair housing in the building's colour, its door
+  prisms([rectXY(cx, cy, 14, 11)], h, h + 16, shade(col, 1.05), shade(col, 0.95));
+  poly([P(cx - 4, cy + 11.2, h), P(cx + 4, cy + 11.2, h), P(cx + 4, cy + 11.2, h + 11), P(cx - 4, cy + 11.2, h + 11)], '#3b3346');
+}
+function roofSkylight(cx: number, cy: number, h: number) { // a glass skylight, a bar across it
+  prisms([rectXY(cx, cy, 10, 7)], h, h + 3, '#9fd3f0', '#6d8fa8');
+  flats([rectXY(cx, cy, 0.8, 7)], h + 3.1, '#6d8fa8');
+}
+function roofAc(ax: number, ay: number, h: number) { // an air unit: a grey box, its fan, its grille
+  prisms([rectXY(ax, ay, 14, 10)], h, h + 10, '#e9ecef', '#adb5bd');
+  discs([[ax + 4, ay]], h + 10.1, 7, '#495057');
+  const c = P(ax + 4, ay, h + 10.1), rr = 7 * cam.zoom;
+  ctx.strokeStyle = '#ced4da'; ctx.lineWidth = 1.2 * cam.zoom; ctx.beginPath();
+  ctx.moveTo(c[0] - rr, c[1]); ctx.lineTo(c[0] + rr, c[1]); ctx.moveTo(c[0], c[1] - rr); ctx.lineTo(c[0], c[1] + rr); ctx.stroke();
+  flats([0, 1, 2].map(i => rectXY(ax - 8, ay - 6 + i * 6, 3, 1)), h + 10.1, '#ced4da');
+}
+function roofChimneyFr(qx: number, qy: number, h: number) { // a pale stack, three orange pots
+  prisms([rectXY(qx, qy, 8, 4.5)], h, h + 16, '#d9c8b0', '#b8a68c');
+  prisms([-4, 0, 4].map(o => rectXY(qx + o, qy, 1.6, 1.6)), h + 16, h + 19, '#d9682b', '#a84f1e');
+}
+function roofChimneyUk(qx: number, qy: number, h: number, n: number) { // a brick stack capped in stone, a row of round pots
+  prisms([rectXY(qx, qy, n * 3.5 + 1, 4.5)], h, h + 18, '#c4c0b8', '#7d3c27');
+  const pots = Array.from({ length: n }, (_, i) => [qx - (n - 1) * 3.5 + i * 7, qy]);
+  discs(pots, h + 22, 2.2, '#c96a3e'); discs(pots, h + 22.1, 1.1, '#2b1d18');
+}
+/** A shop's striped awning over the pavement, on the side that faces the boulevard. */
+function drawAwning(S: Loose, col: string) {
+  const front = S.y > 0 ? S.y - S.hw : S.y + S.hw, out = S.y > 0 ? -1 : 1, n = Math.max(4, Math.round(S.hl / 9));
+  const x0 = S.x - S.hl + 10, x1 = S.x + S.hl - 10, step = (x1 - x0) / n, y1 = front + out * 14;
+  for (const odd of [0, 1]) { // the white stripes, then the coloured ones
+    ctx.beginPath();
+    for (let i = odd; i < n; i += 2) {
+      const a = x0 + i * step, b = a + step, q = [P(a, front, 34), P(b, front, 34), P(b, y1, 26), P(a, y1, 26)];
+      ctx.moveTo(q[0][0], q[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(q[k][0], q[k][1]); ctx.closePath();
+    }
+    ctx.fillStyle = odd ? '#f8f9fa' : shade(col, 0.85); ctx.fill();
+  }
+  poly([P(x0, y1, 26), P(x1, y1, 26), P(x1, y1, 23), P(x0, y1, 23)], shade(col, 0.6)); // its edge
 }
 function drawGround() {
   const st = state, lv = st.lv, rh = st.roadHalf, south = st.south, LW = tune.lane_width;
@@ -2213,26 +2718,40 @@ function marksLayer(st: Loose) {
 }
 /** Paints scorch marks, oil (dark glossy blobs with a rainbow sheen) and skid marks, in world units. */
 function paintMarks(g: CanvasRenderingContext2D, scorch: Loose[], oils: Loose[], skids: Loose[]) {
-  g.fillStyle = 'rgba(30,22,30,0.55)';
-  for (const [x, y, r] of scorch) { g.beginPath(); for (let i = 0; i < 10; i++) { const an = i * Math.PI / 5, rr = r * (0.75 + ((i * 7919) % 5) * 0.07); g.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr); } g.closePath(); g.fill(); }
-  if (oils.length) {
-    g.fillStyle = 'rgba(18,14,26,0.88)';
-    g.beginPath();
-    for (const o of oils) {
-      const n = o.shape.length;
-      for (let i = 0; i <= n; i++) { const k = i % n, an = o.rot + k * Math.PI * 2 / n, rr = o.r * o.shape[k]; const x = o.x + Math.cos(an) * rr, y = o.y + Math.sin(an) * rr * 0.8; if (i) g.lineTo(x, y); else g.moveTo(x, y); }
-    }
+  // a smooth closed curve through n points round (x, y): quadratics through the midpoints
+  const smooth = (x: number, y: number, n: number, rad: (i: number) => number, rot: number, sy: number) => {
+    const pt = (i: number) => { const k = ((i % n) + n) % n, an = rot + k * Math.PI * 2 / n, rr = rad(k); return [x + Math.cos(an) * rr, y + Math.sin(an) * rr * sy]; };
+    const m = (i: number) => { const a = pt(i), b = pt(i + 1); return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
+    const s0 = m(-1); g.moveTo(s0[0], s0[1]);
+    for (let i = 0; i < n; i++) { const c = pt(i), e = m(i); g.quadraticCurveTo(c[0], c[1], e[0], e[1]); }
+    g.closePath();
+  };
+  if (scorch.length) {
+    g.fillStyle = 'rgba(30,22,30,0.5)'; g.beginPath();
+    for (const [x, y, r] of scorch) smooth(x, y, 10, i => r * (0.75 + ((i * 7919) % 5) * 0.07), 0, 1);
     g.fill();
-    g.lineWidth = 1.5;
-    for (const o of oils) if (o.r > tune.oil_radius * 1.2) {
-      g.strokeStyle = 'rgba(120,90,255,0.6)'; g.beginPath(); g.moveTo(o.x - o.r * 0.4, o.y - o.r * 0.2); g.lineTo(o.x + o.r * 0.1, o.y - o.r * 0.35); g.stroke();
-      g.strokeStyle = 'rgba(46,196,182,0.6)'; g.beginPath(); g.moveTo(o.x - o.r * 0.2, o.y + o.r * 0.1); g.lineTo(o.x + o.r * 0.35, o.y - o.r * 0.05); g.stroke();
+    g.fillStyle = 'rgba(20,14,20,0.35)'; g.beginPath(); // a darker heart
+    for (const [x, y, r] of scorch) smooth(x, y, 8, i => r * (0.4 + ((i * 104729) % 5) * 0.05), 0.4, 1);
+    g.fill();
+  }
+  if (oils.length) {
+    g.fillStyle = 'rgba(18,14,26,0.88)'; g.beginPath();
+    for (const o of oils) smooth(o.x, o.y, o.shape.length, k => o.r * o.shape[k], o.rot, 0.8);
+    g.fill();
+    g.fillStyle = 'rgba(70,60,100,0.55)'; g.beginPath(); // the gloss: a paler pool inside, toward the light
+    for (const o of oils) if (o.r > tune.oil_radius) smooth(o.x - o.r * 0.12, o.y - o.r * 0.12, o.shape.length, k => o.r * o.shape[k] * 0.55, o.rot + 0.5, 0.7);
+    g.fill();
+    g.lineWidth = 1.6; g.lineCap = 'round';
+    for (const o of oils) if (o.r > tune.oil_radius * 1.1) { // the rainbow sheen, in curves
+      const arc = (c: string, dx: number, dy: number, r: number, a0: number) => { g.strokeStyle = c; g.beginPath(); g.ellipse(o.x + dx * o.r, o.y + dy * o.r, r * o.r, r * o.r * 0.6, o.rot * 0.3, a0, a0 + 1.6); g.stroke(); };
+      arc('rgba(140,110,255,0.65)', -0.1, 0.05, 0.42, 3.4); arc('rgba(46,196,182,0.6)', 0, 0.1, 0.3, 3.6); arc('rgba(255,200,90,0.45)', 0.05, 0.15, 0.2, 3.8);
     }
+    g.lineCap = 'butt';
   }
   if (skids.length) {
-    g.strokeStyle = 'rgba(25,20,35,0.45)'; g.lineWidth = 3; g.beginPath();
+    g.strokeStyle = 'rgba(25,20,35,0.45)'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath();
     for (const s2 of skids) { g.moveTo(s2[0], s2[1]); g.lineTo(s2[2], s2[3]); }
-    g.stroke();
+    g.stroke(); g.lineCap = 'butt';
   }
 }
 function drawRamp() {
@@ -2279,48 +2798,94 @@ function drawPickup(u: Loose) {
     for (const o of [-4, 3]) { ctx.beginPath(); ctx.moveTo(c[0] - 7 * z, c[1] + (o + 5) * z); ctx.lineTo(c[0], c[1] + o * z - 2 * z); ctx.lineTo(c[0] + 7 * z, c[1] + (o + 5) * z); ctx.stroke(); }
   } else text(u.kind === 'points' ? CURRENCY[country] || '€' : '×2', c[0], c[1] + 1, Math.round(15 * z), '#fff', 'center', 'bold', 0);
 }
-const FIRE_COLS = ['#a8201a', '#ff4a1c', '#ff9a1f', '#ffe066', '#fffbe0']; // tips to core
+/** A flame's outline: a teardrop with its tip at (x, y - h) leaning by lean, its round base on (x, y), half as wide as w. */
+function tearPath(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, lean: number) {
+  g.moveTo(x + lean, y - h);
+  g.bezierCurveTo(x + w * 0.35 + lean * 0.5, y - h * 0.55, x + w, y - h * 0.3, x + w, y - w * 0.2);
+  g.bezierCurveTo(x + w, y + w * 0.75, x - w, y + w * 0.75, x - w, y - w * 0.2);
+  g.bezierCurveTo(x - w, y - h * 0.3, x - w * 0.35 + lean * 0.5, y - h * 0.55, x + lean, y - h);
+  g.closePath();
+}
 function drawParts(top: Loose) {
-  const px = Math.max(2, Math.round(2.8 * cam.zoom)), cells = FIRE_COLS.map((): number[] => []); // fire cells by colour, drawn in one pass each
+  const z = cam.zoom, t = (state && state.t) || 0;
+  // flames and smoke are gathered first, then drawn a colour at a time: a big fire is many particles
+  const flames: number[][] = [], puffs: number[][][] = [[], [], []];
   for (const q of state.parts) {
     const isTop = q.type === 'smoke' || q.type === 'fire' || q.type === 'flash';
     if (isTop !== top) continue;
-    const a = q.life / q.max, p = P(q.x, q.y, q.z), z = cam.zoom;
+    const a = q.life / q.max, p = P(q.x, q.y, q.z);
     if (q.type === 'spark') {
       const p2 = P(q.x - q.vx * 0.03, q.y - q.vy * 0.03, q.z - q.vz * 0.03);
-      ctx.strokeStyle = a > 0.5 ? '#fff6bf' : '#ffa94d'; ctx.lineWidth = 2 * z;
-      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+      ctx.strokeStyle = a > 0.5 ? '#fff6bf' : '#ffa94d'; ctx.lineWidth = 2 * z; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke(); ctx.lineCap = 'butt';
     } else if (q.type === 'debris') {
-      const s = q.size * z, c = Math.cos(q.rot) * s, sn = Math.sin(q.rot) * s;
+      const sz = q.size * z, c = Math.cos(q.rot) * sz, sn = Math.sin(q.rot) * sz;
       poly([[p[0] + c, p[1] + sn], [p[0] - sn, p[1] + c], [p[0] - c * 0.6, p[1] - sn * 0.6]], q.color);
-    } else if (q.type === 'smoke') { // a blocky puff that grows and fades
-      const r = Math.max(1, Math.round((3 + (1 - a) * 7) * z * 2.6 / px)), gx = Math.round(p[0] / px) * px, gy = Math.round(p[1] / px) * px;
-      ctx.globalAlpha = a * 0.45; ctx.fillStyle = a > 0.6 ? '#4a4456' : '#3b3646'; ctx.beginPath();
-      for (let j = -r; j <= r; j++) { const w = Math.round(Math.sqrt(r * r - j * j)); ctx.rect(gx - w * px, gy + j * px, (2 * w + 1) * px, px); }
-      ctx.fill(); ctx.globalAlpha = 1;
-    } else if (q.type === 'fire') { // a teardrop of pixels: hot core at the base, red flickering tips
-      const h = Math.max(2, Math.round((3 + a * 6) * z * 2.6 / px)), w = Math.max(1, Math.round((1.5 + a * 2.8) * z * 2.6 / px));
-      const gx = Math.round(p[0] / px) * px, gy = Math.round(p[1] / px) * px, flick = vr() < 0.5 ? 1 : 0;
-      for (let j = 0; j < h; j++) {
-        const half = Math.round(w * (1 - j / h));
-        for (let i = -half; i <= half; i++) {
-          const d = Math.abs(i) / (w + 0.5) + j / h;
-          let ci = d < 0.3 ? 4 : d < 0.55 ? 3 : d < 0.8 ? 2 : d < 1.05 ? 1 : 0;
-          if (a < 0.4) ci = Math.max(0, ci - 2); // a dying flame cools to red
-          cells[ci].push(gx + i * px, gy - j * px - (j === h - 1 ? flick * px : 0));
-        }
-      }
+    } else if (q.type === 'smoke') { // a soft round puff that swells and fades
+      const r = (3 + (1 - a) * 7) * z * 2.4, k = (q.x * 7.3 + q.y * 3.1) % 1;
+      puffs[a > 0.66 ? 2 : a > 0.33 ? 1 : 0].push([p[0], p[1], r, k]);
+    } else if (q.type === 'fire') { // a teardrop flame: hot at the core, its tip licking about
+      const h = (3 + a * 6) * z * 2.8, w = (1.6 + a * 2.6) * z * 2.4, lean = Math.sin(t * 18 + q.x * 0.7 + q.y) * w * 0.55;
+      flames.push([p[0], p[1], w, h, lean, a]);
     } else if (q.type === 'flash') {
       ctx.globalAlpha = a * 0.6; ctx.fillStyle = '#fff3bf';
       ctx.beginPath(); ctx.arc(p[0], p[1], q.size * (1.2 - a * 0.6) * z, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
     }
   }
-  if (top) for (let k = 0; k < FIRE_COLS.length; k++) {
-    const c = cells[k]; if (!c.length) continue;
-    ctx.fillStyle = FIRE_COLS[k]; ctx.beginPath();
-    for (let i = 0; i < c.length; i += 2) ctx.rect(c[i], c[i + 1], px, px);
-    ctx.fill();
+  if (!top) return;
+  // the smoke: each puff a copy of a soft cluster, the older ones paler
+  for (const list of puffs) for (const [x, y, r, k] of list) {
+    const sp = smokeSprite(k < 0.5 ? 0 : 1), d = r / SMOKE_R;
+    ctx.globalAlpha = list === puffs[0] ? 0.2 : list === puffs[1] ? 0.36 : 0.5;
+    ctx.drawImage(sp, x - sp.width / 2 * d, y - sp.height / 2 * d, sp.width * d, sp.height * d);
   }
+  ctx.globalAlpha = 1;
+  if (!flames.length) return;
+  ctx.globalCompositeOperation = 'lighter'; // the glow round them
+  const glow = flameGlow();
+  for (const [x, y, , h] of flames) ctx.drawImage(glow, x - h, y - h * 1.35, h * 2, h * 2);
+  ctx.globalCompositeOperation = 'source-over';
+  for (const [x, y, w, h, lean, a] of flames) { // each flame a copy: its heat sets the colours, its lean the frame
+    const sp = flameSprite(a < 0.3 ? 0 : a < 0.4 ? 1 : a < 0.55 ? 2 : 3, Math.max(0, Math.min(4, Math.round(lean / w / 0.55 * 2 + 2))));
+    const sx = w / FLAME_R, sy = h / FLAME_H / FLAME_R;
+    ctx.drawImage(sp, x - FLAME_X * FLAME_R * sx, y - FLAME_TOP * FLAME_R * sy, sp.width * sx, sp.height * sy);
+  }
+}
+// ---- Flame and smoke sprites: each drawn once, then copied for every particle ------------------------------
+const FLAME_R = 24, FLAME_H = 2.45, FLAME_X = 1.9, FLAME_TOP = 2.6, SMOKE_R = 32; // pixels a unit; a flame's height for a half width of 1; where its base sits
+const FLAMES: HTMLCanvasElement[] = [], SMOKES: HTMLCanvasElement[] = [];
+let GLOW: HTMLCanvasElement | null = null;
+/** A flame at a heat (0 dying red to 3 white-hot core) leaning one of five ways (0 left, 2 upright, 4 right). */
+function flameSprite(heat: number, leanIdx: number) {
+  const id = heat * 5 + leanIdx; if (FLAMES[id]) return FLAMES[id];
+  const cv = document.createElement('canvas'); cv.width = Math.ceil(FLAME_X * 2 * FLAME_R); cv.height = Math.ceil((FLAME_TOP + 0.75) * FLAME_R);
+  const g = cv.getContext('2d')!, x = FLAME_X * FLAME_R, y = FLAME_TOP * FLAME_R, w = FLAME_R, h = FLAME_H * FLAME_R, lean = (leanIdx - 2) / 2 * 0.55 * w;
+  const layer = (fill: string, k: number) => { g.beginPath(); tearPath(g, x, y, w * k, h * k, lean * k); g.fillStyle = fill; g.fill(); };
+  if (heat < 2) layer('#c42a1b', 1); else layer('#ff5a1f', 1); // the outer flame, red as it dies
+  if (heat >= 1) layer('#ffa62b', 0.7); // the middle
+  if (heat >= 3) layer('#fff1a8', 0.4); // the white-hot core
+  return (FLAMES[id] = cv);
+}
+/** The warm glow round a flame: a soft disc, its centre the brightest. */
+function flameGlow() {
+  if (GLOW) return GLOW;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const g = cv.getContext('2d')!, gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,140,40,0.32)'); gr.addColorStop(0.5, 'rgba(255,110,30,0.12)'); gr.addColorStop(1, 'rgba(255,90,20,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return (GLOW = cv);
+}
+/** A puff of smoke: three soft-edged balls in a cluster, two ways round. Its scale: SMOKE_R pixels for a radius of 1. */
+function smokeSprite(v: number) {
+  if (SMOKES[v]) return SMOKES[v];
+  const cv = document.createElement('canvas'); cv.width = 4 * SMOKE_R; cv.height = 3.4 * SMOKE_R;
+  const g = cv.getContext('2d')!, cx = cv.width / 2, cy = cv.height / 2, k = v ? 0.8 : 0.2;
+  for (const [dx, dy, f] of [[0, 0, 1], [-0.55 + k * 0.3, 0.2, 0.7], [0.5, -0.1 - k * 0.3, 0.75]]) {
+    const x = cx + dx * SMOKE_R, y = cy + dy * SMOKE_R, r = f * SMOKE_R * 1.15, gr = g.createRadialGradient(x - r * 0.2, y - r * 0.25, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(92,86,104,1)'); gr.addColorStop(0.6, 'rgba(74,68,86,0.85)'); gr.addColorStop(1, 'rgba(74,68,86,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  return (SMOKES[v] = cv);
 }
 function drawWorld() {
   const st = state;
@@ -2490,68 +3055,125 @@ function drawHUD() {
 }
 
 // ---- The garage ---------------------------------------------------------------------------
-function engIcon(x: Loose, y: Loose, k: Loose) { // an engine block with cooling fins
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-22, -12], [16, -12], [22, -4], [22, 14], [-22, 14]], '#adb5bd'); poly([[-22, -12], [16, -12], [22, -4], [-16, -4]], '#dee2e6');
-  ctx.fillStyle = '#495057'; for (let i = 0; i < 5; i++) ctx.fillRect(-18 + i * 8, -1, 4, 12);
-  poly([[-8, -20], [6, -20], [6, -12], [-8, -12]], '#e03131'); ctx.restore();
+// The garage's icons: each drawn round (0, 0) about 50 wide, scaled by k. One style for all: a dark outline,
+// a base colour, a lighter face toward the light (up and left), a darker one away from it.
+const INK = '#1d1a26';
+/** Fills the path the callback traces, then outlines it in ink. */
+function ink(trace: () => void, fill: string, lw = 2.2) {
+  ctx.beginPath(); trace(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.stroke();
 }
-function barIcon(x: Loose, y: Loose, k: Loose) { // a bull bar seen from the front
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-24, -14], [24, -14], [24, -8], [-24, -8]], '#343a40'); poly([[-24, 6], [24, 6], [24, 12], [-24, 12]], '#343a40');
-  poly([[-18, -14], [-12, -14], [-12, 14], [-18, 14]], '#495057'); poly([[12, -14], [18, -14], [18, 14], [12, 14]], '#495057');
-  poly([[-4, -8], [4, -8], [4, 6], [-4, 6]], '#212529'); ctx.restore();
-}
-function armorIcon(x: Loose, y: Loose, k: Loose) { // a riveted steel plate
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-22, -14], [22, -14], [26, -6], [26, 14], [-26, 14], [-26, -6]], '#868e96'); poly([[-22, -14], [22, -14], [26, -6], [-26, -6]], '#adb5bd');
-  for (const [px, py] of [[-18, 0], [0, 0], [18, 0], [-18, 9], [0, 9], [18, 9]]) poly([[px - 2, py - 2], [px + 2, py - 2], [px + 2, py + 2], [px - 2, py + 2]], '#495057');
+/** Fills the path the callback traces, no outline (highlights and shadows inside a shape). */
+function tint(trace: () => void, fill: string) { ctx.beginPath(); trace(); ctx.fillStyle = fill; ctx.fill(); }
+const rr2 = (x: number, y: number, w: number, h: number, r: number) => () => { ctx.roundRect(x, y, w, h, r); };
+const circ = (x: number, y: number, r: number) => () => { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, Math.PI * 2); };
+function iconStart(x: number, y: number, k: number) { ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+function engIcon(x: Loose, y: Loose, k: Loose) { // an engine block: cylinder head, fins, the red filler cap
+  iconStart(x, y, k);
+  ink(rr2(-22, -8, 44, 22, 4), '#9aa3ad');
+  tint(rr2(-20, -6, 40, 6, 3), '#c7ced6');
+  for (let i = 0; i < 6; i++) tint(rr2(-18 + i * 6.6, 2, 3.4, 10, 1.5), '#5f6873');
+  ink(rr2(-18, -16, 36, 9, 3), '#b9c1ca');
+  tint(rr2(-16, -15, 32, 3, 1.5), '#e3e8ee');
+  ink(rr2(-5, -22, 10, 7, 2), '#e03131'); tint(rr2(-3.5, -21, 7, 2, 1), '#ff8787');
+  ink(circ(16, 3, 4), '#495057');
   ctx.restore();
 }
-function rocketIcon(x: Loose, y: Loose, k: Loose) { // a rocket, nose up-right
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.rotate(-0.6);
-  poly([[-16, -5], [12, -5], [22, 0], [12, 5], [-16, 5]], '#f1f3f5'); poly([[12, -5], [22, 0], [12, 5]], '#e03131');
-  poly([[-16, -5], [-10, -5], [-16, -12], [-20, -12]], '#495057'); poly([[-16, 5], [-10, 5], [-16, 12], [-20, 12]], '#495057');
-  poly([[-16, -3], [-28, 0], [-16, 3]], '#ffc83d'); ctx.restore();
+function barIcon(x: Loose, y: Loose, k: Loose) { // a black bull bar: two curved hoops, uprights, a chrome glint
+  iconStart(x, y, k);
+  const hoop = (y0: number) => () => { ctx.moveTo(-24, y0 + 6); ctx.quadraticCurveTo(-24, y0, -16, y0); ctx.lineTo(16, y0); ctx.quadraticCurveTo(24, y0, 24, y0 + 6); };
+  ctx.strokeStyle = INK; ctx.lineWidth = 8; ctx.beginPath(); hoop(-14)(); ctx.stroke(); ctx.beginPath(); hoop(4)(); ctx.stroke();
+  ctx.strokeStyle = '#495057'; ctx.lineWidth = 4.5; ctx.beginPath(); hoop(-14)(); ctx.stroke(); ctx.beginPath(); hoop(4)(); ctx.stroke();
+  for (const ox of [-14, 14]) { ink(rr2(ox - 3, -16, 6, 32, 2), '#3a4048'); tint(rr2(ox - 2, -14, 1.6, 28, 1), '#8d96a0'); }
+  ctx.strokeStyle = '#dee2e6'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-12, -15.5); ctx.lineTo(8, -15.5); ctx.stroke();
+  ctx.restore();
 }
-function magnetIcon(x: Loose, y: Loose, k: Loose) { // a horseshoe magnet
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-20, -16], [-8, -16], [-8, 4], [-4, 9], [4, 9], [8, 4], [8, -16], [20, -16], [20, 6], [10, 18], [-10, 18], [-20, 6]], '#e03131');
-  poly([[-20, -16], [-8, -16], [-8, -8], [-20, -8]], '#dee2e6'); poly([[8, -16], [20, -16], [20, -8], [8, -8]], '#dee2e6'); ctx.restore();
+function armorIcon(x: Loose, y: Loose, k: Loose) { // a riveted steel plate with a dent
+  iconStart(x, y, k);
+  const plate = () => { ctx.moveTo(-20, -15); ctx.lineTo(20, -15); ctx.lineTo(26, -8); ctx.lineTo(26, 15); ctx.lineTo(-26, 15); ctx.lineTo(-26, -8); ctx.closePath(); };
+  ink(plate, '#7d8790');
+  tint(() => { ctx.moveTo(-20, -13); ctx.lineTo(20, -13); ctx.lineTo(24, -8); ctx.lineTo(-24, -8); ctx.closePath(); }, '#b5bec7');
+  tint(() => { ctx.moveTo(-24, 9); ctx.lineTo(24, 9); ctx.lineTo(24, 13); ctx.lineTo(-24, 13); ctx.closePath(); }, '#5f6873');
+  for (const [px, py] of [[-19, -2], [0, -2], [19, -2], [-19, 7], [19, 7]]) { tint(circ(px, py, 2.6), '#4a525a'); tint(circ(px - 0.8, py - 0.8, 1.1), '#dfe4ea'); }
+  ctx.strokeStyle = '#4a525a'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-6, 4); ctx.quadraticCurveTo(0, 9, 7, 5); ctx.stroke(); // the dent
+  ctx.restore();
 }
-function nitroIcon(x: Loose, y: Loose, k: Loose) { // a blue bottle and its flame
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-5, -20], [5, -20], [5, -14], [10, -9], [10, 12], [-10, 12], [-10, -9], [-5, -14]], '#4aa8ff');
-  poly([[-10, -2], [10, -2], [10, 3], [-10, 3]], '#f1f3f5'); poly([[-6, 12], [0, 24], [6, 12]], '#ffc83d'); ctx.restore();
+function rocketIcon(x: Loose, y: Loose, k: Loose) { // a rocket, nose up and right, its flame behind
+  iconStart(x, y, k); ctx.rotate(-0.6);
+  tint(() => { ctx.moveTo(-16, -4); ctx.quadraticCurveTo(-34, 0, -16, 4); ctx.closePath(); }, '#ff922b');
+  tint(() => { ctx.moveTo(-16, -2.4); ctx.quadraticCurveTo(-26, 0, -16, 2.4); ctx.closePath(); }, '#fff3bf');
+  for (const sd of [1, -1]) ink(() => { ctx.moveTo(-10, 5 * sd); ctx.lineTo(-18, 13 * sd); ctx.lineTo(-20, 13 * sd); ctx.lineTo(-18, 4 * sd); ctx.closePath(); }, '#e03131');
+  ink(() => { ctx.moveTo(-18, -6); ctx.lineTo(10, -6); ctx.quadraticCurveTo(22, -4, 26, 0); ctx.quadraticCurveTo(22, 4, 10, 6); ctx.lineTo(-18, 6); ctx.closePath(); }, '#eef1f4');
+  tint(() => { ctx.moveTo(10, -6); ctx.quadraticCurveTo(22, -4, 26, 0); ctx.quadraticCurveTo(22, 4, 10, 6); ctx.closePath(); }, '#e03131');
+  tint(rr2(-16, -4.5, 24, 2.5, 1.2), '#ffffff');
+  ink(circ(2, 0, 2.6), '#4dabf7', 1.4);
+  ctx.restore();
 }
-function oilcanIcon(x: Loose, y: Loose, k: Loose) { // an oil can with its spout and a drop
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-16, -10], [10, -10], [10, 14], [-16, 14]], '#495057'); poly([[-16, -10], [10, -10], [6, -15], [-12, -15]], '#868e96');
-  poly([[-16, 0], [10, 0], [10, 5], [-16, 5]], '#ffc83d'); poly([[10, -6], [22, -14], [24, -11], [12, -2]], '#868e96');
-  poly([[22, -4], [25, 2], [22, 6], [19, 2]], '#1d1a26'); ctx.restore();
+function magnetIcon(x: Loose, y: Loose, k: Loose) { // a red horseshoe magnet, silver tips, a spark of pull
+  iconStart(x, y, k);
+  const shoe = () => { ctx.moveTo(-20, -16); ctx.lineTo(-8, -16); ctx.lineTo(-8, 2); ctx.arc(0, 2, 8, Math.PI, 0, true); ctx.lineTo(8, -16); ctx.lineTo(20, -16); ctx.lineTo(20, 2); ctx.arc(0, 2, 20, 0, Math.PI); ctx.closePath(); };
+  ink(shoe, '#e03131');
+  ctx.strokeStyle = '#ff8787'; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.arc(0, 2, 15, Math.PI * 0.95, Math.PI * 0.55, true); ctx.stroke();
+  ink(rr2(-20, -16, 12, 8, 1.5), '#dee2e6'); ink(rr2(8, -16, 12, 8, 1.5), '#dee2e6');
+  ctx.strokeStyle = '#4aa8ff'; ctx.lineWidth = 2; for (const ox of [-10, 0, 10]) { ctx.beginPath(); ctx.moveTo(ox - 2, -24); ctx.lineTo(ox + 2, -21); ctx.lineTo(ox - 1, -19); ctx.stroke(); }
+  ctx.restore();
 }
-function jumpIcon(x: Loose, y: Loose, k: Loose) { // a spring and an arrow up
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  ctx.strokeStyle = '#b4e33d'; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.beginPath();
-  ctx.moveTo(-12, 18); ctx.lineTo(12, 12); ctx.lineTo(-12, 6); ctx.lineTo(12, 0); ctx.lineTo(-12, -6); ctx.stroke();
-  poly([[-10, -10], [0, -22], [10, -10]], '#fff'); ctx.restore();
+function nitroIcon(x: Loose, y: Loose, k: Loose) { // a blue bottle, its label, a flame under it
+  iconStart(x, y, k);
+  tint(() => { ctx.moveTo(-7, 12); ctx.quadraticCurveTo(0, 30, 7, 12); ctx.closePath(); }, '#ff922b');
+  tint(() => { ctx.moveTo(-4, 12); ctx.quadraticCurveTo(0, 22, 4, 12); ctx.closePath(); }, '#fff3bf');
+  ink(rr2(-4, -22, 8, 6, 2), '#495057');
+  ink(() => { ctx.moveTo(-5, -16); ctx.lineTo(5, -16); ctx.quadraticCurveTo(11, -13, 11, -6); ctx.lineTo(11, 10); ctx.quadraticCurveTo(11, 13, 8, 13); ctx.lineTo(-8, 13); ctx.quadraticCurveTo(-11, 13, -11, 10); ctx.lineTo(-11, -6); ctx.quadraticCurveTo(-11, -13, -5, -16); ctx.closePath(); }, '#3b8fe0');
+  tint(rr2(-8, -10, 3, 18, 1.5), '#8cc8ff');
+  ink(rr2(-11, -3, 22, 7, 1), '#f1f3f5', 1.6);
+  ctx.fillStyle = '#e03131'; ctx.font = 'bold 6px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('N2O', 0, 0.6);
+  ctx.restore();
 }
-function shieldIcon(x: Loose, y: Loose, k: Loose) { // a shield with a tick
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[0, -20], [18, -13], [16, 6], [0, 20], [-16, 6], [-18, -13]], '#19c37d'); poly([[0, -20], [18, -13], [16, 6], [0, 20]], '#12a368');
-  check(0, 0, '#fff'); ctx.restore();
+function oilcanIcon(x: Loose, y: Loose, k: Loose) { // an oil can, its long spout, a drop falling
+  iconStart(x, y, k);
+  ink(() => { ctx.moveTo(8, -4); ctx.lineTo(22, -14); ctx.lineTo(24, -11); ctx.lineTo(11, 1); ctx.closePath(); }, '#9aa3ad');
+  ink(rr2(-18, -10, 28, 24, 4), '#3f474f');
+  tint(rr2(-16, -8, 24, 4, 2), '#6c757d');
+  ink(rr2(-18, 0, 28, 6, 1), '#ffc83d', 1.6);
+  ink(() => { ctx.moveTo(-12, -10); ctx.quadraticCurveTo(-4, -20, 4, -10); }, 'rgba(0,0,0,0)', 2.4); // the handle
+  ink(() => { ctx.moveTo(23, -6); ctx.quadraticCurveTo(27, 1, 23, 4); ctx.quadraticCurveTo(19, 1, 23, -6); ctx.closePath(); }, '#2b2536', 1.4);
+  ctx.restore();
 }
-function clockIcon(x: Loose, y: Loose, k: Loose) { // an hourglass
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  poly([[-14, -20], [14, -20], [14, -16], [-14, -16]], '#495057'); poly([[-14, 16], [14, 16], [14, 20], [-14, 20]], '#495057');
-  poly([[-11, -16], [11, -16], [2, 0], [11, 16], [-11, 16], [-2, 0]], '#ffc83d'); poly([[-6, 16], [6, 16], [0, 8]], '#ff922b'); ctx.restore();
+function jumpIcon(x: Loose, y: Loose, k: Loose) { // a coiled spring and an arrow up
+  iconStart(x, y, k);
+  ink(rr2(-14, 15, 28, 5, 2), '#495057');
+  ctx.strokeStyle = INK; ctx.lineWidth = 6; const coil = () => { ctx.beginPath(); ctx.moveTo(-11, 15); for (let i = 0; i < 4; i++) { ctx.lineTo(11, 12 - i * 6); ctx.lineTo(-11, 9 - i * 6); } ctx.stroke(); };
+  coil(); ctx.strokeStyle = '#b4e33d'; ctx.lineWidth = 3.4; coil();
+  ink(() => { ctx.moveTo(-10, -12); ctx.lineTo(0, -24); ctx.lineTo(10, -12); ctx.lineTo(4, -12); ctx.lineTo(4, -8); ctx.lineTo(-4, -8); ctx.lineTo(-4, -12); ctx.closePath(); }, '#ffffff');
+  ctx.restore();
 }
-function dynIcon(x: Loose, y: Loose, k: Loose) { // three sticks, a strap and a lit fuse
-  ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
-  for (const o of [-10, 0, 10]) { poly([[o - 4, -14], [o + 4, -14], [o + 4, 14], [o - 4, 14]], '#e03131'); poly([[o - 4, -14], [o + 4, -14], [o + 2, -11], [o - 2, -11]], '#ff8787'); }
-  poly([[-15, -2], [15, -2], [15, 3], [-15, 3]], '#1d1a26');
-  ctx.strokeStyle = '#495057'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(6, -22); ctx.stroke();
-  poly([[6, -27], [10, -22], [6, -19], [3, -22]], '#ffc83d'); ctx.restore();
+function shieldIcon(x: Loose, y: Loose, k: Loose) { // a green shield, a white tick
+  iconStart(x, y, k);
+  const sh = () => { ctx.moveTo(0, -21); ctx.quadraticCurveTo(10, -14, 19, -14); ctx.quadraticCurveTo(20, 10, 0, 21); ctx.quadraticCurveTo(-20, 10, -19, -14); ctx.quadraticCurveTo(-10, -14, 0, -21); ctx.closePath(); };
+  ink(sh, '#19c37d');
+  tint(() => { ctx.moveTo(0, -21); ctx.quadraticCurveTo(10, -14, 19, -14); ctx.quadraticCurveTo(20, 10, 0, 21); ctx.closePath(); }, '#12a368');
+  tint(() => { ctx.moveTo(-15, -11); ctx.quadraticCurveTo(-8, -11, -2, -16); ctx.lineTo(-2, -10); ctx.quadraticCurveTo(-8, -6, -14, -6); ctx.closePath(); }, '#7ff0b8');
+  ctx.strokeStyle = INK; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-2, 6); ctx.lineTo(9, -6); ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+  ctx.restore();
+}
+function clockIcon(x: Loose, y: Loose, k: Loose) { // an hourglass in its wooden frame, the sand running
+  iconStart(x, y, k);
+  ink(() => { ctx.moveTo(-11, -17); ctx.lineTo(11, -17); ctx.quadraticCurveTo(11, -6, 2, 0); ctx.quadraticCurveTo(11, 6, 11, 17); ctx.lineTo(-11, 17); ctx.quadraticCurveTo(-11, 6, -2, 0); ctx.quadraticCurveTo(-11, -6, -11, -17); ctx.closePath(); }, '#d9f1ff');
+  tint(() => { ctx.moveTo(-7, -12); ctx.lineTo(7, -12); ctx.quadraticCurveTo(5, -5, 0, -2); ctx.quadraticCurveTo(-5, -5, -7, -12); ctx.closePath(); }, '#ffc83d');
+  tint(() => { ctx.moveTo(-9, 16); ctx.quadraticCurveTo(0, 6, 9, 16); ctx.closePath(); }, '#ffa94d');
+  ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(0, 12); ctx.stroke();
+  tint(rr2(-8, -14, 2.4, 9, 1.2), '#ffffff');
+  ink(rr2(-15, -22, 30, 5, 2), '#a0703c'); ink(rr2(-15, 17, 30, 5, 2), '#a0703c');
+  ctx.restore();
+}
+function dynIcon(x: Loose, y: Loose, k: Loose) { // three red sticks, a black strap, a fizzing fuse
+  iconStart(x, y, k);
+  for (const o of [-10, 0, 10]) { ink(rr2(o - 4.6, -13, 9.2, 28, 3), '#e03131'); tint(rr2(o - 3, -11, 2.4, 24, 1.2), '#ff8787'); tint(() => { ctx.ellipse(o, -11.5, 3.4, 1.6, 0, 0, Math.PI * 2); }, '#f8d7a8'); }
+  ink(rr2(-16, 0, 32, 5, 1.5), '#2b2536', 1.6);
+  ctx.strokeStyle = '#6b5a45'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -13); ctx.quadraticCurveTo(2, -20, 8, -21); ctx.stroke();
+  tint(() => { for (let i = 0; i < 8; i++) { const an = i * Math.PI / 4, r = i % 2 ? 2.6 : 5.6; if (i) ctx.lineTo(9 + Math.cos(an) * r, -22 + Math.sin(an) * r); else ctx.moveTo(9 + r, -22); } ctx.closePath(); }, '#ffc83d');
+  tint(circ(9, -22, 1.8), '#fffbe0');
+  ctx.restore();
 }
 const GARAGE = [
   { id: 'engine', name: 'Moteur', max: 3, icon: engIcon, cost: (lv: Loose) => tune['engine_cost_' + Math.min(3, lv + 1)],

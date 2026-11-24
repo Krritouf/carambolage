@@ -1130,6 +1130,8 @@ function updatePlay(dt: Loose) {
   for (const c of st.cranes) if (c.falling && !c.fallen) stepCrane(c, sdt);
   for (const S of st.shops) { // damaged shops smoke, ruined ones burn
     const f = S.dmg / S.value; S.smokeT = (S.smokeT || 0) - sdt;
+    if (f >= 0.75 && !S.ruined && vr() < sdt * 6) { const sp = scarSpot(S); // flames out of the open corner
+      addPart('fire', S.x + sp.sx * (S.hl - 7) * (0.55 + vr() * 0.35), S.y + sp.sy * (S.hw - 7) * (0.5 + vr() * 0.35), S.h, (vr() - 0.5) * 16, (vr() - 0.5) * 16, 30 + vr() * 30, 0.6 + vr() * 0.5); }
     if (f > 0.4 && S.smokeT <= 0) { S.smokeT = S.ruined ? 0.07 : 0.25; addPart(S.ruined ? 'fire' : 'smoke', S.x + (vr() - 0.5) * S.hl, S.y + (vr() - 0.5) * S.hw, S.h + 4, (vr() - 0.5) * 20, (vr() - 0.5) * 20, 30 + vr() * 40, 0.8 + vr() * 0.8); }
     S.popT = (S.popT || 0) - dt;
     if (S.pend >= 300 && S.popT <= 0) { st.floats.push({ x: S.x, y: S.y, txt: '+' + money(S.pend), t: 0, color: '#ffc83d' }); S.pend = 0; S.popT = 0.6; }
@@ -1961,6 +1963,7 @@ function prism(pts: Loose, h0: Loose, h1: Loose, top: Loose, side: Loose, window
         ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(cc[0], cc[1]); ctx.lineTo(d[0], d[1]); ctx.closePath();
       }
       ctx.fillStyle = NIGHT ? 'rgba(255,214,110,0.95)' : f > 0.75 ? 'rgba(255,248,210,0.55)' : 'rgba(30,40,90,0.45)'; ctx.fill();
+      if (windows.stage) wallScars(windows.stage, windows.seed + i * 17.3, L, nF, nC); // a damaged shop's
     }
   }
   if (top) poly(r, top); // no top: something drawn over it covers it anyway
@@ -2435,6 +2438,189 @@ function brakeLight(b: Loose, ox: number, oy: number, len: number, wid: number, 
   flat(b, ox, oy, len, wid, h, b.braking ? '#ff1e1e' : '#a61e1e');
   if (SPRITE_REC) SPRITE_REC.push({ t: 'brake', ox, oy, len, wid, h: h - b.z });
 }
+// ---- Shop damage ----------------------------------------------------------------------------------------------
+// A shop shows its damage in four stages: cracked from a quarter, holed and sooty from half, giving way and burning
+// from three quarters, then the ruin. What lies on its roof at a stage is one sprite, drawn when the shop reaches it
+// and kept on the shop (S.scar, only the current stage's); the walls get their broken windows, soot, flames and
+// cracks from prism, in a few fills.
+const SCAR_S = 1.75; // the roof sprites' pixels a world unit
+/** A shop's damage stage: 0 sound, 1 cracked, 2 holed and sooty, 3 giving way and burning, 4 ruined. */
+function shopStage(S: Loose) {
+  if (S.ruined) return 4;
+  const f = S.dmg / S.value; return f >= 0.75 ? 3 : f >= 0.5 ? 2 : f >= 0.25 ? 1 : 0;
+}
+/** Where a shop's roof gives way, fixed by its place: the corner (sx, sy) that collapses, and the hole across from it (hx, hy, world). */
+function scarSpot(S: Loose) {
+  const sx = hash01(S.x, S.y, 31) < 0.5 ? -1 : 1, sy = hash01(S.x, S.y, 32) < 0.5 ? -1 : 1;
+  return { sx, sy, hx: S.x - sx * (S.hl - 7) * 0.5, hy: S.y + sy * (S.hw - 7) * 0.4 };
+}
+/** A crack from (x, y) heading an, len long: a jagged line thinning as it goes, now and then a fork; pushed as [x0, y0, x1, y1, width]. */
+function crackSegs(out: number[][], x: number, y: number, an: number, len: number, wid: number, seed: number, depth = 0) {
+  const n = 4 + Math.floor(hash01(seed, depth, 1) * 3), step = len / n;
+  for (let i = 0; i < n; i++) {
+    an += (hash01(seed, i, 2 + depth) - 0.5) * 1.1;
+    const nx = x + Math.cos(an) * step, ny = y + Math.sin(an) * step, w = wid * (1 - 0.7 * i / n);
+    out.push([x, y, nx, ny, w]);
+    if (depth < 2 && hash01(seed, i, 7 + depth) < 0.35)
+      crackSegs(out, nx, ny, an + (hash01(seed, i, 9) < 0.5 ? -1 : 1) * (0.6 + hash01(seed, i, 11) * 0.6), len * 0.45, w * 0.6, seed + i * 13.1, depth + 1);
+    x = nx; y = ny;
+  }
+}
+/** Strokes cracks (world segments, flat at height h): a pale lip on the lit side, the dark gap over it. */
+function strokeCracks(segs: number[][], h: number) {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [col, d, k] of [['rgba(255,250,235,0.35)', 0.8, 1.15], ['#231a28', 0, 1]] as [string, number, number][]) {
+    ctx.strokeStyle = col;
+    for (const [x0, y0, x1, y1, w] of segs) {
+      const a = P(x0 + d, y0 + d, h), b = P(x1 + d, y1 + d, h);
+      ctx.lineWidth = Math.max(0.6, w * k * cam.zoom); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    }
+  }
+}
+/** A soft disc of colour rgb ('r,g,b') at height h, strongest (alpha a) at its centre: soot, or a fire's glow. */
+function softDisc(x: number, y: number, h: number, r: number, rgb: string, a: number) {
+  const c = P(x, y, h), rr = Math.max(1, r * cam.zoom), g = ctx.createRadialGradient(c[0], c[1], 0, c[0], c[1], rr);
+  g.addColorStop(0, `rgba(${rgb},${a})`); g.addColorStop(0.55, `rgba(${rgb},${a * 0.55})`); g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c[0], c[1], rr, 0, Math.PI * 2); ctx.fill();
+}
+/** A jagged ring of n points round (x, y), radii rx, ry give or take a quarter: a broken edge. */
+function jagged(x: number, y: number, rx: number, ry: number, n: number, seed: number) {
+  return Array.from({ length: n }, (_, i) => {
+    const an = (i + (hash01(seed, i, 41) - 0.5) * 0.5) * Math.PI * 2 / n, k = 0.75 + hash01(seed, i, 42) * 0.5;
+    return [x + Math.cos(an) * rx * k, y + Math.sin(an) * ry * k];
+  });
+}
+/** shade() for a colour that will be shaded again (prism shades its walls): the result stays '#rrggbb'. */
+const shadeHex = (hex: string, f: number) => mix(hex, f > 1 ? '#ffffff' : '#000000', Math.abs(1 - f));
+const flatPoly = (pts: number[][], h: number, fill: string) => poly(pts.map(q => P(q[0], q[1], h)), fill);
+/** Rubble: n chunks round (x, y) within rx, ry, at height h0, each a little block in one of cols, the far ones drawn first. */
+function rubble(x: number, y: number, rx: number, ry: number, n: number, size: number, cols: string[], seed: number, h0 = 0) {
+  const list: Loose[] = [];
+  for (let i = 0; i < n; i++) {
+    const u = hash01(seed, i, 51) * 2 - 1, v = hash01(seed, i, 52) * 2 - 1, r = size * (0.5 + hash01(seed, i, 53));
+    list.push([x + u * Math.abs(u) * rx, y + v * Math.abs(v) * ry, r, hash01(seed, i, 54) * Math.PI, size * (0.3 + hash01(seed, i, 55) * 0.9), cols[i % cols.length]]);
+  }
+  list.sort((p, q) => (p[0] + p[1]) - (q[0] + q[1]));
+  for (const [cx, cy, r, a, t, col] of list) prism(rect({ x: cx, y: cy, a }, 0, 0, r * 2, r * 1.4), h0, h0 + t, shadeHex(col, 1.18), col);
+}
+/** A beam, broken off: a thin dark plank at (x, y), angle a, len long, from height h0 to h0 + 3. */
+const beamAt = (x: number, y: number, a: number, len: number, h0: number) => prism(rect({ x, y, a }, 0, 0, len, 3), h0, h0 + 3, '#5c3f2a', '#3a281b');
+/** The damage on a shop's roof at stage st (1 to 3), in the roof's own frame (its centre at 0, 0), the shop's colour col. */
+function drawRoofScars(S: Loose, st: number, col: string) {
+  const hx = S.hl - 7, hy = S.hw - 7, seed = Math.floor(hash01(S.x, S.y, 30) * 1000), sp = scarSpot(S), ux = sp.hx - S.x, uy = sp.hy - S.y;
+  const roof = shadeHex(col, 1.15), cx = sp.sx * hx, cy = sp.sy * hy, cw = hx * 0.55, cd = hy * 0.6;
+  ctx.save(); ctx.beginPath(); rectXY(0, 0, hx, hy).forEach((q, i) => { const p = P(q[0], q[1], 0); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.clip();
+  // grime, then soot round the hole and the collapse
+  softDisc(ux * 0.3, -uy * 0.8, 0, 34, '60,45,40', 0.3); softDisc(-ux * 0.8, uy * 0.6, 0, 26, '60,45,40', 0.25);
+  if (st >= 2) { softDisc(ux, uy, 0, 30 + st * 8, '28,20,24', 0.6); softDisc(-ux * 0.7, -uy * 0.5, 0, 22, '28,20,24', 0.35); }
+  if (st >= 3) softDisc(cx * 0.85, cy * 0.85, 0, Math.max(cw, cd) * 1.5, '28,20,24', 0.75);
+  // cracks: from the edges at first, then out of the hole
+  const segs: number[][] = [];
+  for (let i = 0; i < [0, 4, 6, 8][st]; i++) {
+    const e = hash01(seed, i, 61), t = hash01(seed, i, 62) * 1.8 - 0.9;
+    let x0 = e < 0.5 ? t * hx : (e < 0.75 ? -hx : hx), y0 = e < 0.5 ? (e < 0.25 ? -hy : hy) : t * hy, an = e < 0.25 ? Math.PI / 2 : e < 0.5 ? -Math.PI / 2 : e < 0.75 ? 0 : Math.PI;
+    if (st >= 2 && i % 2 === 0) { x0 = ux; y0 = uy; an = hash01(seed, i, 63) * Math.PI * 2; }
+    crackSegs(segs, x0, y0, an + (hash01(seed, i, 64) - 0.5) * 0.8, Math.min(hx, hy) * (0.7 + 0.5 * hash01(seed, i, 65)) * (st >= 2 ? 1.25 : 1.1), 2.4 + st * 0.8, seed + i * 7.7);
+  }
+  strokeCracks(segs, 0);
+  // flakes of the roof's coat gone, the darker layer under it showing
+  for (let i = 0; i < 5 + st * 4; i++) flatPoly(jagged((hash01(seed, i, 66) * 2 - 1) * hx * 0.9, (hash01(seed, i, 67) * 2 - 1) * hy * 0.9, 2.5 + st, 2 + st * 0.8, 6, seed + i), 0, shade(col, 0.82));
+  if (st >= 2) { // the hole: its broken rim, the dark inside, beams across it, rubble round it
+    const r = st >= 3 ? 19 : 14;
+    flatPoly(jagged(ux + 1.5, uy + 1.5, r + 4, r * 0.8 + 4, 11, seed + 1), 0, shade(col, 0.7));
+    flatPoly(jagged(ux, uy, r, r * 0.8, 11, seed + 2), 0, '#140e18');
+    if (st >= 3) softDisc(ux, uy, 0, r * 0.85, '255,130,40', 0.85);
+    beamAt(ux, uy - r * 0.2, 0.5, r * 2.1, -1); beamAt(ux + r * 0.2, uy + r * 0.3, -0.35, r * 1.6, -1);
+    rubble(ux + sp.sx * r * 1.3, uy - sp.sy * r * 0.9, r * 0.9, r * 0.6, 9, 2.6, [roof, '#8a8290', shadeHex(col, 0.85)], seed + 6);
+  }
+  if (st >= 3) { // the corner gives way: a ragged edge across it, the corner open beyond, burning inside
+    const edge = (grow: number) => {
+      const pts = [[cx + sp.sx * 4, cy + sp.sy * 4]];
+      for (let k = 0; k <= 8; k++) {
+        const t = k / 8 * Math.PI / 2, j = 0.85 + 0.3 * hash01(seed, k, 71);
+        pts.push([cx - sp.sx * (cw + grow) * Math.cos(t) * j, cy - sp.sy * (cd + grow) * Math.sin(t) * j]);
+      }
+      return pts;
+    };
+    flatPoly(edge(5), 0, shade(col, 0.6));
+    flatPoly(edge(0), 0, '#120c14');
+    softDisc(cx - sp.sx * cw * 0.3, cy - sp.sy * cd * 0.3, 0, Math.max(cw, cd) * 0.8, '255,115,30', 0.8);
+    for (let k = 0; k < 3; k++) beamAt(cx - sp.sx * cw * (0.5 + k * 0.12), cy - sp.sy * cd * (0.75 - k * 0.25), (k - 1) * 0.6 + (sp.sx * sp.sy > 0 ? 0.8 : -0.8), cw * 0.7, -2 + k);
+    rubble(cx - sp.sx * cw * 1.05, cy - sp.sy * cd, cw * 0.4, cd * 0.4, 14, 3.4, [roof, shadeHex(col, 0.8), '#8a8290'], seed + 5);
+  }
+  ctx.restore();
+}
+/** A ruined shop's top, in its own frame: the burnt floor, stubs of wall along its sides, a heap of rubble with beams
+ * in it, embers glowing. col is the shop's colour. */
+function drawRuin(S: Loose, col: string) {
+  const hx = S.hl, hy = S.hw, seed = Math.floor(hash01(S.x, S.y, 30) * 1000), stone = '#9a929c', brick = shadeHex(col, 0.78), dark = '#5a5260';
+  flats([rectXY(0, 0, hx - 1, hy - 1)], 0, '#2b2228'); // the burnt floor
+  softDisc(0, 0, 0, Math.min(hx, hy) * 1.1, '120,105,100', 0.55); // dust over the heap
+  for (let i = 0; i < 5; i++) softDisc((hash01(seed, i, 81) * 1.6 - 0.8) * hx, (hash01(seed, i, 82) * 1.6 - 0.8) * hy, 0, 22, '255,110,30', 0.55);
+  const walls = (sides: number[]) => { // what is left of the walls: thick stubs of uneven height, gaps between them
+    for (const sd of sides) {
+      const alongX = sd < 2, L = alongX ? hx : hy, fix = (sd % 2 ? 1 : -1) * ((alongX ? hy : hx) - 4);
+      for (let a = -L; a < L - 8;) {
+        const len = 18 + hash01(seed, sd * 50 + a, 83) * 26, end = Math.min(L, a + len), k = hash01(seed, sd * 50 + a, 84);
+        if (k < 0.7) {
+          const m = (a + end) / 2, w = end - a, top = 8 + k * 40;
+          prism(alongX ? rectXY(m, fix, w / 2, 4) : rectXY(fix, m, 4, w / 2), 0, top, shadeHex(col, 1.12), brick);
+        }
+        a = end + 6;
+      }
+    }
+  };
+  walls([0, 2]); // the far sides (north, west) first
+  rubble(0, 0, hx * 0.7, hy * 0.65, 34, 11, [stone, col, brick, dark], seed); // the heap: big blocks, then smaller ones on them
+  for (let i = 0; i < 5; i++) prism(rect({ x: (hash01(seed, i, 85) - 0.5) * hx, y: (hash01(seed, i, 86) - 0.5) * hy, a: hash01(seed, i, 87) * Math.PI }, 0, 0, 45 + hash01(seed, i, 88) * 40, 6), 8 + i * 3, 13 + i * 3, '#6e4a30', '#3a281b');
+  rubble(0, 0, hx * 0.6, hy * 0.55, 22, 6, [stone, brick, col, '#c9c0b4'], seed + 3, 10);
+  walls([1, 3]);
+  const embers: number[][] = [];
+  for (let i = 0; i < 16; i++) embers.push([(hash01(seed, i, 89) * 2 - 1) * hx * 0.7, (hash01(seed, i, 90) * 2 - 1) * hy * 0.7, 0.7 + hash01(seed, i, 91)]);
+  discs(embers, 18, 2.6, '#ff6a1a'); discs(embers, 18.1, 1.2, '#ffd166');
+}
+/** Draws what a shop's damage has left on its roof (or its ruin), from a sprite kept on the shop for its current stage. */
+function shopScars(S: Loose, st: number, col: string) {
+  if (!S.scar || S.scar.st !== st || S.scar.h !== S.h) {
+    const ruin = st >= 4;
+    S.scar = { st, h: S.h, sp: bakeSprite(SCAR_S, ruin ? S.hl : S.hl - 7, ruin ? S.hw : S.hw - 7, ruin ? 44 : 12, () => ruin ? drawRuin(S, col) : drawRoofScars(S, st, col)) };
+  }
+  blitSprite(S.scar.sp, S.x, S.y, S.h + 0.06);
+}
+/** The damage on a shop's wall, in the wall's own frame L (u along, v up, both 0 to 1): broken windows (the same ones
+ * as it gets worse), soot above them from stage 2, flames in some from stage 3, cracks down from the top. */
+function wallScars(st: number, seed: number, L: (u: number, v: number) => number[], nF: number, nC: number) {
+  const broke = [0, 0.18, 0.4, 0.65][st], cells: number[][] = [];
+  const quad = (pts: number[][]) => { ctx.moveTo(pts[0][0], pts[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(pts[k][0], pts[k][1]); ctx.closePath(); };
+  for (let fl = 0; fl < nF; fl++) for (let c = 0; c < nC; c++) {
+    if (hash01(seed, fl * 31 + c, 71) < broke) cells.push([(c + 0.22) / nC, (c + 0.78) / nC, (fl + 0.3) / nF, (fl + 0.75) / nF, hash01(seed, fl * 31 + c, 72)]);
+  }
+  ctx.beginPath(); for (const [u0, u1, v0, v1] of cells) quad([L(u0, v0), L(u1, v0), L(u1, v1), L(u0, v1)]);
+  ctx.fillStyle = '#17111d'; ctx.fill();
+  if (st >= 2) { // soot licking up from them
+    ctx.beginPath();
+    for (const [u0, u1, , v1] of cells) { const g = 0.12 / nC, v2 = Math.min(1, v1 + 0.6 / nF); quad([L(u0, v1), L(u1, v1), L(u1 + g, v2), L(u0 - g, v2)]); }
+    ctx.fillStyle = 'rgba(26,18,22,0.55)'; ctx.fill();
+  }
+  if (st >= 3) { // flames inside some of them
+    const t = (state && state.t) || 0;
+    for (const [fill, inset] of [['#ff7a1a', 0], ['#ffd166', 0.3]] as [string, number][]) {
+      ctx.beginPath();
+      for (const [u0, u1, v0, v1, k] of cells) if (k < 0.4) {
+        const fl = 0.75 + 0.25 * Math.sin(t * 13 + k * 40), du = (u1 - u0) * inset / 2, top = v0 + (v1 - v0) * fl * (1 - inset * 0.6);
+        quad([L(u0 + du, v0), L(u1 - du, v0), L(u1 - du, top), L(u0 + du, top)]);
+      }
+      ctx.fillStyle = fill; ctx.fill();
+    }
+  }
+  ctx.strokeStyle = '#2a2030'; ctx.lineWidth = Math.max(0.8, (0.8 + st * 0.5) * cam.zoom); ctx.lineJoin = 'round'; ctx.beginPath();
+  for (let i = 0; i < st; i++) { // cracks down from the top, zigzagging
+    let u = 0.15 + hash01(seed, i, 73) * 0.7, v = 1; const p0 = L(u, v); ctx.moveTo(p0[0], p0[1]);
+    const n = 3 + st, dv = (0.25 + 0.15 * st) / n;
+    for (let k = 0; k < n; k++) { u += (hash01(seed, i * 9 + k, 74) - 0.5) * 0.12; v -= dv; const p = L(u, v); ctx.lineTo(p[0], p[1]); }
+  }
+  ctx.stroke();
+}
 function drawBuilding(S: Loose) {
   const box4 = (x0: number, y0: number, x1: number, y1: number) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
   const pts = box4(S.x - S.hl, S.y - S.hw, S.x + S.hl, S.y + S.hw);
@@ -2442,7 +2628,8 @@ function drawBuilding(S: Loose) {
   const top = S.ruined ? S.h : S.h - 6; // a cornice runs round the top
   const base = cam.zoom >= FINE_ZOOM ? 9 : 0; // close up, a darker plinth at street level (its top is under the building)
   if (base) prism(pts, 0, base, null, shade(col, 0.72));
-  let r = prism(pts, base, top, S.ruined ? col : null, col, !S.ruined); // the cornice's top covers this one's
+  const stage = S.shop ? shopStage(S) : 0;
+  let r = prism(pts, base, top, S.ruined ? col : null, col, S.ruined ? false : stage ? { stage, seed: hash01(S.x, S.y, 33) * 1000 } : true); // the cornice's top covers this one's
   if (!S.ruined) { // the cornice: a lighter band that juts out a little, the parapet's rim on top
     r = prism(box4(S.x - S.hl - 2.5, S.y - S.hw - 2.5, S.x + S.hl + 2.5, S.y + S.hw + 2.5), top, S.h, shade(col, 1.2), shade(col, 1.1));
   }
@@ -2450,20 +2637,13 @@ function drawBuilding(S: Loose) {
   if (S.shop) {
     if (!S.ruined) {
       roofAt(7, shade(col, 1.15));
+      if (stage) shopScars(S, stage, mix(S.color, '#2a2230', stage * 0.15));
       drawAwning(S, col);
       const c = P(S.x, S.y - 8, S.h), z = cam.zoom, ci = P(S.x, S.y - 16, S.h);
       shopIcon(S.shop, ci[0], ci[1], 1.2 * z);
       text(SHOPS[S.shop].name.toUpperCase(), c[0], c[1] + 30 * z, Math.max(9, Math.round(14 * z)), '#1b1530', 'center', 'bold');
       text(money(S.value - S.dmg), c[0], c[1] + 48 * z, Math.max(9, Math.round(13 * z)), '#1b1530', 'center', 'bold');
-      if (S.dmg / S.value > 0.25) { // cracks across the roof
-        ctx.strokeStyle = 'rgba(20,15,30,0.7)'; ctx.lineWidth = 2 * z; ctx.beginPath();
-        const a = P(S.x - S.hl * 0.6, S.y - S.hw * 0.3, S.h), b2 = P(S.x - S.hl * 0.1, S.y + S.hw * 0.1, S.h), d = P(S.x + S.hl * 0.5, S.y - S.hw * 0.2, S.h);
-        ctx.moveTo(a[0], a[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(d[0], d[1]); ctx.stroke();
-      }
-    } else for (let i = 0; i < 6; i++) { // rubble on the ruin
-      const ox = ((S.id || 1) * (i + 3) * 37 % 100) / 100 - 0.5, oy = ((i + 5) * 53 % 100) / 100 - 0.5;
-      prism([[S.x + ox * S.hl - 12, S.y + oy * S.hw - 9], [S.x + ox * S.hl + 12, S.y + oy * S.hw - 9], [S.x + ox * S.hl + 12, S.y + oy * S.hw + 9], [S.x + ox * S.hl - 12, S.y + oy * S.hw + 9]], S.h, S.h + 8, '#6c6470', '#4a4248');
-    }
+    } else shopScars(S, 4, S.color); // the ruin's top: stubs of wall, rubble, embers
     return r;
   }
   // the roof: gravel inside the parapet, the parapet's shadow along its lit edges
@@ -2539,22 +2719,29 @@ function drawRoofTop(S: Loose, x0: number, y0: number, x1: number, y1: number) {
 // left (its height leans it toward the lower right, the walls toward the light show), then copied onto every roof
 // that has one. The copies keep its look at any zoom and cost one drawImage each.
 const ITEMS = new Map<string, Loose>(), ITEM_S = 3, ITEM_LEAN = 0.12; // pixels a world unit; the lean, a world unit for each of height
+/** Draws a sprite once: draw(0, 0, 0) into a canvas of its own at sc pixels a world unit, room for hx, hy round the
+ * centre and for what stands up to tall high (leaning down and right). */
+function bakeSprite(sc: number, hx: number, hy: number, tall: number, draw: (x: number, y: number, h: number) => void) {
+  const pad = 2, lean = tall * ITEM_LEAN, cw = Math.ceil((hx * 2 + lean + pad * 2) * sc), ch = Math.ceil((hy * 2 + lean + pad * 2) * sc);
+  const ax = (pad + hx) * sc, ay = (pad + hy) * sc, cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+  const keep = { ctx, W, H, zoom: cam.zoom, x: camDraw.x, y: camDraw.y, VP, NIGHT };
+  // P(0, 0, 0) lands on (ax, ay); a vanishing point far up and left makes height a near-even lean down and right
+  ctx = cv.getContext('2d')!; W = cw; H = ch; cam.zoom = sc; camDraw.x = (cw / 2 - ax) / sc; camDraw.y = (ch / 2 - ay) / sc;
+  VP = [ax - 1e5, ay - 1e5]; PERSP = ITEM_LEAN / 1e5; NIGHT = false;
+  try { draw(0, 0, 0); } finally {
+    ctx = keep.ctx; W = keep.W; H = keep.H; cam.zoom = keep.zoom; camDraw.x = keep.x; camDraw.y = keep.y; VP = keep.VP; PERSP = null; NIGHT = keep.NIGHT;
+  }
+  return { cv, ax, ay, cw, ch, sc };
+}
+/** Copies a baked sprite flat at height h over (x, y): a flat plane in the view is the ground's picture scaled about the vanishing point. */
+function blitSprite(sp: Loose, x: number, y: number, h: number) {
+  const p = P(x, y, h), k = cam.zoom * (1 + h * cam.zoom * tune.persp) / sp.sc;
+  ctx.drawImage(sp.cv, p[0] - sp.ax * k, p[1] - sp.ay * k, sp.cw * k, sp.ch * k);
+}
 function roofItem(key: string, hx: number, hy: number, tall: number, draw: (x: number, y: number, h: number) => void, x: number, y: number, h: number) {
   let sp = ITEMS.get(key);
-  if (!sp) {
-    const pad = 2, lean = tall * ITEM_LEAN, cw = Math.ceil((hx * 2 + lean + pad * 2) * ITEM_S), ch = Math.ceil((hy * 2 + lean + pad * 2) * ITEM_S);
-    const ax = (pad + hx) * ITEM_S, ay = (pad + hy) * ITEM_S, cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
-    const keep = { ctx, W, H, zoom: cam.zoom, x: camDraw.x, y: camDraw.y, VP, NIGHT };
-    // P(0, 0, 0) lands on (ax, ay); a vanishing point far up and left makes height a near-even lean down and right
-    ctx = cv.getContext('2d')!; W = cw; H = ch; cam.zoom = ITEM_S; camDraw.x = (cw / 2 - ax) / ITEM_S; camDraw.y = (ch / 2 - ay) / ITEM_S;
-    VP = [ax - 1e5, ay - 1e5]; PERSP = ITEM_LEAN / 1e5; NIGHT = false;
-    try { draw(0, 0, 0); } finally {
-      ctx = keep.ctx; W = keep.W; H = keep.H; cam.zoom = keep.zoom; camDraw.x = keep.x; camDraw.y = keep.y; VP = keep.VP; PERSP = null; NIGHT = keep.NIGHT;
-    }
-    sp = { cv, ax, ay, cw, ch }; ITEMS.set(key, sp);
-  }
-  const p = P(x, y, h), k = cam.zoom * (1 + h * cam.zoom * tune.persp) / ITEM_S;
-  ctx.drawImage(sp.cv, p[0] - sp.ax * k, p[1] - sp.ay * k, sp.cw * k, sp.ch * k);
+  if (!sp) { sp = bakeSprite(ITEM_S, hx, hy, tall, draw); ITEMS.set(key, sp); }
+  blitSprite(sp, x, y, h);
 }
 function roofTank(cx: number, cy: number, h: number) { // a wooden water tank, a hoop round it, a cone roof
   const R = 13, oct = (rr: number) => Array.from({ length: 8 }, (_, i) => [cx + Math.cos(i * Math.PI / 4 + 0.39) * rr, cy + Math.sin(i * Math.PI / 4 + 0.39) * rr]);

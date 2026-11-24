@@ -1308,9 +1308,8 @@ function drawTunnels() {
   const st = state, rh = st.roadHalf, xm = EXT + tune.tunnel_mouth, top = -st.south - 600, bot = st.south + st.lv.approach + 700, h = tune.tunnel_height;
   for (const side of [-1, 1]) {
     const xa = side * xm, xb = side * (xm + 1400);
-    const deep = st.trenches ? -Math.max(...st.trenches.map((t: Loose) => t.D)) : 0;
-    prism([[Math.min(xa, xb), top], [Math.max(xa, xb), top], [Math.max(xa, xb), bot], [Math.min(xa, xb), bot]], deep, h, '#4f8a3c', '#9aa3ad');
-    for (const t of st.trenches || []) poly([P(xa, t.y0 + 4, -t.D), P(xa, t.y1 - 4, -t.D), P(xa, t.y1 - 4, -t.D + 40), P(xa, t.y0 + 4, -t.D + 40)], '#0d0a18'); // an avenue's mouth
+    // from the road up: the avenues' ends below it are drawn with the avenues (drawTrenches), inside their openings
+    prism([[Math.min(xa, xb), top], [Math.max(xa, xb), top], [Math.max(xa, xb), bot], [Math.min(xa, xb), bot]], 0, h, '#4f8a3c', '#9aa3ad');
     const mouth = [P(xa, -rh, 0), P(xa, rh, 0), P(xa, rh, h * 0.55), P(xa, -rh, h * 0.55)];
     poly(mouth, '#0d0a18');
     poly([P(xa, -rh - 8, h * 0.55), P(xa, rh + 8, h * 0.55), P(xa, rh + 8, h * 0.68), P(xa, -rh - 8, h * 0.68)], '#ffc83d'); // the lintel
@@ -1424,6 +1423,12 @@ function drawTrenches(lower: Loose[]) {
     const here = lower.filter((b: Loose) => floorUnder(T, b.z) === h).sort((a: Loose, b: Loose) => (a.z - b.z) || (a.y - b.y));
     for (const b of here) drawShadow(b);
     for (const b of here) drawVehicle(b);
+    // its two ends: the concrete face under the tunnels' block, from its floor up to the level above, and the mouth its traffic comes out of
+    for (const sd of [-1, 1]) {
+      const xa = sd * (EXT + tune.tunnel_mouth);
+      poly([P(xa, t.y0, h), P(xa, t.y1, h), P(xa, t.y1, t.top), P(xa, t.y0, t.top)], '#8d949d');
+      poly([P(xa, t.y0 + 4, h), P(xa, t.y1 - 4, h), P(xa, t.y1 - 4, h + 40), P(xa, t.y0 + 4, h + 40)], '#0d0a18');
+    }
     // down there it is in the shade: the wall on its north side (or the boulevard's edge) casts its shadow across
     // it, light coming from the upper left as for the vehicles' shadows, and the whole floor is dimmer
     const yn = t.y0, len = (5 + (t.s < 0 && t.top === 0 && !T.some((o: Loose) => o.s === t.s && o.inner === t.outer) ? t.D : t.D - (t.top ? -t.top : 0)) * 0.5) * 1.2;

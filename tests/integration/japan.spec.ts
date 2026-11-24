@@ -147,3 +147,40 @@ test('on every Japanese level the player\'s car can drive up the street to the c
   }
   expect(stuck).toEqual([]);
 });
+
+test('in the typhoon the gusts push a wreck down the boulevard; without it the wreck stays put', async ({ page }) => {
+  const moved: number[] = [];
+  for (const level of [14, 4]) {
+    await openJpLevel(page, level);
+    moved.push(await page.evaluate(() => {
+      const g = window.game!, st = g.state as any;
+      g.step(30, false);
+      const w = st.bodies.find((b: any) => b.ai && b.kind === 'car');
+      st.bodies = st.bodies.filter((b: any) => b === st.player || b === w);
+      Object.assign(w, { ai: false, loose: true, lane: null, x: -700, y: 0, vx: 0, vy: 0, w: 0, a: Math.PI / 2 });
+      g.step(400, false);
+      return Math.round(w.x + 700);
+    }));
+  }
+  const [typhoon, calm] = moved;
+  expect(typhoon).toBeGreaterThan(60);
+  expect(Math.abs(calm)).toBeLessThan(5);
+});
+
+test('the lanterns hang over the traffic; a car thrown into a string brings its lanterns down for points', async ({ page }) => {
+  await openJpLevel(page, 8);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any, row = st.lanterns[0];
+    g.step(600, false); // the traffic drives under them
+    const tornByTraffic = st.lanterns.some((l: any) => l.torn);
+    const car = st.bodies.find((b: any) => b.ai && b.kind === 'car');
+    Object.assign(car, { ai: false, loose: true, inv: true, lane: null, x: row.x - 60, y: 0, z: 34, vx: 400, vy: 0, vz: 60 });
+    const before = st.damage;
+    let n = 0; while (!row.torn && n++ < 60) g.step(1, false);
+    g.step(120, false);
+    return { rows: st.lanterns.length, tornByTraffic, torn: row.torn, gained: st.damage - before, lamps: row.lamps.length, landed: row.lamps.every((l: any) => l.fallen),
+      said: st.floats.some((f: any) => f.txt.startsWith('LANTERNES')) || n < 60 };
+  });
+  expect(r).toMatchObject({ rows: 4, tornByTraffic: false, torn: true, landed: true, said: true });
+  expect(r.gained).toBeGreaterThanOrEqual(r.lamps * 1500);
+});

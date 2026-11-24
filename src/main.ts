@@ -216,6 +216,7 @@ const KINDS: Loose = {
   bus: { name: 'Bus', l: 112, w: 30, h: 30 },
   truck: { name: 'Camion', l: 92, w: 30, h: 34 },
   tanker: { name: 'Camion-citerne', l: 96, w: 28, h: 30 },
+  float: { name: 'Char', l: 84, w: 34, h: 40 }, // the parade's (the United States)
 };
 let levelIdx = 0, daily = false; // daily: today's generated crossroads instead of a level
 function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -243,8 +244,8 @@ const bestNow = () => daily ? (dailyRec.date === today() ? dailyRec.score : 0) :
 const targetsNow = (): number[] => daily ? [TH(), TH() * tune.star2, TH() * tune.star3] : targetsIn(levelIdx + 1, country);
 const TH_OF = (i: number) => targetsIn(i + 1, country)[0]; // a level's 1-star score in this country
 const levelStars = (i: number) => starsAt(best[i], targetsIn(i + 1, country)); // the stars a level's best has won
-const SINGULAR: Loose = { car: 'voiture', taxi: 'taxi', moto: 'moto', bus: 'bus', truck: 'camion', tanker: 'citerne', police: 'voiture de police', ambulance: 'ambulance', fire: 'camion de pompiers' };
-const PLURAL: Loose = { car: 'voitures', taxi: 'taxis', moto: 'motos', bus: 'bus', truck: 'camions', tanker: 'citernes', police: 'voitures de police', ambulance: 'ambulances', fire: 'camions de pompiers' };
+const SINGULAR: Loose = { car: 'voiture', taxi: 'taxi', moto: 'moto', bus: 'bus', truck: 'camion', tanker: 'citerne', police: 'voiture de police', ambulance: 'ambulance', fire: 'camion de pompiers', float: 'char' };
+const PLURAL: Loose = { car: 'voitures', taxi: 'taxis', moto: 'motos', bus: 'bus', truck: 'camions', tanker: 'citernes', police: 'voitures de police', ambulance: 'ambulances', fire: 'camions de pompiers', float: 'chars' };
 function chalLabel(c: Loose) {
   return c.type === 'destroy' ? `Détruis ${c.n} ${c.n > 1 ? PLURAL[c.kind] : SINGULAR[c.kind]}` : c.type === 'blasts' ? `Fais sauter ${c.n} citerne${c.n > 1 ? 's' : ''}`
     : c.type === 'hits' ? `Touche ${c.n} véhicules` : `Score de ${money(c.n)}`;
@@ -488,7 +489,7 @@ function reset() {
     phase: 'intro', introT: tune.intro_time, timeLeft: tune.approach_time,
     crashed: false, crashT: 0, crashX: 0, crashY: 0, slowT: 0, countdown: 0, bannerT: 0,
     bodies: [], blocks: [], props: [], lanes: [], pickups: [], parts: [], floats: [], skids: [], blasts: [],
-    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, nessie: null, nessieUsed: false, mecha: null, mechaUsed: false, sumo: null, sumoDone: false, twister: null, twisterUsed: false, flyRex: null, flyRexDone: false, crossings: [], combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
+    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, nessie: null, nessieUsed: false, mecha: null, mechaUsed: false, sumo: null, sumoDone: false, twister: null, twisterUsed: false, alert: null, typhoon: null, lanterns: [], flyRex: null, flyRexDone: false, crossings: [], combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
     nitroUsed: false, nitroT: 0, oilUsed: false, oilDropT: 0, oilLX: 0, oilLY: 0, jumpsLeft: 0, magnetT: 0, chal: [], stars: 0, insK: 1, rockets: [], rocketsLeft: 0, touchedOnce: false, trailer: null, oils: [], oilGrid: new Map(), scorch: [], controlT: 0, dynUsed: false, passed: false, final: 0, endReason: '',
   };
   state = st;
@@ -533,6 +534,7 @@ function reset() {
   }
   if (lv.lower) buildTrenches(st, lv);
   buildCrossings(st, lv);
+  buildLanterns(st, lv);
   // pre-filled traffic
   for (const ln of st.lanes) {
     let x = -EXT + rng() * 200;
@@ -701,7 +703,7 @@ function hurt(b: Loose, amount: Loose, px: Loose, py: Loose) {
   const got = b.dmg - before;
   if (isMine(b) || got <= 0 || !b.inv) return; // only what the player set off scores
   if (!b.touched) { b.touched = true; state.hitCount++; }
-  if (before < b.value && b.dmg >= b.value) state.destroyed[b.kind] = (state.destroyed[b.kind] || 0) + 1;
+  if (before < b.value && b.dmg >= b.value) { state.destroyed[b.kind] = (state.destroyed[b.kind] || 0) + 1; if (b.kind === 'float') confetti(b.x, b.y); }
   const paid = got * carDmgK(); // the vehicle at the wheel scores more (my_dmg_*); the wreck itself takes only got
   state.damage += paid; b.pend += paid;
   if (b.kind === 'tanker' && b.dmg >= b.value && !b.exploded) { b.exploded = true; state.blasts.push(b); }
@@ -814,7 +816,8 @@ function startEvent(type: Loose) {
     return;
   }
   const st = state, main = st.lanes.filter((l: Loose) => !l.low), ln = main[Math.floor(rng() * main.length)], x0 = -ln.dir * tune.event_dist; // on the boulevard
-  st.bodies = st.bodies.filter((b: Loose) => isMine(b) || b.loose || Math.abs(b.y - ln.y) > 20 || Math.abs(b.x - x0) > 560);
+  const clear = type === 'parade' ? tune.parade_floats * tune.parade_gap + 200 : 560;
+  st.bodies = st.bodies.filter((b: Loose) => isMine(b) || b.loose || Math.abs(b.y - ln.y) > 20 || (b.x - x0) * -ln.dir > clear || (b.x - x0) * ln.dir > 560);
   const col: Loose = { police: '#f8f9fa', truck: '#3d7bff', tanker: '#e03131', car: '#ff2d95' };
   const put = (kind: Loose, back: Loose, k: Loose, mod?: Loose) => {
     const b = mkBody(kind, x0 - ln.dir * back, ln.y, ln.dir > 0 ? 0 : Math.PI, col[kind]);
@@ -823,7 +826,14 @@ function startEvent(type: Loose) {
     st.bodies.push(b); return b;
   };
   let txt = '';
-  if (type === 'convoy') { put('police', 0, 0.8); put('truck', 105, 0.8, wideLoad); put('truck', 260, 0.8, wideLoad); put('police', 365, 0.8); txt = 'CONVOI EXCEPTIONNEL !'; }
+  if (type === 'alert') { // the United States: sirens, then a tornado of its own once the pile-up starts
+    st.alert = { t: 0, sirenT: 0, done: false }; st.eventBanner = { txt: 'ALERTE TORNADE !', t: 3 };
+    events.push({ type: 'event', what: type, t: st.t }); return;
+  }
+  if (type === 'parade') { // the United States: the floats, slowly, one behind the other
+    for (let i = 0; i < tune.parade_floats; i++) put('float', i * tune.parade_gap, 1, (b: Loose) => { b.look = i % 4; b.color = FLOAT_COLORS[i % 4]; });
+    txt = 'LA PARADE !';
+  } else if (type === 'convoy') { put('police', 0, 0.8); put('truck', 105, 0.8, wideLoad); put('truck', 260, 0.8, wideLoad); put('police', 365, 0.8); txt = 'CONVOI EXCEPTIONNEL !'; }
   else if (type === 'chase') { const chase = (b: Loose) => { b.chase = true; };
     put('car', 0, 1.7, chase); put('police', 75, 1.7, chase); put('police', 150, 1.7, chase); txt = 'COURSE-POURSUITE !'; }
   else { put('tanker', 0, 0.85, giantTanker); txt = 'CITERNE GÉANTE !'; }
@@ -833,7 +843,7 @@ function startEvent(type: Loose) {
 }
 function snap(b: Loose): Loose {
   return { kind: b.kind, model: b.model, x: b.x, y: b.y, a: b.a, z: b.z, roll: b.roll, hl: b.hl, hw: b.hw, height: b.height, color: b.color, dmg: b.dmg,
-    value: b.value, id: b.id, gear: b.gear, rider: b.rider, stripe: b.stripe, fuse: b.fuse, dent: b.dent, loose: b.loose, braking: false, static: false };
+    value: b.value, id: b.id, look: b.look, crushed: b.crushed, gear: b.gear, rider: b.rider, stripe: b.stripe, fuse: b.fuse, dent: b.dent, loose: b.loose, braking: false, static: false };
 }
 function stepParts(sdt: Loose) {
   const st = state;
@@ -1187,7 +1197,7 @@ function updatePlay(dt: Loose) {
     mechaCall(); events.push({ type: 'mecha', t: st.t });
   }
   // the tornado (C, the United States): it comes in from the left of the screen
-  if (G().twister && country === 'us' && !st.twisterUsed && pressed('KeyC') && (st.phase === 'drive' || st.phase === 'crash')) {
+  if (G().twister && country === 'us' && !st.twisterUsed && !st.twister && pressed('KeyC') && (st.phase === 'drive' || st.phase === 'crash')) {
     st.twisterUsed = true; startPileup(-EXT, 0);
     const left = camDraw.x - W / 2 / cam.zoom - 160;
     st.twister = { x: Math.max(-EXT, Math.min(-480, left)), y: 0, t: 0, pt: 0, phase: 'in', carried: [], windT: 0, cx: 0 };
@@ -1195,7 +1205,10 @@ function updatePlay(dt: Loose) {
     wind(); events.push({ type: 'twister', t: st.t });
   }
   if (st.sumo) stepSumo(st.sumo, sdt); else if (st.flyRex) stepFlyRex(st.flyRex, sdt); else if (st.trex) stepTrex(st.trex, sdt);
+  if (st.alert) stepAlert(st.alert, sdt);
   if (st.twister) stepTwister(st.twister, sdt);
+  if (st.lv.typhoon) stepTyphoon(sdt);
+  if (st.lanterns.length) stepLanterns(sdt);
   if (st.crossings.length) stepCrossings(sdt);
   if (st.mecha) stepMecha(st.mecha, sdt);
   if (st.trex && st.mecha && !st.sumo && !st.sumoDone && trexMeetsMecha(st.trex, st.mecha)) startSumo(st.trex, st.mecha);
@@ -2040,9 +2053,10 @@ function wind() { tone(90, 1.6, 'sawtooth', 0.05); crunch(0.25, true); }
 function stepTwister(tw: Loose, dt: number) {
   const st = state, Rp = tune.twister_pull_radius, Rc = tune.twister_core;
   tw.t += dt; tw.pt += dt;
-  if (tw.phase === 'in') { tw.x += tune.twister_speed * dt; if (tw.x >= -60) { tw.phase = 'roam'; tw.pt = 0; tw.cx = tw.x; } }
+  const dir = tw.dir || 1; // the player's comes from the left, the alert's from the right
+  if (tw.phase === 'in') { tw.x += dir * tune.twister_speed * dt; if (dir * tw.x >= -60) { tw.phase = 'roam'; tw.pt = 0; tw.cx = tw.x; } }
   else if (tw.phase === 'roam') { tw.x = tw.cx + Math.sin(tw.pt * 0.9) * 220; if (tw.pt > tune.twister_roam) { tw.phase = 'out'; tw.pt = 0; } }
-  else { tw.x += tune.twister_speed * dt; if (tw.x > EXT + 300) { for (const b of tw.carried) delete b.tw; st.twister = null; return; } }
+  else { tw.x += dir * tune.twister_speed * dt; if (dir * tw.x > EXT + 300) { for (const b of tw.carried) delete b.tw; st.twister = null; return; } }
   tw.y = Math.sin(tw.t * 0.8) * st.roadHalf * 0.5;
   tw.windT -= dt; if (tw.windT <= 0) { tw.windT = 1.4; wind(); }
   // dragged in and swirled; lifted at the core
@@ -3041,6 +3055,200 @@ function drawBritish(b: Loose, dk: string, box: Loose, L: number, Wd: number, z:
   }
   return false;
 }
+// ---- The typhoon (Japan): gusts down the boulevard -------------------------------------------------------------
+// On a level with typhoon, the wind blows along the boulevard (+x) in gusts: every typhoon_gust_every seconds or so a
+// gust of typhoon_gust_time rises and falls. It pushes what is loose (wrecks, the player's car once out of hand, a
+// vehicle in the air most of all), the smoke and the flames, and drives leaves and bits of roof across the screen.
+// The player's car at the wheel feels typhoon_player of it: a gust makes it drift. Traffic in its lane holds on.
+/** The typhoon's gust now: 0 between gusts, up to 1 at a gust's height. */
+const gustK = () => { const ty = state.typhoon; return ty && ty.t >= 0 ? Math.sin(Math.PI * Math.min(1, ty.t / tune.typhoon_gust_time)) : 0; };
+function stepTyphoon(dt: number) {
+  const st = state, ty = st.typhoon || (st.typhoon = { next: tune.typhoon_gust_every * 0.5, t: -1, n: 0 });
+  if (ty.t < 0) {
+    ty.next -= dt;
+    if (ty.next <= 0) {
+      ty.t = 0; ty.n++; wind(); events.push({ type: 'gust', t: st.t });
+      if (st.player) st.floats.push({ x: st.player.x, y: st.player.y, txt: 'RAFALE !', t: 0, color: '#a5d8ff', big: true });
+    }
+  } else {
+    ty.t += dt;
+    if (ty.t >= tune.typhoon_gust_time) { ty.t = -1; ty.next = tune.typhoon_gust_every * (0.75 + 0.5 * ((ty.n * 0.618) % 1)); }
+  }
+  const k = Math.max(tune.typhoon_breeze, gustK());
+  for (const b of st.bodies) {
+    if (b.static || b.tw || (b.ai && !b.loose)) continue;
+    const air = b.z > 2 ? 2 : 1, own = b.kind === 'player' && b.control ? tune.typhoon_player : 1;
+    b.vx += tune.typhoon_push * k * air * own / b.m * dt;
+  }
+  for (const q of st.parts) if (q.type === 'smoke' || q.type === 'fire') q.vx += 160 * k * dt;
+  // leaves and bits of roof blown across the screen in a gust
+  if (gustK() > 0.3 && vr() < 30 * dt) {
+    const x0 = camDraw.x - W / 2 / cam.zoom - 40, y0 = camDraw.y + (vr() - 0.5) * H / cam.zoom;
+    const d = addPart('debris', x0, y0, 30 + vr() * 70, 420 + vr() * 260, (vr() - 0.5) * 80, 60 + vr() * 80, 2.4);
+    if (d) { d.color = ['#2f9e44', '#94d82d', '#a9744f', '#868e96'][Math.floor(vr() * 4)]; d.size = 3 + vr() * 3; }
+  }
+}
+
+// ---- The lantern festival (Japan): strings of paper lanterns across the boulevard ---------------------------------
+// On a level with lanterns, lantern_rows strings on each side of the crossroads hang across the boulevard from pole to
+// pole, sagging in the middle, lit at night. Anything that reaches them (a vehicle thrown up, the T-Rex, the robot,
+// the tornado) tears the string: its lanterns all fall, burn a little on the road, and each scores value_lantern.
+function buildLanterns(st: Loose, lv: Loose) {
+  st.lanterns = [];
+  if (!lv.lanterns) return;
+  const half = st.roadHalf + SIDEWALK * 0.5;
+  for (const sx of [-1, 1]) for (let i = 0; i < tune.lantern_rows; i++) {
+    const x = sx * (tune.lantern_first + i * tune.lantern_spacing), n = Math.max(3, Math.floor(2 * half / tune.lantern_gap)), lamps: Loose[] = [];
+    for (let j = 0; j < n; j++) {
+      const y = -half + (j + 0.5) * 2 * half / n, h = tune.lantern_h - tune.lantern_sag * (1 - (y / half) ** 2);
+      lamps.push({ x, y, h, z: h, vx: 0, vy: 0, vz: 0, fallen: false, burnT: 0, white: j % 3 === 1 });
+    }
+    st.lanterns.push({ x, half, torn: false, lamps });
+  }
+}
+/** A string torn by something moving at (vx, vy): its lanterns fall, and score. */
+function tearLanterns(row: Loose, vx: number, vy: number) {
+  const st = state; row.torn = true;
+  for (const l of row.lamps) { l.vx = vx * 0.4 + (vr() - 0.5) * 60; l.vy = vy * 0.4 + (vr() - 0.5) * 60; l.vz = 40 + vr() * 60; }
+  const v = tune.value_lantern * row.lamps.length; st.damage += v;
+  st.floats.push({ x: row.x, y: 0, txt: 'LANTERNES ! +' + money(v), t: 0, color: '#ff8787', big: true });
+  tone(880, 0.15, 'triangle', 0.1); tone(660, 0.2, 'triangle', 0.08, 0.1);
+  events.push({ type: 'lanterns', t: st.t });
+}
+function stepLanterns(dt: number) {
+  const st = state;
+  for (const row of st.lanterns) {
+    if (!row.torn) {
+      let by: Loose = null;
+      for (const b of st.bodies) {
+        if (Math.abs(b.x - row.x) > b.hl + 6 || Math.abs(b.y) > row.half + b.hw) continue;
+        if (b.z + b.height >= tune.lantern_h - tune.lantern_sag - 4 && b.z < tune.lantern_h + 12 && (b.inv || isMine(b))) { by = b; break; }
+      }
+      const giant = (g: Loose, r: number) => g && Math.abs(g.x - row.x) < r && Math.abs(g.y) < row.half + 40;
+      if (by) tearLanterns(row, by.vx, by.vy);
+      else if (giant(st.trex, tune.trex_len / 2) && !(st.trex.lift > 0)) tearLanterns(row, (st.trex.dir || 1) * 100, 0);
+      else if (giant(st.mecha, tune.mecha_len / 2)) tearLanterns(row, (st.mecha.dir || 1) * 100, 0);
+      else if (giant(st.twister, tune.twister_core * 2)) tearLanterns(row, 0, 0);
+      continue;
+    }
+    for (const l of row.lamps) {
+      if (!l.fallen) {
+        l.x += l.vx * dt; l.y += l.vy * dt; l.z += l.vz * dt; l.vz -= tune.gravity * 0.5 * dt;
+        if (l.z <= 0) { l.z = 0; l.fallen = true; l.burnT = 1.5 + vr() * 1.5; }
+      } else if (l.burnT > 0) {
+        l.burnT -= dt;
+        if (vr() < 8 * dt) addPart('fire', l.x, l.y, 3, (vr() - 0.5) * 10, (vr() - 0.5) * 10, 20 + vr() * 20, 0.4 + vr() * 0.3);
+      }
+    }
+  }
+}
+/** The strings, their poles and lanterns: a paper ball with a dark cap top and bottom, red or white. */
+function drawLanterns() {
+  const st = state, z = cam.zoom;
+  for (const row of st.lanterns) {
+    for (const sd of [-1, 1]) { // the poles
+      const pb = { x: row.x, y: sd * row.half, a: 0 };
+      prism(rect(pb, 0, 0, 3, 3), 0, tune.lantern_h + 4, '#5c3d2e', '#3b2a20');
+    }
+    if (!row.torn) {
+      ctx.strokeStyle = '#2b2026'; ctx.lineWidth = Math.max(1, 1.2 * z); ctx.beginPath();
+      const a = P(row.x, -row.half, tune.lantern_h + 4); ctx.moveTo(a[0], a[1]);
+      for (const l of row.lamps) { const p = P(l.x, l.y, l.h + 5); ctx.lineTo(p[0], p[1]); }
+      const e = P(row.x, row.half, tune.lantern_h + 4); ctx.lineTo(e[0], e[1]); ctx.stroke();
+    }
+    for (const l of row.lamps) {
+      const p = P(l.x, l.y, l.z), r = 5 * z * (1 + l.z * z * tune.persp);
+      if (l.fallen) { // squashed on the road, scorched once burnt
+        ctx.fillStyle = l.burnT > 0 ? '#c92a2a' : '#3b2a2a'; ctx.beginPath(); ctx.ellipse(p[0], p[1], r * 1.3, r * 0.7, 0.4, 0, Math.PI * 2); ctx.fill();
+        continue;
+      }
+      ctx.fillStyle = l.white ? '#fff4e0' : '#ff4d4d'; ctx.beginPath(); ctx.ellipse(p[0], p[1], r, r * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,230,150,0.55)'; ctx.beginPath(); ctx.ellipse(p[0] - r * 0.25, p[1] - r * 0.2, r * 0.4, r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1d1a26'; ctx.fillRect(p[0] - r * 0.6, p[1] - r * 1.25, r * 1.2, r * 0.3); ctx.fillRect(p[0] - r * 0.6, p[1] + r * 0.95, r * 1.2, r * 0.3);
+    }
+  }
+}
+/** At night the lanterns light the road under them: a warm glow added on top of the dark (two glows drawn once). */
+const LANTERN_GLOW: HTMLCanvasElement[] = [];
+function lanternGlowSprite(white: boolean) {
+  const i = white ? 1 : 0; if (LANTERN_GLOW[i]) return LANTERN_GLOW[i];
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d')!, gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, white ? 'rgba(255,230,170,0.32)' : 'rgba(255,120,90,0.32)'); gr.addColorStop(1, 'rgba(255,120,90,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return (LANTERN_GLOW[i] = cv);
+}
+function lanternGlow() {
+  const r = 28 * cam.zoom;
+  for (const row of state.lanterns) for (const l of row.lamps) {
+    if (l.fallen && l.burnT <= 0) continue;
+    const p = P(l.x, l.y, l.z); ctx.drawImage(lanternGlowSprite(l.white), p[0] - r, p[1] - r, r * 2, r * 2);
+  }
+}
+
+// ---- The tornado alert (the United States): sirens, a dark sky, and a tornado of its own --------------------------
+// The event: the sirens wail, the sky darkens, and alert_delay seconds after the alert, once the pile-up has started,
+// a tornado touches down at the right of the screen and crosses the boulevard right to left (the player's own comes
+// from the left). The player's tornado waits while it is there.
+function stepAlert(al: Loose, dt: number) {
+  const st = state;
+  al.t += dt; al.sirenT -= dt;
+  if (al.sirenT <= 0 && !al.done) { al.sirenT = 1.6; tone(420, 0.7, 'sawtooth', 0.05); tone(620, 0.7, 'sawtooth', 0.05, 0.7); }
+  if (!al.done && !st.twister && st.crashed && al.t > tune.alert_delay) {
+    al.done = true;
+    const right = camDraw.x + W / 2 / cam.zoom + 160;
+    st.twister = { x: Math.min(EXT, Math.max(480, right)), y: 0, t: 0, pt: 0, phase: 'in', carried: [], windT: 0, cx: 0, dir: -1, wild: true };
+    st.floats.push({ x: st.twister.x - 200, y: 0, txt: 'TORNADE !', t: 0, color: '#ced4da', big: true });
+    wind(); events.push({ type: 'twister', wild: true, t: st.t });
+  }
+}
+
+// ---- The parade (the United States): floats down the boulevard ----------------------------------------------------
+// The event: parade_floats floats drive slowly down one lane, one behind the other: a giant gold star, a birthday cake,
+// a rocket, a striped balloon. Each is worth value_float; destroyed, it bursts into confetti.
+const FLOAT_COLORS = ['#1f3a8a', '#e64980', '#f1f3f5', '#c92a2a'];
+/** A burst of confetti at (x, y). */
+function confetti(x: number, y: number) {
+  const cols = ['#ff6b6b', '#ffd43b', '#4dabf7', '#69db7c', '#f783ac', '#ffffff'];
+  for (let i = 0; i < 40; i++) {
+    const an = vr() * Math.PI * 2, sp = 60 + vr() * 200, d = addPart('debris', x, y, 40, Math.cos(an) * sp, Math.sin(an) * sp, 200 + vr() * 250, 1.4 + vr());
+    if (d) { d.color = cols[i % cols.length]; d.size = 2.5 + vr() * 2; }
+  }
+  tone(990, 0.12, 'square', 0.08); tone(1320, 0.12, 'square', 0.08, 0.1);
+}
+/** A float: a skirted platform, fringed, with its giant figure on top (b.look: 0 star, 1 cake, 2 rocket, 3 balloon). */
+function drawFloat(b: Loose, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean) {
+  const paint = (c: string) => wreck ? col : mix(c, '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
+  const c = Math.cos(b.a), s = Math.sin(b.a), at = (u: number, v: number, h: number) => P(b.x + c * u - s * v, b.y + s * u + c * v, z + h);
+  box(0, L, Wd, 2, 10, col, col); // the skirt
+  if (!wreck) for (let i = 0; i < 10; i++) for (const sd of [1, -1]) flat(b, -L * 0.45 + i * L * 0.1, sd * (Wd / 2 - 1.5), L * 0.05, 3, z + 10.1, '#fff3bf'); // the fringe
+  box(L * 0.42, L * 0.14, Wd * 0.5, 2, 14, paint('#343a40'), glass); // the driver's little cab, under the front
+  const look = b.look || 0;
+  if (look === 0) { // a giant gold star on a post
+    box(0, 4, 4, 10, 26, '#adb5bd', '#868e96');
+    const star = (h: number, r: number, fill: string) => { const pts: number[][] = []; for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; pts.push(at(Math.sin(an) * rr * 0.9, Math.cos(an) * rr, h)); } poly(pts, fill); };
+    star(26, Wd * 0.62, paint('#e0a800')); star(30, Wd * 0.6, paint('#ffd43b')); star(30.2, Wd * 0.3, paint('#fff3bf'));
+  } else if (look === 1) { // a birthday cake, three tiers, candles
+    box(0, L * 0.6, Wd * 0.86, 10, 20, paint('#ffd8e4'), paint('#f783ac'));
+    box(0, L * 0.42, Wd * 0.64, 20, 29, paint('#fff8f0'), paint('#ffc9de'));
+    box(0, L * 0.26, Wd * 0.42, 29, 36, paint('#ffd8e4'), paint('#f783ac'));
+    if (!wreck) for (const v of [-0.12, 0, 0.12]) { box(L * v * 0.8, 2, 2, 36, 42, '#4dabf7', '#339af0', Wd * v); flat(b, L * v * 0.8, Wd * v, 2.5, 2.5, z + 42.2, '#ffd43b'); }
+  } else if (look === 2) { // a rocket lying along it: white, a red nose and fins, a round window
+    box(-L * 0.04, L * 0.6, Wd * 0.42, 10, 26, paint('#f1f3f5'), paint('#ced4da'));
+    box(L * 0.32, L * 0.12, Wd * 0.28, 12, 23, paint('#e03131'), paint('#a61e1e'));
+    box(-L * 0.32, 8, Wd * 0.86, 10, 20, paint('#e03131'), paint('#a61e1e'));
+    const w = at(L * 0.1, 0, 26.2); ctx.fillStyle = '#4dabf7'; ctx.beginPath(); ctx.arc(w[0], w[1], 3.4 * cam.zoom, 0, Math.PI * 2); ctx.fill();
+  } else { // a striped balloon high above, held by four ropes
+    const top = at(0, 0, 62), rr = Wd * 0.55 * cam.zoom * (1 + (z + 62) * cam.zoom * (PERSP ?? tune.persp));
+    ctx.strokeStyle = '#495057'; ctx.lineWidth = Math.max(0.8, cam.zoom);
+    for (const [u, v] of [[0.3, 0.35], [0.3, -0.35], [-0.3, 0.35], [-0.3, -0.35]]) { const a = at(L * u, Wd * v, 10), q = at(L * u * 0.3, Wd * v * 0.3, 55); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
+    if (wreck) { ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(top[0], top[1], rr * 0.7, rr * 0.4, b.a, 0, Math.PI * 2); ctx.fill(); }
+    else {
+      const cols = ['#e03131', '#f8f9fa', '#1c7ed6', '#f8f9fa'];
+      for (let i = 0; i < 8; i++) { ctx.fillStyle = paint(cols[i % 4]); ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.arc(top[0], top[1], rr, b.a + i * Math.PI / 4, b.a + (i + 1) * Math.PI / 4); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(top[0] - rr * 0.3, top[1] - rr * 0.3, rr * 0.3, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
 // ---- Japan's and the United States' vehicles: the same bodies, drawn each country's way -----------------------
 // A car's look there is one of three (b.id % 3): Japan has the cube car, the kei truck and the plain car; the United
 // States the pickup, the SUV and the plain car. The truck is two (b.id % 2): the long-nosed rig or the ice-cream truck.
@@ -3333,7 +3541,7 @@ const SPRITE_PAD = 6, SPRITE_MAX = 300; // world units round the body (wheels, b
 function vehicleSprite(b: Loose, stage: number) {
   const S = Math.min(3, Math.max(1.5, Math.ceil(baseR * 1.6 * 2) / 2)); // pixels a world unit: sharp up close, capped for a phone's memory
   if (S !== spriteScale) { SPRITES.clear(); spriteScale = S; }
-  const key = country + '|' + b.kind + '|' + b.color + '|' + (b.kind === 'car' && (country === 'jp' || country === 'us') ? b.id % 6 : b.id % 2) + '|' + (b.crushed ? 'c' : '') + '|' + (b.rider || '') + '|' + (b.stripe || '') + '|' + (b.wide ? 1 : 0) + '|' + stage;
+  const key = country + '|' + b.kind + '|' + b.color + '|' + (b.kind === 'car' && (country === 'jp' || country === 'us') ? b.id % 6 : b.id % 2) + '|' + (b.crushed ? 'c' : '') + (b.look ?? '') + '|' + (b.rider || '') + '|' + (b.stripe || '') + '|' + (b.wide ? 1 : 0) + '|' + stage;
   let sp = SPRITES.get(key); if (sp) return sp;
   if (SPRITES.size >= SPRITE_MAX) SPRITES.clear();
   const cw = Math.ceil((b.hl * 2 + SPRITE_PAD * 2) * S), ch = Math.ceil((b.hw * 2 + SPRITE_PAD * 2) * S);
@@ -3395,6 +3603,7 @@ function drawVehicleShapes(b: Loose) {
   else if (country === 'jp' && drawJapanese(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the Japanese way */ }
   else if (country === 'us' && drawAmerican(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the American way */ }
   else if (dk === 'monster') drawMonster(b, box, L, Wd, z, col, glass, wreck);
+  else if (dk === 'float') drawFloat(b, box, L, Wd, z, col, glass, wreck);
   else if (dk === 'hay') { // a straw bale with its two strings
     box(0, L, Wd, 0, 20, wreck ? '#b08a3a' : '#f2c94c', '#c99a2e');
     flat(b, -L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a'); flat(b, L * 0.25, 0, 2, Wd, z + 20.1, '#a8742a');
@@ -4235,6 +4444,7 @@ function drawWorld() {
   for (const S of blocks) S.kind === 'arc' ? drawArc(S) : drawBuilding(S);
   for (const c of st.cranes) c.monument === 'eiffel' ? drawEiffel(c) : c.monument === 'bigben' ? drawBigBen(c) : c.monument === 'pagode' ? drawPagode(c) : c.monument === 'liberte' ? drawLiberte(c) : drawCrane(c);
   drawTunnels();
+  if (st.lanterns.length) drawLanterns();
   for (const b of air) { drawShadow(b); }
   air.sort((a: Loose, b: Loose) => a.z - b.z);
   for (const b of air) drawVehicle(b);
@@ -4247,7 +4457,8 @@ function drawWorld() {
   if (st.flyRex && st.flyRex.landed && st.trex) dizzy(st.trex.x + 30, st.trex.y, 100, st.flyRex.t);
   if (st.sumo && st.sumo.thrown && st.trex && st.mecha) { const L = st.sumo.win === 'trex' ? st.mecha : st.trex; if (L.down > 0.6) dizzy(L.x - (L.dir || -1) * 30, L.y, 60, st.sumo.t); }
   drawParts(true);
-  if (st.twister) { ctx.fillStyle = 'rgba(25,25,48,0.22)'; ctx.fillRect(0, 0, W, H); } // the storm's dark sky
+  if (st.twister || st.alert) { ctx.fillStyle = `rgba(25,25,48,${st.twister ? 0.22 : 0.22 * Math.min(1, st.alert.t / 3)})`; ctx.fillRect(0, 0, W, H); } // the storm's dark sky
+  if (st.lv && st.lv.typhoon) { ctx.fillStyle = 'rgba(30,50,60,0.18)'; ctx.fillRect(0, 0, W, H); } // the typhoon's grey-green light
   if (NIGHT) { // the dark, then headlight beams added on top
     ctx.fillStyle = 'rgba(8,6,32,0.6)'; ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'lighter';
@@ -4257,12 +4468,14 @@ function drawWorld() {
       poly([P(fx + sn * b.hw * 0.7, fy - c * b.hw * 0.7, b.z + 6), P(fx + c * L + sn * wd, fy + sn * L - c * wd, 0),
         P(fx + c * L - sn * wd, fy + sn * L + c * wd, 0), P(fx - sn * b.hw * 0.7, fy + c * b.hw * 0.7, b.z + 6)], 'rgba(255,225,150,0.13)');
     }
+    if (st.lanterns.length) lanternGlow();
     ctx.globalCompositeOperation = 'source-over';
   }
-  if (st.lv && st.lv.rain) { // a blue tint and slanting streaks
+  if (st.lv && st.lv.rain) { // a blue tint and slanting streaks; in a typhoon, more of them, driven by the wind
     ctx.fillStyle = 'rgba(40,60,120,0.16)'; ctx.fillRect(0, 0, W, H);
+    const ty = st.lv.typhoon, sx = ty ? 14 + 34 * gustK() : -8, n = ty ? 260 : 160;
     ctx.strokeStyle = 'rgba(200,215,255,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath();
-    for (let i = 0; i < 160; i++) { const x = vr() * (W + 100) - 50, y = vr() * H; ctx.moveTo(x, y); ctx.lineTo(x - 8, y + 22); }
+    for (let i = 0; i < n; i++) { const x = vr() * (W + 200) - 100, y = vr() * H; ctx.moveTo(x, y); ctx.lineTo(x + sx, y + 22); }
     ctx.stroke();
   }
   if (st.lv && st.lv.ice) { // snow: a pale tint and falling pixel flakes
@@ -4295,7 +4508,7 @@ function drawHUD() {
   const st = state, p = st.player, th = TH();
   panel(16, 14, 330, 54);
   text(daily ? 'CARAMBOLAGE DU JOUR' : `NIVEAU ${levelIdx + 1}`, 34, 32, 16, '#ffc83d', 'left');
-  text((daily ? today() : st.lv.name.toUpperCase()) + (st.lv.rain && !/pluie/i.test(st.lv.name) ? ' · PLUIE' : '') + (st.lv.night && !/nuit/i.test(st.lv.name) ? ' · NUIT' : '') + (st.lv.fog && !/brouillard/i.test(st.lv.name) ? ' · BROUILLARD' : '') + (st.lv.ice && !/verglas|blizzard/i.test(st.lv.name) ? ' · VERGLAS' : ''), 34, 53, 19, '#fff', 'left');
+  text((daily ? today() : st.lv.name.toUpperCase()) + (st.lv.rain && !/pluie/i.test(st.lv.name) ? ' · PLUIE' : '') + (st.lv.night && !/nuit/i.test(st.lv.name) ? ' · NUIT' : '') + (st.lv.fog && !/brouillard/i.test(st.lv.name) ? ' · BROUILLARD' : '') + (st.lv.ice && !/verglas|blizzard/i.test(st.lv.name) ? ' · VERGLAS' : '') + (st.lv.typhoon && !/typhon/i.test(st.lv.name) ? ' · TYPHON' : '') + (st.lv.lanterns ? ' · LANTERNES' : ''), 34, 53, 19, '#fff', 'left');
   panel(W - 380, 14, 364, 104);
   text('DÉGÂTS', W - 360, 34, 16, '#ff9fb2', 'left');
   text(money(st.damage), W - 32, 44, 34, '#fff', 'right', 'bold', 0);
@@ -4627,7 +4840,7 @@ function drawWheelCard(i: Loose, k: Loose) {
   if (sel) { ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 3; ctx.strokeRect(r.x + 8, r.y + 3, r.w - 16, r.h - 6); }
   text(String(i + 1), mx, r.y + 30 * sc, Math.round(36 * sc), ok ? '#ffc83d' : '#5c5470', 'center', 'bold italic');
   text(ok ? lv.name : 'Verrouillé', mx, r.y + 64 * sc, Math.round(19 * sc), ok ? '#fff' : '#8a80a8', 'center', 'bold');
-  const tags = [lv.rain && 'pluie', lv.night && 'nuit', lv.fog && 'brouillard', lv.ice && 'verglas', lv.median && 'autoroute', lv.ramp && 'tremplin'].filter(Boolean).join(' · ');
+  const tags = [lv.rain && 'pluie', lv.night && 'nuit', lv.fog && 'brouillard', lv.ice && 'verglas', lv.median && 'autoroute', lv.ramp && 'tremplin', lv.typhoon && 'typhon', lv.lanterns && 'lanternes'].filter(Boolean).join(' · ');
   if (ok && tags) text(tags, mx, r.y + 88 * sc, Math.round(14 * sc), '#a89fc8', 'center', 'bold');
   for (let s2 = 0; s2 < 3; s2++) star(mx - 30 * sc + s2 * 30 * sc, r.y + 116 * sc, 12 * sc, s2 < nst ? '#ffc83d' : '#3b3160');
   if (ok) text(best[i] ? 'Record ' + money(best[i]) : 'Objectif ' + money(TH_OF(i)), mx, r.y + 146 * sc, Math.round(14 * sc), '#d0c8f0', 'center', 'bold');

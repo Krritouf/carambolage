@@ -126,7 +126,13 @@ d'étoiles et les prix du garage sont arrondis à 3 chiffres significatifs dans 
 millier), pour des cibles rondes. **Les véhicules japonais** (2026-11-24) : la voiture cubique, le mini-camion kei
 (cageots de légumes), la voiture ordinaire (un tiers chacune), le taxi vert au lumignon et aux rétroviseurs sur les ailes,
 la police noir et blanc, le scooter de livraison au coffre rouge, le bus de ville blanc à bande verte, le camion à
-cabine plate et caisse alu. Reste : le typhon et les lanternes.
+cabine plate et caisse alu. **Le typhon** (niveaux 14 et 19, `typhoon`) : le vent souffle le long du boulevard par
+rafales (« RAFALE ! », `typhoon_gust_every`, `typhoon_gust_time`) ; il pousse les épaves, et plus fort ce qui est en l'air
+(`typhoon_push`), fait dériver ta voiture (`typhoon_player`), couche la fumée et les flammes, emporte feuilles et bouts de
+toit ; la pluie bat en biais. **Le festival des lanternes** (niveaux de nuit 8, 16 et 20, `lanterns`) : deux guirlandes de
+lanternes en papier de chaque côté du carrefour, tendues d'un trottoir à l'autre, qui éclairent la route ; la circulation
+passe dessous, mais un véhicule projeté, le T-Rex, Kaminari-Go ou la tornade arrache la guirlande : toutes ses lanternes
+tombent, brûlent un peu et rapportent `value_lantern` chacune (« LANTERNES ! »).
 
 - **Mécanique : l'échangeur sur plusieurs étages** : des voies qui se croisent en hauteur, des
   véhicules qui tombent d'un niveau à l'autre.
@@ -160,7 +166,12 @@ police noir et blanc à pare-buffle, bus scolaire jaune à long nez, semi-remorq
 de glaces (un camion sur deux). **Le monster truck** (garage, États-Unis seulement, `my_*_monster`, 20 étoiles) : roule
 sur les voitures, taxis, motos et voitures de police à plus de `monster_crush_speed` et les écrase (`monster_crush_damage`
 de leur valeur, traces de pneus, « ÉCRASÉE ! »), rebondit (`monster_hop`) et **garde le volant** ; un véhicule plus lourd
-ou un mur l'arrête comme les autres. Reste : l'alerte tornade, le défilé.
+ou un mur l'arrête comme les autres. **L'alerte tornade** (événement `alert`, niveaux 13, 14 (seul événement), 19
+et 20) : sirènes, ciel qui s'assombrit, puis `alert_delay` s après l'alerte, une fois le carambolage lancé, une tornade
+touche le sol à droite de l'écran et traverse le boulevard de droite à gauche (ta tornade attend qu'elle soit partie).
+**La parade** (événement `parade`, niveaux 7, 11, 17 et 20) : quatre chars avancent lentement sur une voie, l'un derrière
+l'autre (étoile dorée géante, gâteau d'anniversaire, fusée, ballon rayé), `value_float` chacun ; détruit, un char
+explose en confettis.
 
 - **Mécanique : les très larges boulevards** à 8 voies et beaucoup de véhicules lourds : le pays des
   records de dégâts.

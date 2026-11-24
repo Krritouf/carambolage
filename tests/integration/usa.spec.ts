@@ -174,3 +174,45 @@ test('the monster truck drives over a car, flattens it and keeps the wheel; a bu
   expect(r.gained).toBeGreaterThan(0);
   expect(r.hopped).toBeGreaterThan(5);
 });
+
+test('the tornado alert: sirens and a darkening sky, then once the pile-up starts a tornado crosses from the right', async ({ page }) => {
+  await openUsLevel(page, 14);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    g.hold('ArrowUp', true);
+    let n = 0; while (!st.alert && n++ < 1500) { g.step(1, false); st.bodies = st.bodies.filter((b: any) => b === st.player || Math.abs(b.y) > 200 || Math.abs(b.x) > 400); }
+    const alerted = !!st.alert, banner = st.eventBanner && st.eventBanner.txt;
+    g.hold('ArrowUp', false);
+    g.step(300, false); const beforeCrash = !!st.twister;
+    st.crashed = true; st.phase = 'crash'; st.countdown = 30;
+    while (!st.twister && n++ < 3000) g.step(1, false);
+    const tw = st.twister, x0 = tw && tw.x;
+    let carried = 0; while (st.twister && n++ < 4000) { g.step(1, false); carried = Math.max(carried, st.twister ? st.twister.carried.length : 0); }
+    return { alerted, banner, beforeCrash, fromRight: x0 > 0, dir: tw && tw.dir, carried, gone: !st.twister };
+  });
+  expect(r).toMatchObject({ alerted: true, banner: 'ALERTE TORNADE !', beforeCrash: false, fromRight: true, dir: -1, gone: true });
+  expect(r.carried).toBeGreaterThan(0);
+});
+
+test('the parade: four floats down one lane, slowly; a float destroyed bursts into confetti', async ({ page }) => {
+  await openUsLevel(page, 7);
+  const r = await page.evaluate(() => {
+    const g = window.game!, st = g.state as any;
+    st.lv.events = ['parade'];
+    g.hold('ArrowUp', true);
+    let n = 0; while (!st.eventDone && n++ < 1500) g.step(1, false);
+    g.hold('ArrowUp', false);
+    const floats = st.bodies.filter((b: any) => b.kind === 'float');
+    g.step(60, false);
+    const lanes = new Set(floats.map((f: any) => f.lane)).size, looks = new Set(floats.map((f: any) => f.look)).size, speed = Math.max(...floats.map((f: any) => Math.abs(f.vx)));
+    const f = floats[0], car = st.bodies.find((b: any) => b.ai && b.kind === 'car');
+    f.dmg = f.value * 0.99;
+    const side = f.lane.dir;
+    Object.assign(car, { ai: false, loose: true, inv: true, lane: null, x: f.x + side * (f.hl + car.hl + 4), y: f.y, vx: -side * 700, vy: 0, a: 0 });
+    while (f.dmg < f.value && n++ < 1700) g.step(1, false);
+    return { n: floats.length, lanes, looks, speed: Math.round(speed), destroyed: st.destroyed.float || 0, confetti: st.parts.filter((q: any) => q.type === 'debris' && q.color === '#f783ac').length };
+  });
+  expect(r).toMatchObject({ n: 4, lanes: 1, looks: 4, destroyed: 1 });
+  expect(r.speed).toBeLessThan(130);
+  expect(r.confetti).toBeGreaterThan(3);
+});

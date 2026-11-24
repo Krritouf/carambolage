@@ -458,7 +458,8 @@
     "events": [
       "convoy",
       "chase",
-      "giant"
+      "giant",
+      "parade"
     ],
     "challenges": [
       {
@@ -749,7 +750,8 @@
     ],
     "ramp": false,
     "events": [
-      "chase"
+      "chase",
+      "parade"
     ],
     "challenges": [
       {
@@ -914,7 +916,8 @@
     "events": [
       "convoy",
       "giant",
-      "chase"
+      "chase",
+      "alert"
     ],
     "challenges": [
       {
@@ -993,9 +996,7 @@
       "len": 130
     },
     "events": [
-      "convoy",
-      "chase",
-      "giant"
+      "alert"
     ],
     "challenges": [
       {
@@ -1237,7 +1238,8 @@
     },
     "events": [
       "convoy",
-      "giant"
+      "giant",
+      "parade"
     ],
     "challenges": [
       {
@@ -1408,7 +1410,8 @@
     "events": [
       "convoy",
       "chase",
-      "giant"
+      "giant",
+      "alert"
     ],
     "challenges": [
       {
@@ -1497,7 +1500,9 @@
     "events": [
       "convoy",
       "chase",
-      "giant"
+      "giant",
+      "alert",
+      "parade"
     ],
     "challenges": [
       {

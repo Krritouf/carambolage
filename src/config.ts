@@ -7,14 +7,15 @@ import levels from '../data/levels.json';
 import levelsUk from '../data/levels-uk.json';
 import levelsJp from '../data/levels-jp.json';
 import levelsUs from '../data/levels-us.json';
+import levelsBr from '../data/levels-br.json';
 import type { Loose } from './game/types';
 
 /** data/config.json as the game reads it: name -> { value, min, max, step }, plus seed. */
 export const CONFIG: Loose = data;
 /** data/levels.json: the crossroads in play order. */
 export const LEVELS: Loose[] = levels;
-/** Each country's levels, in play order: France's (data/levels.json), the United Kingdom's (data/levels-uk.json), Japan's (data/levels-jp.json), the United States' (data/levels-us.json). */
-export const LEVELS_BY: Record<string, Loose[]> = { fr: levels, uk: levelsUk, jp: levelsJp, us: levelsUs };
+/** Each country's levels, in play order: France's (data/levels.json), the United Kingdom's (data/levels-uk.json), Japan's (data/levels-jp.json), the United States' (data/levels-us.json), Brazil's (data/levels-br.json). */
+export const LEVELS_BY: Record<string, Loose[]> = { fr: levels, uk: levelsUk, jp: levelsJp, us: levelsUs, br: levelsBr };
 (window as Loose).CONFIG = data; // the tweak panel and the checks read it here
 (window as Loose).LEVELS = levels;
 

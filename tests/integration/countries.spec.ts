@@ -1,5 +1,5 @@
 // Playwright: the home screen picks the country; France opens its levels' wheel, each next country a star on the
-// last level of the one before, and the ones still to come are "soon".
+// last level of the one before.
 import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -20,17 +20,6 @@ test('France opens its levels, and Escape comes back to the countries', async ({
     return seen;
   });
   expect(scenes).toEqual(['countries', 'title', 'countries']);
-});
-
-test('a country still to come stays on the home screen', async ({ page }) => {
-  await open(page);
-  const scene = await page.evaluate(() => {
-    const g = window.game!;
-    for (let i = 0; i < 4; i++) { g.press('ArrowRight'); g.step(1, false); } // Brazil
-    g.press('Enter'); g.step(1, false);
-    return g.scene;
-  });
-  expect(scene).toBe('countries');
 });
 
 /** Opens the home screen with this save in the browser. */

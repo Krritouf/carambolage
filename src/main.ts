@@ -16,8 +16,8 @@ import { NATIVE, exitApp, nativeVibrate, onBack } from './native';
 import splashUrl from '../assets/splash.png'; // the app's opening picture (tools/brand/art.html)
 // the country being played and its levels (LEVELS); each country keeps its own progress (loadCountry)
 let country = 'fr', LEVELS: Loose[] = LEVELS_BY.fr;
-const PREFIX: Loose = { fr: '', uk: 'uk_', jp: 'jp_', us: 'us_' }; // a country's keys in data/config.json: uk_threshold_3...
-const CURRENCY: Loose = { fr: '€', uk: '£', jp: '¥', us: '$' }; // each country's money
+const PREFIX: Loose = { fr: '', uk: 'uk_', jp: 'jp_', us: 'us_', br: 'br_' }; // a country's keys in data/config.json: uk_threshold_3...
+const CURRENCY: Loose = { fr: '€', uk: '£', jp: '¥', us: '$', br: 'R$' }; // each country's money
 /** A country's money for one euro (data/config.json: rate, uk_rate, jp_rate). Every amount is kept in euros and
  * shown in the country's money: the pound is near enough the euro to stay at 1, the yen is about 175. */
 const rateOf = (id: string) => tune[PREFIX[id] + 'rate'];
@@ -201,6 +201,7 @@ const CAR_COLORS = ['#2f80ff', '#12b886', '#9b5de5', '#f1f3f5', '#ff922b', '#15a
 const CAR_COLORS_FR = ['#4d79c7', '#f1f3f5', '#c92a2a', '#f3d27a', '#8fbfa0', '#9aa0a6', '#e8590c', '#3b3a4a'];
 const CAR_COLORS_JP = ['#f1f3f5', '#ced4da', '#212529', '#96f2d7', '#74c0fc', '#ffec99', '#a61e4d', '#ffa8a8']; // pearl white, silver, black, mint, sky, cream, wine, pink
 const CAR_COLORS_US = ['#c92a2a', '#1f3a8a', '#212529', '#f1f3f5', '#adb5bd', '#2b8a3e', '#e8590c', '#7c5e3c']; // red, navy, black, white, silver, green, orange, brown
+const CAR_COLORS_BR = ['#ffd43b', '#2f9e44', '#1c7ed6', '#f1f3f5', '#e8590c', '#c92a2a', '#ae3ec9', '#adb5bd']; // yellow, green, blue, white, orange, red, purple, silver
 const CAR_COLORS_UK = ['#1e5631', '#c92a2a', '#1f3a8a', '#f1f3f5', '#adb5bd', '#212529', '#d4a017', '#efe6cf']; // racing green, red, navy, white, silver, black, mustard, cream
 const KINDS: Loose = {
   player: { name: 'Ta voiture', l: 46, w: 23, h: 20 },
@@ -216,7 +217,8 @@ const KINDS: Loose = {
   bus: { name: 'Bus', l: 112, w: 30, h: 30 },
   truck: { name: 'Camion', l: 92, w: 30, h: 34 },
   tanker: { name: 'Camion-citerne', l: 96, w: 28, h: 30 },
-  float: { name: 'Char', l: 84, w: 34, h: 40 }, // the parade's (the United States)
+  float: { name: 'Char', l: 84, w: 34, h: 40 }, // the parade's (the United States, Brazil)
+  cabin: { name: 'Cabine', l: 44, w: 30, h: 32 }, // the cable car's, come off its cable (Brazil)
 };
 let levelIdx = 0, daily = false; // daily: today's generated crossroads instead of a level
 function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -257,7 +259,7 @@ function chalProgress(c: Loose, live: Loose) {
 let best: number[] = LEVELS.map(() => 0), unlocked = 1;
 // the garage: vehicles owned, the one at the wheel, and each vehicle's own upgrades and gadgets (gear[car][item] = level)
 let up: Loose = { cars: ['sport'], car: 'sport', gear: {} }, spent = 0;
-const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, farmers: 0, nessie: 0, mecha: 0, twister: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
+const GEAR0: Loose = { engine: 0, bullbar: 0, armor: 0, dynamite: 0, rocket: 0, magnet: 0, trex: 0, farmers: 0, nessie: 0, mecha: 0, twister: 0, carnaval: 0, insurance: 0, extratime: 0, extratime2: 0, dynamite2: 0, rocket2: 0 };
 function G() { // what the vehicle at the wheel has, every item at 0 until bought
   const g = up.gear[up.car] || (up.gear[up.car] = {});
   for (const k in GEAR0) if (typeof g[k] !== 'number') g[k] = 0;
@@ -325,6 +327,8 @@ const COUNTRY_MODELS: Loose = {
     truck: { name: 'Camion de livraison', color: '#1c7ed6' }, semi: { name: 'Routier', color: '#e03131' } },
   us: { sport: { name: 'Muscle car', color: '#e03131' }, van: { name: 'Van', color: '#f1f3f5' }, ambulance: { name: 'Ambulance', color: '#f8f9fa' },
     truck: { name: 'Poids lourd', color: '#c92a2a' }, semi: { name: 'Routier', color: '#1f3a8a' } },
+  br: { sport: { name: 'Petite sportive', color: '#2f9e44' }, van: { name: 'Minibus', color: '#ffd43b' }, ambulance: { name: 'Ambulance', color: '#f8f9fa' },
+    truck: { name: 'Camion bariolé', color: '#e8590c' }, semi: { name: 'Routier', color: '#1c7ed6' } },
 };
 /** Paints and names the garage's vehicles the way a country has them. */
 function applyCountryModels(id: string) {
@@ -341,6 +345,8 @@ const SHOPS: Loose = { // m: a masculine name ("le pub"), for "DÉTRUIT"
   diner: { name: 'Diner', color: '#4dabf7', m: true },
   donuts: { name: 'Boutique de donuts', color: '#f783ac' },
   station: { name: 'Station-service', color: '#ffd43b' },
+  jus: { name: 'Bar à jus', color: '#ff922b', m: true },
+  tongs: { name: 'Boutique de tongs', color: '#20c997' },
   boulangerie: { name: 'Boulangerie', color: '#f4c27a' },
   boucherie: { name: 'Boucherie', color: '#ff8787' },
   bijouterie: { name: 'Bijouterie', color: '#b197fc' },
@@ -348,7 +354,7 @@ const SHOPS: Loose = { // m: a masculine name ("le pub"), for "DÉTRUIT"
   labo: { name: 'Laboratoire', color: '#63e6be' },
 };
 // each country's five shops, in the same order and weights (the pub and the tea room, the ramen bar and the toy shop take the bakery's and the butcher's)
-const SHOP_KINDS: Loose = { fr: ['boulangerie', 'boucherie', 'bijouterie', 'banque', 'labo'], uk: ['pub', 'salon', 'bijouterie', 'banque', 'labo'], jp: ['ramen', 'jouets', 'bijouterie', 'banque', 'labo'], us: ['diner', 'donuts', 'bijouterie', 'banque', 'station'] };
+const SHOP_KINDS: Loose = { fr: ['boulangerie', 'boucherie', 'bijouterie', 'banque', 'labo'], uk: ['pub', 'salon', 'bijouterie', 'banque', 'labo'], jp: ['ramen', 'jouets', 'bijouterie', 'banque', 'labo'], us: ['diner', 'donuts', 'bijouterie', 'banque', 'station'], br: ['jus', 'tongs', 'bijouterie', 'banque', 'labo'] };
 const isMine = (b: Loose) => b.kind === 'player' || b.kind === 'trailer';
 // the player's vehicle (and its trailer) for a model, facing angle a
 function mkPlayerBodies(model: Loose, x: Loose, y: Loose, a: Loose) {
@@ -489,7 +495,7 @@ function reset() {
     phase: 'intro', introT: tune.intro_time, timeLeft: tune.approach_time,
     crashed: false, crashT: 0, crashX: 0, crashY: 0, slowT: 0, countdown: 0, bannerT: 0,
     bodies: [], blocks: [], props: [], lanes: [], pickups: [], parts: [], floats: [], skids: [], blasts: [],
-    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, nessie: null, nessieUsed: false, mecha: null, mechaUsed: false, sumo: null, sumoDone: false, twister: null, twisterUsed: false, alert: null, typhoon: null, lanterns: [], flyRex: null, flyRexDone: false, crossings: [], combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
+    shake: 0, nextId: 1, trex: null, trexUsed: false, farmers: null, farmersUsed: false, nessie: null, nessieUsed: false, mecha: null, mechaUsed: false, sumo: null, sumoDone: false, twister: null, twisterUsed: false, carnaval: null, carnavalUsed: false, rideRex: null, rideRexDone: false, alert: null, typhoon: null, lanterns: [], flyRex: null, flyRexDone: false, crossings: [], combo: false, shops: [], cranes: [], lots: [], oilSeq: 0, skidSeq: 0, destroyed: {}, blastCount: 0, eventDone: false, eventBanner: null, replay: [], fxPending: [], recTick: 0, rp: null,
     nitroUsed: false, nitroT: 0, oilUsed: false, oilDropT: 0, oilLX: 0, oilLY: 0, jumpsLeft: 0, magnetT: 0, chal: [], stars: 0, insK: 1, rockets: [], rocketsLeft: 0, touchedOnce: false, trailer: null, oils: [], oilGrid: new Map(), scorch: [], controlT: 0, dynUsed: false, passed: false, final: 0, endReason: '',
   };
   state = st;
@@ -576,11 +582,11 @@ function spawnOn(ln: Loose, x: Loose) {
   const kind = pickKind(state.lv.mix);
   // the country's paint: France has a Paris taxi, a green bus, the baker's truck; the United Kingdom
   // a black cab, a red double-decker, a yellow ambulance (the same random draws in every country)
-  const fr = country === 'fr', uk = country === 'uk', jp = country === 'jp', us = country === 'us';
-  const cars = fr ? CAR_COLORS_FR : uk ? CAR_COLORS_UK : jp ? CAR_COLORS_JP : us ? CAR_COLORS_US : CAR_COLORS;
+  const fr = country === 'fr', uk = country === 'uk', jp = country === 'jp', us = country === 'us', br = country === 'br';
+  const cars = fr ? CAR_COLORS_FR : uk ? CAR_COLORS_UK : jp ? CAR_COLORS_JP : us ? CAR_COLORS_US : br ? CAR_COLORS_BR : CAR_COLORS;
   const color = kind === 'police' ? '#f8f9fa' : kind === 'ambulance' ? (uk ? '#ffd43b' : '#f8f9fa') : kind === 'fire' ? '#e8202a'
-    : kind === 'taxi' ? (fr ? '#2b2b33' : uk ? '#1d1d22' : jp ? '#2f6f4e' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : uk ? '#d6222a' : jp ? '#f1f3f5' : us ? '#f5b800' : '#ff8a00') : kind === 'moto' ? '#26262e'
-    : kind === 'truck' ? (fr ? '#f3e3c3' : uk ? '#1e5631' : jp ? '#1c7ed6' : us ? '#c92a2a' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
+    : kind === 'taxi' ? (fr ? '#2b2b33' : uk ? '#1d1d22' : jp ? '#2f6f4e' : br ? '#ffd43b' : '#ffd21f') : kind === 'bus' ? (fr ? '#f1f3f5' : uk ? '#d6222a' : jp ? '#f1f3f5' : us ? '#f5b800' : br ? '#1c7ed6' : '#ff8a00') : kind === 'moto' ? '#26262e'
+    : kind === 'truck' ? (fr ? '#f3e3c3' : uk ? '#1e5631' : jp ? '#1c7ed6' : us ? '#c92a2a' : br ? '#e8590c' : '#3d7bff') : kind === 'tanker' ? '#e03131' : cars[Math.floor(rng() * cars.length)];
   const b = mkBody(kind, x, ln.y, ln.dir > 0 ? 0 : Math.PI, color);
   for (const o of state.bodies) if (Math.abs(o.y - ln.y) < 20 && Math.abs(o.x - x) < o.hl + b.hl + 30) return false;
   if (ln.z) b.z = ln.z; // an avenue below the boulevard
@@ -831,7 +837,8 @@ function startEvent(type: Loose) {
     events.push({ type: 'event', what: type, t: st.t }); return;
   }
   if (type === 'parade') { // the United States: the floats, slowly, one behind the other
-    for (let i = 0; i < tune.parade_floats; i++) put('float', i * tune.parade_gap, 1, (b: Loose) => { b.look = i % 4; b.color = FLOAT_COLORS[i % 4]; });
+    const br = country === 'br';
+    for (let i = 0; i < tune.parade_floats; i++) put('float', i * tune.parade_gap, 1, (b: Loose) => { b.look = i % 4 + (br ? 4 : 0); b.color = (br ? FLOAT_COLORS_BR : FLOAT_COLORS)[i % 4]; });
     txt = 'LA PARADE !';
   } else if (type === 'convoy') { put('police', 0, 0.8); put('truck', 105, 0.8, wideLoad); put('truck', 260, 0.8, wideLoad); put('police', 365, 0.8); txt = 'CONVOI EXCEPTIONNEL !'; }
   else if (type === 'chase') { const chase = (b: Loose) => { b.chase = true; };
@@ -946,11 +953,12 @@ function skid(b: Loose) {
 function slide(b: Loose, dt: Loose) {
   const fx = Math.cos(b.a), fy = Math.sin(b.a), lx = -fy, ly = fx;
   let s = b.vx * fx + b.vy * fy, l = b.vx * lx + b.vy * ly;
-  const g = (b.oilT > 0 ? tune.oil_grip : 1) * wetK(); // on oil the tyres barely hold
+  const g = (b.oilT > 0 ? tune.oil_grip : 1) * wetK() * (state.lv.slope ? tune.slope_grip : 1); // on oil the tyres barely hold; on a hill a wreck slides
   l *= Math.exp(-tune.skid_lateral * g * dt); s *= Math.exp(-tune.skid_forward * g * dt);
   s -= Math.sign(s) * Math.min(Math.abs(s), tune.skid_brake * g * dt);
   b.vx = fx * s + lx * l; b.vy = fy * s + ly * l;
   b.w *= Math.exp(-tune.spin_damping * g * dt);
+  if (state.lv.slope) slopePull(b, dt); // down the hill
   if (Math.abs(l) > 60 || Math.abs(b.w) > 2) skid(b); else b.lastSkid = null;
 }
 const OIL_CELL = 48;
@@ -1196,6 +1204,14 @@ function updatePlay(dt: Loose) {
     st.floats.push({ x: p.x, y: p.y, txt: 'KAMINARI-GO !', t: 0, color: '#ff922b', big: true });
     mechaCall(); events.push({ type: 'mecha', t: st.t });
   }
+  // the carnival float (C, Brazil): it comes in from the left of the screen
+  if (G().carnaval && country === 'br' && !st.carnavalUsed && pressed('KeyC') && (st.phase === 'drive' || st.phase === 'crash')) {
+    st.carnavalUsed = true; startPileup(-EXT, 0);
+    const left = camDraw.x - W / 2 / cam.zoom - tune.carnaval_len / 2 - 60;
+    st.carnaval = { x: Math.max(-EXT - tune.tunnel_depth - 200, Math.min(-500, left)), y: 0, t: 0, drumT: 0, beat: 0 };
+    st.floats.push({ x: p.x, y: p.y, txt: 'CARNAVAL !', t: 0, color: '#f783ac', big: true });
+    events.push({ type: 'carnaval', t: st.t });
+  }
   // the tornado (C, the United States): it comes in from the left of the screen
   if (G().twister && country === 'us' && !st.twisterUsed && !st.twister && pressed('KeyC') && (st.phase === 'drive' || st.phase === 'crash')) {
     st.twisterUsed = true; startPileup(-EXT, 0);
@@ -1204,7 +1220,8 @@ function updatePlay(dt: Loose) {
     st.floats.push({ x: p.x, y: p.y, txt: 'TORNADE !', t: 0, color: '#ced4da', big: true });
     wind(); events.push({ type: 'twister', t: st.t });
   }
-  if (st.sumo) stepSumo(st.sumo, sdt); else if (st.flyRex) stepFlyRex(st.flyRex, sdt); else if (st.trex) stepTrex(st.trex, sdt);
+  if (st.carnaval) stepCarnaval(st.carnaval, sdt);
+  if (st.sumo) stepSumo(st.sumo, sdt); else if (st.flyRex) stepFlyRex(st.flyRex, sdt); else if (st.rideRex) stepRideRex(st.rideRex, sdt); else if (st.trex) stepTrex(st.trex, sdt);
   if (st.alert) stepAlert(st.alert, sdt);
   if (st.twister) stepTwister(st.twister, sdt);
   if (st.lv.typhoon) stepTyphoon(sdt);
@@ -1326,7 +1343,7 @@ function updatePlay(dt: Loose) {
     if (st.recTick % 2 === 0 && st.replay.length < 700) {
       const fr: Loose[] = []; for (const b of st.bodies) if (Math.abs(b.x - st.crashX) < 1500 && Math.abs(b.y - st.crashY) < 900) fr.push(snap(b));
       st.replay.push({ bodies: fr, fx: st.fxPending.splice(0), oilSeq: st.oilSeq, skidSeq: st.skidSeq, scorchN: st.scorch.length,
-        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t, dir: st.trex.dir, down: st.trex.down, lift: st.trex.lift, spin: st.trex.spin } : null, mecha: st.mecha ? Object.assign({}, st.mecha) : null, twister: st.twister ? { x: st.twister.x, y: st.twister.y, t: st.twister.t } : null, trains: st.crossings.map((c: Loose) => [c.gate, c.phase, c.trains.map((tr: Loose) => ({ x: tr.x, y: tr.y, dir: tr.dir, cars: tr.cars.map((w: Loose) => Object.assign({}, w)) }))]), farmers: st.farmers ? { x: st.farmers.x, y: st.farmers.y, t: st.farmers.t } : null, nessie: st.nessie ? { t: st.nessie.t, a: st.nessie.a } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
+        trex: st.trex ? { x: st.trex.x, y: st.trex.y, t: st.trex.t, dir: st.trex.dir, down: st.trex.down, lift: st.trex.lift, spin: st.trex.spin } : null, mecha: st.mecha ? Object.assign({}, st.mecha) : null, carnaval: st.carnaval ? { x: st.carnaval.x, y: st.carnaval.y, t: st.carnaval.t } : null, twister: st.twister ? { x: st.twister.x, y: st.twister.y, t: st.twister.t } : null, trains: st.crossings.map((c: Loose) => [c.gate, c.phase, c.trains.map((tr: Loose) => ({ x: tr.x, y: tr.y, dir: tr.dir, cars: tr.cars.map((w: Loose) => Object.assign({}, w)) }))]), farmers: st.farmers ? { x: st.farmers.x, y: st.farmers.y, t: st.farmers.t } : null, nessie: st.nessie ? { t: st.nessie.t, a: st.nessie.a } : null, cranes: st.cranes.map((c: Loose) => c.theta), shops: st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]) });
     }
   }
   // the countdown from the first impact; the damage is counted when it reaches zero
@@ -2495,6 +2512,7 @@ function craneLand(c: Loose) {
   st.shake = 26; crunch(1, true);
   const wall: Loose = { static: true, kind: 'crane_down', ref: c, x: x0, y: (y0 + y1) / 2, a: 0, hl: c.monument ? 16 : 8, hw: Math.abs(y1 - y0) / 2, h: 14, height: 14, invM: 0, invI: 0, vx: 0, vy: 0, w: 0, z: 0 };
   st.props.push(wall); if (st.statics) st.statics.push(wall);
+  if (c.monument === 'teleferique') cabinOff(c);
 }
 // a line of girder between two 3D points, drawn as a flat band facing the screen
 function beam(a: number[], b: number[], wd: number, color: string) {
@@ -2540,8 +2558,8 @@ function drawCrane(c: Loose) {
   beam(base, [c.x, c.y, 3], 26, '#495057');
 }
 // each country's monument, in place of the first crane of a level, and what the screen says when it falls
-const MONUMENTS: Loose = { fr: 'eiffel', uk: 'bigben', jp: 'pagode', us: 'liberte' };
-const MONUMENT_NAME: Loose = { eiffel: 'LA TOUR EIFFEL', bigben: 'BIG BEN', pagode: 'LA PAGODE', liberte: 'LA STATUE DE LA LIBERTÉ' };
+const MONUMENTS: Loose = { fr: 'eiffel', uk: 'bigben', jp: 'pagode', us: 'liberte', br: 'teleferique' };
+const MONUMENT_NAME: Loose = { eiffel: 'LA TOUR EIFFEL', bigben: 'BIG BEN', pagode: 'LA PAGODE', liberte: 'LA STATUE DE LA LIBERTÉ', teleferique: 'LE TÉLÉPHÉRIQUE' };
 // Big Ben (the United Kingdom's crane): a square stone tower ribbed in the Gothic way, the gilded clock
 // faces, the belfry's arches, the slate spire with its pinnacles. It stands and falls like a crane: c.theta tips it over the road.
 function drawBigBen(c: Loose) {
@@ -2703,6 +2721,16 @@ function shopIcon(type: string, x: number, y: number, k: number) { // drawn on e
     ink(() => { ctx.arc(0, 0, 16, 0, Math.PI * 2); ctx.moveTo(6, 0); ctx.arc(0, 0, 6, 0, Math.PI * 2, true); }, '#d9a066');
     tint(() => { ctx.moveTo(14, 0); for (let k = 0; k <= 16; k++) { const an = k * Math.PI / 8, r = 13 + (k % 2) * 1.2; ctx.lineTo(Math.cos(an) * r, Math.sin(an) * r); } ctx.moveTo(7.5, 0); ctx.arc(0, 0, 7.5, 0, Math.PI * 2, true); }, '#f783ac');
     for (const [an, col] of [[0.3, '#ffd43b'], [1.2, '#74c0fc'], [2.1, '#ffffff'], [3.0, '#69db7c'], [3.9, '#ffd43b'], [4.8, '#74c0fc'], [5.6, '#ffffff']]) { ctx.save(); ctx.rotate(an as number); tint(rr2(9, -0.8, 3.4, 1.6, 0.8), col as string); ctx.restore(); }
+  } else if (type === 'jus') { // a tall glass of orange juice, a straw, a slice on its rim
+    ink(() => { ctx.moveTo(-11, -14); ctx.lineTo(11, -14); ctx.lineTo(8, 17); ctx.lineTo(-8, 17); ctx.closePath(); }, '#ff922b');
+    tint(() => { ctx.moveTo(-10, -10); ctx.lineTo(10, -10); ctx.lineTo(9.6, -6); ctx.lineTo(-9.6, -6); ctx.closePath(); }, '#ffc078');
+    ctx.strokeStyle = '#e03131'; ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(3, -10); ctx.lineTo(9, -24); ctx.stroke();
+    ink(() => { ctx.arc(-11, -14, 7, Math.PI * 0.9, Math.PI * 2.1); ctx.closePath(); }, '#ffd43b', 1.6);
+  } else if (type === 'tongs') { // a pair of flip-flops, green and yellow
+    for (const [ox, c] of [[-8, '#2f9e44'], [8, '#fab005']] as [number, string][]) {
+      ink(() => { ctx.ellipse(ox, 2, 7, 15, ox < 0 ? -0.15 : 0.15, 0, Math.PI * 2); }, c);
+      ctx.strokeStyle = '#1f3a8a'; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(ox, -6); ctx.lineTo(ox - 5, 2); ctx.moveTo(ox, -6); ctx.lineTo(ox + 5, 2); ctx.stroke();
+    }
   } else if (type === 'station') { // a fuel pump, its hose and nozzle, a flame of danger
     ink(rr2(-12, -14, 16, 28, 2.5), '#e03131'); tint(rr2(-9, -10, 10, 7, 1), '#fff5f5');
     ink(rr2(-15, 13, 22, 4, 1.5), '#495057', 1.6);
@@ -3206,6 +3234,7 @@ function stepAlert(al: Loose, dt: number) {
 // The event: parade_floats floats drive slowly down one lane, one behind the other: a giant gold star, a birthday cake,
 // a rocket, a striped balloon. Each is worth value_float; destroyed, it bursts into confetti.
 const FLOAT_COLORS = ['#1f3a8a', '#e64980', '#f1f3f5', '#c92a2a'];
+const FLOAT_COLORS_BR = ['#ae3ec9', '#2f9e44', '#e64980', '#1c7ed6'];
 /** A burst of confetti at (x, y). */
 function confetti(x: number, y: number) {
   const cols = ['#ff6b6b', '#ffd43b', '#4dabf7', '#69db7c', '#f783ac', '#ffffff'];
@@ -3223,7 +3252,8 @@ function drawFloat(b: Loose, box: Loose, L: number, Wd: number, z: number, col: 
   if (!wreck) for (let i = 0; i < 10; i++) for (const sd of [1, -1]) flat(b, -L * 0.45 + i * L * 0.1, sd * (Wd / 2 - 1.5), L * 0.05, 3, z + 10.1, '#fff3bf'); // the fringe
   box(L * 0.42, L * 0.14, Wd * 0.5, 2, 14, paint('#343a40'), glass); // the driver's little cab, under the front
   const look = b.look || 0;
-  if (look === 0) { // a giant gold star on a post
+  if (look >= 4) drawCarnivalFigure(b, box, L, Wd, z, look, paint);
+  else if (look === 0) { // a giant gold star on a post
     box(0, 4, 4, 10, 26, '#adb5bd', '#868e96');
     const star = (h: number, r: number, fill: string) => { const pts: number[][] = []; for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; pts.push(at(Math.sin(an) * rr * 0.9, Math.cos(an) * rr, h)); } poly(pts, fill); };
     star(26, Wd * 0.62, paint('#e0a800')); star(30, Wd * 0.6, paint('#ffd43b')); star(30.2, Wd * 0.3, paint('#fff3bf'));
@@ -3248,6 +3278,236 @@ function drawFloat(b: Loose, box: Loose, L: number, Wd: number, z: number, col: 
       ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(top[0] - rr * 0.3, top[1] - rr * 0.3, rr * 0.3, 0, Math.PI * 2); ctx.fill();
     }
   }
+}
+// ---- Brazil ------------------------------------------------------------------------------------------------------
+// Rio's sloping streets: on a level with slope (1 or -1, the way it runs down), the boulevard runs downhill. The
+// traffic in its lanes holds on, but whatever is loose (the wrecks, the player's car once out of hand) has less grip
+// (slope_grip) and slides on down (slope_accel): the pile-up carries on by itself further down the hill.
+/** A loose body's pull down the hill this step. */
+function slopePull(b: Loose, dt: number) { b.vx += state.lv.slope * tune.slope_accel * dt; }
+/** The hill seen from above: the road lighter uphill, darker downhill, chevrons down the middle, a sign on each side. */
+function drawSlope() {
+  const st = state, s = st.lv.slope, half = st.roadHalf;
+  const a = P(-EXT * s, 0, 0), b = P(EXT * s, 0, 0), g = ctx.createLinearGradient(a[0], a[1], b[0], b[1]);
+  g.addColorStop(0, 'rgba(255,255,255,0.07)'); g.addColorStop(0.5, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(10,6,24,0.2)');
+  const q = [P(-EXT, -half, 0), P(EXT, -half, 0), P(EXT, half, 0), P(-EXT, half, 0)];
+  ctx.fillStyle = g; ctx.beginPath(); q.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.fill();
+  const o = { x: 0, y: 0, a: s > 0 ? 0 : Math.PI };
+  for (let x = -EXT + 150; x < EXT; x += 300) { // chevrons painted down the hill
+    if (Math.abs(x) < 260) continue;
+    o.x = x; for (const k of [0, 12]) { flatTurned(o, k, -4, 14, 3, 0.6, 0.2, 'rgba(255,255,255,0.4)'); flatTurned(o, k, 4, 14, 3, -0.6, 0.2, 'rgba(255,255,255,0.4)'); }
+  }
+  for (const sd of [-1, 1]) for (const x of [-700, 700]) { // the slope sign on its post
+    const y = sd * (half + SIDEWALK * 0.5), p0 = P(x, y, 0), p1 = P(x, y, 30), r = 9 * cam.zoom;
+    ctx.strokeStyle = '#495057'; ctx.lineWidth = 2 * cam.zoom; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+    ctx.fillStyle = '#f8f9fa'; ctx.strokeStyle = '#e03131'; ctx.lineWidth = 2.2 * cam.zoom; ctx.beginPath();
+    ctx.moveTo(p1[0], p1[1] - r); ctx.lineTo(p1[0] + r, p1[1] + r * 0.75); ctx.lineTo(p1[0] - r, p1[1] + r * 0.75); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#1d1a26'; ctx.lineWidth = 1.6 * cam.zoom; ctx.beginPath(); ctx.moveTo(p1[0] - r * 0.5 * s, p1[1] - r * 0.1); ctx.lineTo(p1[0] + r * 0.5 * s, p1[1] + r * 0.5); ctx.stroke();
+  }
+}
+
+// The cable car (Brazil's crane): a steel pylon, its cross arm, the cable running off both ways along the boulevard and
+// a red cabin hanging from it. It stands and falls like a crane; once it lands, the cabin comes off and rolls on down
+// the boulevard (a body of its own, kind cabin), throwing what it meets aside.
+function drawTeleferique(c: Loose) {
+  const Hm = tune.teleferique_height, th = c.theta, cs = Math.cos(th), sn = Math.sin(th);
+  const at = (h: number, ox: number) => [c.x + ox, c.y + c.dir * h * sn, Math.max(0, h * cs)];
+  const steel = '#8b96a3', dark = '#4a5563', edge = '#1f2630';
+  if (!c.fallen) prism([[c.x - 22, c.y - 22], [c.x + 22, c.y - 22], [c.x + 22, c.y + 22], [c.x - 22, c.y + 22]], 0, 6, '#adb5bd', '#868e96');
+  const half = (h: number) => 16 - 10 * h / Hm, n = 12;
+  for (const sd of [-1, 1]) beamInk(at(0, sd * half(0)), at(Hm, sd * half(Hm)), 3.4, sd < 0 ? dark : steel, edge);
+  for (let i = 0; i < n; i++) { const h0 = Hm * i / n, h1 = Hm * (i + 1) / n; beam(at(h0, -half(h0)), at(h1, half(h1)), 1.6, dark); beam(at(h0, half(h0)), at(h1, -half(h1)), 1.6, dark); }
+  beamInk(at(Hm, -34), at(Hm, 34), 5, steel, edge); // the cross arm
+  for (const ox of [-30, 30]) { const p = P(...(at(Hm + 2, ox) as [number, number, number])); ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.arc(p[0], p[1], 3 * cam.zoom, 0, Math.PI * 2); ctx.fill(); }
+  if (!c.falling) { // the cable off both ways, the cabin hanging from it
+    for (const ox of [-30, 30]) beam(at(Hm, ox), [c.x + ox * 40, c.y, Hm - 30], 2.2, '#1d1a26');
+    const u = 150, hang = [c.x + u, c.y, Hm - 4];
+    beam(hang, [c.x + u, c.y, Hm - 30], 1.6, '#343a40');
+    const cab = { x: c.x + u, y: c.y, a: 0, z: 0 };
+    prism(rect(cab, 0, 0, 44, 30), Hm - 64, Hm - 30, '#e03131', '#22305a');
+    flat(cab, 0, 0, 40, 26, Hm - 29.9, '#c92a2a'); flat(cab, 0, 0, 8, 8, Hm - 29.8, '#495057');
+  }
+}
+/** The cabin that came off: red, glass all round, the grip arm on its roof. */
+function drawCabin(b: Loose, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean) {
+  box(0, L, Wd, 0, 10, col, col);
+  box(0, L - 2, Wd - 2, 10, 24, col, glass);
+  box(0, L, Wd, 24, 30, col, col);
+  flat(b, 0, 0, L - 6, Wd - 6, z + 30.1, wreck ? col : shade(col, 1.12));
+  box(0, 6, 6, 30, 40, '#495057', '#343a40'); // the grip arm, snapped
+}
+/** The cable car's tower lands: the cabin comes off at its tip and rolls down the boulevard. */
+function cabinOff(c: Loose) {
+  const st = state, y1 = c.y + c.dir * c.len * 0.85, s = st.lv.slope || (c.x < 0 ? 1 : -1);
+  const b = mkBody('cabin', c.x, Math.max(-st.roadHalf + 20, Math.min(st.roadHalf - 20, y1)), 0, '#e03131');
+  b.ai = false; b.loose = true; b.inv = true; b.id = st.nextId++; b.z = 30; b.vz = 0;
+  b.vx = s * tune.cabin_push; b.w = (vr() - 0.5) * 2; b.rollV = 0;
+  st.bodies.push(b);
+  st.floats.push({ x: b.x, y: b.y, txt: 'LA CABINE DÉVALE !', t: 0, color: '#ff8787', big: true });
+}
+
+// ---- Brazil's vehicles --------------------------------------------------------------------------------------------
+// A car's look is one of three (b.id % 3): the minibus, the little hatchback, the plain car.
+/** Draws a vehicle the Brazilian way; false for a kind Brazil draws like everyone else. */
+function drawBrazilian(b: Loose, dk: string, box: Loose, L: number, Wd: number, z: number, col: string, glass: string, wreck: boolean): boolean {
+  const paint = (c: string) => wreck ? col : mix(c, '#2a2230', Math.min(1, b.dmg / b.value) * 0.55);
+  if (dk === 'car' && b.id % 3 === 0) { // the minibus: two-tone, a white top, windows all along, a flat nose
+    box(0, L, Wd, 3, 13, col, col);
+    box(0, L - 2, Wd - 1, 13, 25, paint('#f8f9fa'), glass);
+    flat(b, 0, 0, L - 6, Wd - 5, z + 25.1, wreck ? col : paint('#f1f3f5'));
+    if (!wreck) for (const sd of [1, -1]) flat(b, 0, sd * (Wd / 2 - 3), L - 8, 3.5, z + 25.2, col); // its colour round the white roof
+    flat(b, L / 2 - 1.5, 0, 2.5, Wd * 0.4, z + 12, paint('#f8f9fa')); // the V of white on its nose
+    carLights(b, L, Wd, z, 11);
+    return true;
+  }
+  if (dk === 'car' && b.id % 3 === 1) { // the little hatchback: short, a tall cabin, a square back
+    box(L * 0.04, L * 0.88, Wd * 0.94, 3, 11, col, col);
+    box(-L * 0.06, L * 0.5, Wd * 0.84, 11, 20, glass, glass);
+    flat(b, -L * 0.07, 0, L * 0.44, Wd * 0.72, z + 20.1, shade(col, 1.12));
+    carLights(b, L * 0.88, Wd, z, 10, L * 0.48);
+    return true;
+  }
+  if (dk === 'taxi') { // the yellow taxi with its blue band, the sign on the roof
+    box(0, L, Wd, 3, 11, col, col);
+    box(-L * 0.04, L * 0.5, Wd * 0.84, 11, 20, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.44, Wd * 0.72, z + 20.1, shade(col, 1.1));
+    if (!wreck) for (const sd of [1, -1]) flat(b, 0, sd * (Wd / 2 - 2.5), L * 0.92, 3, z + 11.1, '#1c7ed6');
+    box(-2, 6, 12, 20, 24, '#f8f9fa', '#ced4da'); flat(b, -2, 0, 3, 8, z + 24.1, '#1c7ed6');
+    carLights(b, L, Wd, z, 11);
+    return true;
+  }
+  if (dk === 'police') { // white, a dark blue band, the light bar
+    box(0, L, Wd, 3, 11, col, col);
+    box(-L * 0.04, L * 0.48, Wd * 0.84, 11, 20, glass, glass);
+    flat(b, -L * 0.04, 0, L * 0.42, Wd * 0.72, z + 20.1, col);
+    if (!wreck) { for (const sd of [1, -1]) flat(b, 0, sd * (Wd / 2 - 3), L * 0.9, 4, z + 11.1, '#1f3a8a'); flat(b, L * 0.33, 0, L * 0.18, Wd * 0.6, z + 11.1, '#1f3a8a'); }
+    carLights(b, L, Wd, z, 11); siren(b, -2, Wd * 0.75, 20);
+    return true;
+  }
+  if (dk === 'moto') { // the moto-taxi: the rider in an orange vest, a passenger behind
+    box(0, L, Wd * 0.55, 3, 8, '#2b2b33', '#16161c');
+    flat(b, L / 2 - 2, 0, 3, Wd * 0.5, z + 8, '#ffe066');
+    box(2, 8, Wd, 8, 15, '#ff922b', '#e8590c'); box(4, 6, Wd * 0.75, 15, 20, '#f8f9fa', '#ced4da');
+    box(-7, 8, Wd, 8, 14, b.rider || '#2f80ff', b.rider || '#2f80ff'); box(-6, 6, Wd * 0.72, 14, 19, '#343a40', '#212529');
+    return true;
+  }
+  if (dk === 'bus') { // the city bus: white, a band of colour and a stripe, the route sign over the windscreen
+    box(0, L, Wd, 2, 12, paint('#f8f9fa'), paint('#f8f9fa'));
+    box(0, L - 2, Wd - 1, 12, 15, col, col);
+    box(0, L - 2, Wd - 2, 15, 26, paint('#f8f9fa'), glass);
+    flat(b, 0, 0, L - 8, Wd - 8, z + 26.1, paint('#f1f3f5'));
+    if (!wreck) { flat(b, 0, 0, L - 12, 5, z + 26.2, col); flat(b, 0, 0, L - 12, 1.6, z + 26.3, '#ffd43b'); }
+    flat(b, L / 2 - 4, 0, 4, Wd - 8, z + 26.2, '#ffa94d');
+    flat(b, L / 2 - 1, Wd * 0.32, 2, 5, z + 9, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.32, 2, 5, z + 9, '#ffe066');
+    return true;
+  }
+  if (dk === 'truck') { // the painted lorry: a round-nosed cab, wooden sides, a striped tarpaulin over the load
+    box(L * 0.38, L * 0.24, Wd - 2, 3, 24, col, col);
+    box(L * 0.4, L * 0.14, Wd - 4, 14, 24, col, glass);
+    box(-L * 0.13, L * 0.72, Wd, 4, 18, paint('#a8743a'), paint('#8a5a2b'));
+    if (!wreck) for (let i = 0; i < 4; i++) for (const sd of [1, -1]) flat(b, -L * 0.13, sd * (Wd / 2 - 0.5), L * 0.7, 1, z + 6 + i * 3.5, '#6b4423');
+    box(-L * 0.13, L * 0.68, Wd - 2, 18, 30, paint('#2f9e44'), paint('#2b8a3e'));
+    if (!wreck) for (let i = 0; i < 6; i++) flat(b, -L * 0.44 + i * L * 0.12, 0, L * 0.05, Wd - 3, z + 30.1, '#ffd43b');
+    flat(b, L / 2 - 1, Wd * 0.32, 2, 5, z + 10, '#ffe066'); flat(b, L / 2 - 1, -Wd * 0.32, 2, 5, z + 10, '#ffe066');
+    return true;
+  }
+  return false;
+}
+// the parade's floats in Brazil: a fan of feathers, a carnival mask, a sun, a pineapple (b.look 4 to 7)
+function drawCarnivalFigure(b: Loose, box: Loose, L: number, Wd: number, z: number, look: number, paint: (c: string) => string) {
+  const c = Math.cos(b.a), s = Math.sin(b.a), at = (u: number, v: number, h: number) => P(b.x + c * u - s * v, b.y + s * u + c * v, z + h);
+  if (look === 4) { // feathers fanned out from a gold base
+    const cols = ['#e64980', '#ffd43b', '#20c997', '#4dabf7', '#ae3ec9', '#ff922b', '#e64980'];
+    cols.forEach((col, i) => { const an = -1.2 + i * 0.4, p0 = at(-L * 0.2, 0, 12), p1 = at(-L * 0.2 - Math.cos(an) * 22, Math.sin(an) * Wd * 1.1, 60); ctx.strokeStyle = paint(col); ctx.lineWidth = 10 * cam.zoom; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke(); });
+    ctx.lineCap = 'butt';
+    box(-L * 0.2, 14, Wd * 0.5, 10, 18, paint('#fab005'), paint('#e67700'));
+  } else if (look === 5) { // a giant carnival mask: gold, two eye holes, feathers at the side
+    const m = at(0, 0, 30), r = Wd * 0.5 * cam.zoom;
+    box(0, 4, 4, 10, 28, '#adb5bd', '#868e96');
+    ctx.fillStyle = paint('#fab005'); ctx.beginPath(); ctx.ellipse(m[0], m[1], r * 1.3, r * 0.7, b.a, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1d1a26'; for (const sd of [-1, 1]) { const e = at(0, sd * Wd * 0.22, 30.2); ctx.beginPath(); ctx.ellipse(e[0], e[1], r * 0.3, r * 0.2, b.a, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = paint('#e64980'); const f = at(-Wd * 0.1, Wd * 0.55, 34); ctx.beginPath(); ctx.ellipse(f[0], f[1], r * 0.25, r * 0.6, b.a + 0.5, 0, Math.PI * 2); ctx.fill();
+  } else if (look === 6) { // a sun: a gold disc and its rays
+    const m = at(0, 0, 32), r = Wd * 0.38 * cam.zoom;
+    box(0, 4, 4, 10, 30, '#adb5bd', '#868e96');
+    ctx.strokeStyle = paint('#ff922b'); ctx.lineWidth = 3 * cam.zoom; ctx.beginPath(); for (let i = 0; i < 12; i++) { const an = i * Math.PI / 6; ctx.moveTo(m[0] + Math.cos(an) * r, m[1] + Math.sin(an) * r); ctx.lineTo(m[0] + Math.cos(an) * r * 1.6, m[1] + Math.sin(an) * r * 1.6); } ctx.stroke();
+    ctx.fillStyle = paint('#ffd43b'); ctx.beginPath(); ctx.arc(m[0], m[1], r, 0, Math.PI * 2); ctx.fill();
+  } else { // a pineapple: the golden fruit, its leaves on top
+    box(0, L * 0.3, Wd * 0.6, 10, 34, paint('#fab005'), paint('#e67700'));
+    if (b.dmg < b.value) for (let i = 0; i < 5; i++) flat(b, -L * 0.12 + i * L * 0.06, 0, 1.5, Wd * 0.55, z + 34.1, '#c77d00');
+    for (const [u, v] of [[0, 0], [5, 4], [-5, -4], [4, -5], [-4, 5]]) box(u, 6, 3, 34, 46, paint('#2f9e44'), paint('#2b8a3e'), v);
+  }
+}
+
+// ---- The carnival float (Brazil's gadget) -------------------------------------------------------------------------
+// C: a giant float comes in from the left of the screen down the middle of the boulevard, drums beating, feathers
+// waving: it shoves aside and crushes what is in its way and showers confetti, then goes off by the right. If it
+// meets the T-Rex, the T-Rex climbs aboard and dances on it: the carnival bonus (carnaval_bonus), and off they go.
+function stepCarnaval(cv: Loose, dt: number) {
+  const st = state, hl = tune.carnaval_len / 2, hw = tune.carnaval_width / 2;
+  cv.t += dt; cv.x += tune.carnaval_speed * dt;
+  if (cv.x - hl > EXT + 100) { st.carnaval = null; if (st.rideRex) { st.rideRex = null; st.trex = null; } return; }
+  crushUnder(cv.x, cv.y, hl, hw, 1, tune.carnaval_push, tune.carnaval_damage, dt);
+  cv.drumT -= dt;
+  if (cv.drumT <= 0) { // the drums: a samba beat
+    cv.drumT = 0.18; const k = cv.beat++ % 8;
+    tone(k % 4 === 0 ? 110 : 165, 0.08, k % 2 ? 'triangle' : 'square', k % 4 === 0 ? 0.12 : 0.06);
+  }
+  if (vr() < 20 * dt) {
+    const d = addPart('debris', cv.x + (vr() - 0.5) * hl * 2, cv.y + (vr() - 0.5) * hw * 2, 70, (vr() - 0.5) * 160, (vr() - 0.5) * 160, 80 + vr() * 120, 1.5 + vr());
+    if (d) { d.color = ['#ff6b6b', '#ffd43b', '#4dabf7', '#69db7c', '#f783ac', '#ffffff'][Math.floor(vr() * 6)]; d.size = 2.5 + vr() * 2; }
+  }
+  // the T-Rex walking into it climbs aboard
+  const tr = st.trex;
+  if (tr && !st.rideRex && !st.rideRexDone && !st.flyRex && !st.sumo && Math.abs(tr.x - cv.x) < hl + tune.trex_len / 2 && Math.abs(tr.y - cv.y) < hw + 40) {
+    st.rideRex = { t: 0 }; st.rideRexDone = true; st.bonus += tune.carnaval_bonus;
+    st.floats.push({ x: cv.x, y: cv.y - 80, txt: 'LE T-REX FAIT LE CARNAVAL ! +' + money(tune.carnaval_bonus), t: 0, color: '#f783ac', big: true });
+    roar(); confetti(cv.x, cv.y); events.push({ type: 'rideRex', t: st.t });
+  }
+}
+/** The T-Rex on the float: it stands on the deck and sways to the drums. */
+function stepRideRex(rr: Loose, dt: number) {
+  const st = state, tr = st.trex, cv = st.carnaval;
+  if (!tr || !cv) { st.rideRex = null; return; }
+  rr.t += dt; tr.t += dt;
+  tr.x = cv.x - tune.carnaval_len * 0.05; tr.y = cv.y; tr.dir = 1; tr.lift = tune.carnaval_deck;
+  tr.spin = Math.sin(rr.t * 7) * 0.35;
+}
+function drawCarnaval(cv: Loose) {
+  const L = tune.carnaval_len, Wd = tune.carnaval_width, deck = tune.carnaval_deck, z = cam.zoom, t = cv.t;
+  const o = { x: cv.x, y: cv.y, a: 0, z: 0 };
+  ctx.globalAlpha = 0.3; poly(rect(o, 0, 0, L, Wd).map((q: Loose) => P(q[0] + 10, q[1] + 12, 0)), '#120b2a'); ctx.globalAlpha = 1; // its shadow
+  prism(rect(o, 0, 0, L, Wd), 0, deck, '#fab005', '#e67700'); // the skirt, gold
+  for (let i = 0; i < 16; i++) for (const sd of [1, -1]) flat(o, -L * 0.47 + i * L * 0.0625, sd * (Wd / 2 - 3), L * 0.03, 5, deck + 0.1, ['#e64980', '#20c997', '#4dabf7', '#ffd43b'][i % 4]); // sequins along its edges
+  flat(o, 0, 0, L - 14, Wd - 14, deck + 0.05, '#ae3ec9');
+  // tiers rising to the back, each a colour
+  const tiers: [number, number, number, string, string][] = [[-0.12, 0.5, 18, '#e64980', '#c2255c'], [-0.2, 0.34, 34, '#20c997', '#0ca678'], [-0.26, 0.2, 50, '#4dabf7', '#1c7ed6']];
+  for (const [u, l, h, c1, c2] of tiers) prism(rect(o, L * u, 0, L * l, Wd * (0.7 - u)), deck, deck + h, c1, c2);
+  // the great fan of feathers at the back, swaying
+  const cols = ['#e64980', '#ffd43b', '#20c997', '#4dabf7', '#ae3ec9', '#ff922b', '#e64980', '#ffd43b', '#20c997'];
+  cols.forEach((col, i) => {
+    const an = -1.3 + i * 0.325 + Math.sin(t * 3 + i) * 0.06, base = P(cv.x - L * 0.36, cv.y, deck + 30), tip = P(cv.x - L * 0.36 - Math.cos(an) * 30, cv.y + Math.sin(an) * Wd * 0.95, deck + 150);
+    ctx.strokeStyle = col; ctx.lineWidth = 14 * z; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(base[0], base[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2 * z; ctx.beginPath(); ctx.moveTo(base[0], base[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
+  });
+  ctx.lineCap = 'butt';
+  // the giant sun on the front, turning
+  const sun = P(cv.x + L * 0.34, cv.y, deck + 70), r = 26 * z * (1 + (deck + 70) * z * tune.persp);
+  prism(rect(o, L * 0.34, 0, 6, 6), deck, deck + 60, '#adb5bd', '#868e96');
+  ctx.strokeStyle = '#ff922b'; ctx.lineWidth = 5 * z; ctx.beginPath();
+  for (let i = 0; i < 14; i++) { const an = t * 1.5 + i * Math.PI / 7; ctx.moveTo(sun[0] + Math.cos(an) * r, sun[1] + Math.sin(an) * r); ctx.lineTo(sun[0] + Math.cos(an) * r * 1.55, sun[1] + Math.sin(an) * r * 1.55); }
+  ctx.stroke();
+  ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.arc(sun[0], sun[1], r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff3bf'; ctx.beginPath(); ctx.arc(sun[0] - r * 0.3, sun[1] - r * 0.3, r * 0.35, 0, Math.PI * 2); ctx.fill();
+}
+function carnavalIcon(x: number, y: number, k: number) { // the float from the side: a gold deck, the fan of feathers, the sun
+  iconStart(x, y, k);
+  const cols = ['#e64980', '#ffd43b', '#20c997', '#4dabf7', '#ae3ec9'];
+  cols.forEach((col, i) => { const an = -Math.PI * 0.85 + i * Math.PI * 0.18; ctx.strokeStyle = '#2b2536'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-6, 6); ctx.lineTo(-6 + Math.cos(an) * 22, 6 + Math.sin(an) * 22); ctx.stroke(); ctx.strokeStyle = col; ctx.lineWidth = 4.5; ctx.stroke(); });
+  ink(rr2(-22, 6, 44, 10, 3), '#fab005');
+  ink(circ(15, -6, 7), '#ffd43b');
+  tint(circ(-14, 19, 3.5), '#343a40'); tint(circ(14, 19, 3.5), '#343a40');
+  ctx.restore();
 }
 // ---- Japan's and the United States' vehicles: the same bodies, drawn each country's way -----------------------
 // A car's look there is one of three (b.id % 3): Japan has the cube car, the kei truck and the plain car; the United
@@ -3541,7 +3801,7 @@ const SPRITE_PAD = 6, SPRITE_MAX = 300; // world units round the body (wheels, b
 function vehicleSprite(b: Loose, stage: number) {
   const S = Math.min(3, Math.max(1.5, Math.ceil(baseR * 1.6 * 2) / 2)); // pixels a world unit: sharp up close, capped for a phone's memory
   if (S !== spriteScale) { SPRITES.clear(); spriteScale = S; }
-  const key = country + '|' + b.kind + '|' + b.color + '|' + (b.kind === 'car' && (country === 'jp' || country === 'us') ? b.id % 6 : b.id % 2) + '|' + (b.crushed ? 'c' : '') + (b.look ?? '') + '|' + (b.rider || '') + '|' + (b.stripe || '') + '|' + (b.wide ? 1 : 0) + '|' + stage;
+  const key = country + '|' + b.kind + '|' + b.color + '|' + (b.kind === 'car' && (country === 'jp' || country === 'us' || country === 'br') ? b.id % 6 : b.id % 2) + '|' + (b.crushed ? 'c' : '') + (b.look ?? '') + '|' + (b.rider || '') + '|' + (b.stripe || '') + '|' + (b.wide ? 1 : 0) + '|' + stage;
   let sp = SPRITES.get(key); if (sp) return sp;
   if (SPRITES.size >= SPRITE_MAX) SPRITES.clear();
   const cw = Math.ceil((b.hl * 2 + SPRITE_PAD * 2) * S), ch = Math.ceil((b.hw * 2 + SPRITE_PAD * 2) * S);
@@ -3592,7 +3852,7 @@ function drawVehicleShapes(b: Loose) {
     return R;
   };
   const dk = b.kind === 'player' ? MODELS[b.model || 'sport'].draw : b.kind; // what it looks like
-  if (detail && !wreck && dk !== 'moto' && dk !== 'hay' && dk !== 'farmtractor' && dk !== 'monster') { // the tyres, just out from under the body
+  if (detail && !wreck && dk !== 'moto' && dk !== 'hay' && dk !== 'farmtractor' && dk !== 'monster' && dk !== 'cabin') { // the tyres, just out from under the body
     const wl = Math.max(7, Math.min(13, L * 0.2)), axles = dk === 'trailer' ? [-0.3, -0.42] : L > 80 ? [0.38, -0.18, -0.36] : [0.31, -0.31];
     const tyres: number[][][] = [], hubs: number[][][] = [];
     for (const ax of axles) for (const sd of [1, -1]) { tyres.push(rect(b, L * ax, sd * (Wd / 2 - 1.4), wl, 4.6)); hubs.push(rect(b, L * ax, sd * (Wd / 2 + 0.2), wl * 0.45, 1.4)); }
@@ -3602,6 +3862,8 @@ function drawVehicleShapes(b: Loose) {
   else if (country === 'uk' && drawBritish(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the British way */ }
   else if (country === 'jp' && drawJapanese(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the Japanese way */ }
   else if (country === 'us' && drawAmerican(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the American way */ }
+  else if (country === 'br' && drawBrazilian(b, dk, box, L, Wd, z, col, glass, wreck)) { /* drawn the Brazilian way */ }
+  else if (dk === 'cabin') drawCabin(b, box, L, Wd, z, col, glass, wreck);
   else if (dk === 'monster') drawMonster(b, box, L, Wd, z, col, glass, wreck);
   else if (dk === 'float') drawFloat(b, box, L, Wd, z, col, glass, wreck);
   else if (dk === 'hay') { // a straw bale with its two strings
@@ -4418,6 +4680,7 @@ function drawWorld() {
   const sh = st.shake;
   camDraw.x = cam.x + (sh ? (vr() - 0.5) * sh : 0); camDraw.y = cam.y + (sh ? (vr() - 0.5) * sh : 0);
   drawGround();
+  if (st.lv && st.lv.slope) drawSlope();
   drawRailBeds();
   const visible = (S: Loose, m: Loose) => { const p = P(S.x, S.y, 0), r = (Math.max(S.hl, S.hw) + m) * cam.zoom; return p[0] > -r && p[0] < W + r && p[1] > -r && p[1] < H + r; };
   for (const u of st.pickups) drawPickup(u);
@@ -4442,7 +4705,7 @@ function drawWorld() {
   const d = (S: Loose) => { const p = P(S.x, S.y, 0); return (p[0] - VP[0]) ** 2 + (p[1] - VP[1]) ** 2; };
   blocks.sort((a: Loose, b: Loose) => d(b) - d(a));
   for (const S of blocks) S.kind === 'arc' ? drawArc(S) : drawBuilding(S);
-  for (const c of st.cranes) c.monument === 'eiffel' ? drawEiffel(c) : c.monument === 'bigben' ? drawBigBen(c) : c.monument === 'pagode' ? drawPagode(c) : c.monument === 'liberte' ? drawLiberte(c) : drawCrane(c);
+  for (const c of st.cranes) c.monument === 'eiffel' ? drawEiffel(c) : c.monument === 'bigben' ? drawBigBen(c) : c.monument === 'pagode' ? drawPagode(c) : c.monument === 'liberte' ? drawLiberte(c) : c.monument === 'teleferique' ? drawTeleferique(c) : drawCrane(c);
   drawTunnels();
   if (st.lanterns.length) drawLanterns();
   for (const b of air) { drawShadow(b); }
@@ -4451,6 +4714,7 @@ function drawWorld() {
   for (const r of st.rockets || []) drawRocket(r);
   if (st.farmers) drawFarmers(st.farmers);
   if (st.nessie) drawNessie(st.nessie);
+  if (st.carnaval) drawCarnaval(st.carnaval);
   if (st.trex) drawTrex(st.trex); // after the tractors: the T-Rex, far taller, steps over them
   if (st.mecha) drawMecha(st.mecha); // taller still
   if (st.twister) drawTwister(st.twister);
@@ -4508,7 +4772,7 @@ function drawHUD() {
   const st = state, p = st.player, th = TH();
   panel(16, 14, 330, 54);
   text(daily ? 'CARAMBOLAGE DU JOUR' : `NIVEAU ${levelIdx + 1}`, 34, 32, 16, '#ffc83d', 'left');
-  text((daily ? today() : st.lv.name.toUpperCase()) + (st.lv.rain && !/pluie/i.test(st.lv.name) ? ' · PLUIE' : '') + (st.lv.night && !/nuit/i.test(st.lv.name) ? ' · NUIT' : '') + (st.lv.fog && !/brouillard/i.test(st.lv.name) ? ' · BROUILLARD' : '') + (st.lv.ice && !/verglas|blizzard/i.test(st.lv.name) ? ' · VERGLAS' : '') + (st.lv.typhoon && !/typhon/i.test(st.lv.name) ? ' · TYPHON' : '') + (st.lv.lanterns ? ' · LANTERNES' : ''), 34, 53, 19, '#fff', 'left');
+  text((daily ? today() : st.lv.name.toUpperCase()) + (st.lv.rain && !/pluie/i.test(st.lv.name) ? ' · PLUIE' : '') + (st.lv.night && !/nuit/i.test(st.lv.name) ? ' · NUIT' : '') + (st.lv.fog && !/brouillard/i.test(st.lv.name) ? ' · BROUILLARD' : '') + (st.lv.ice && !/verglas|blizzard/i.test(st.lv.name) ? ' · VERGLAS' : '') + (st.lv.typhoon && !/typhon/i.test(st.lv.name) ? ' · TYPHON' : '') + (st.lv.lanterns ? ' · LANTERNES' : '') + (st.lv.slope ? ' · PENTE' : ''), 34, 53, 19, '#fff', 'left');
   panel(W - 380, 14, 364, 104);
   text('DÉGÂTS', W - 360, 34, 16, '#ff9fb2', 'left');
   text(money(st.damage), W - 32, 44, 34, '#fff', 'right', 'bold', 0);
@@ -4577,6 +4841,7 @@ function drawHUD() {
   if (G().farmers && country === 'fr' && !st.farmersUsed) gearHud.push([farmersIcon, 'C : TRACTEURS', '#ffa94d']);
   if (G().nessie && country === 'uk' && !st.nessieUsed) gearHud.push([nessieIcon, 'C : MONSTRE DU LOCH', '#38d9a9']);
   if (G().mecha && country === 'jp' && !st.mechaUsed) gearHud.push([mechaIcon, 'C : KAMINARI-GO', '#ff922b']);
+  if (G().carnaval && country === 'br' && !st.carnavalUsed) gearHud.push([carnavalIcon, 'C : CARNAVAL', '#f783ac']);
   if (G().twister && country === 'us' && !st.twisterUsed) gearHud.push([twisterIcon, 'C : TORNADE', '#ced4da']);
   if (st.phase !== 'intro' && !TOUCH) gearHud.forEach(([ic, label, c]: Loose, i: Loose) => {
     const y = 130 + i * 44;
@@ -4744,6 +5009,8 @@ const GARAGE = [
     desc: () => 'C : un robot géant arrive par la gauche, tape du pied au milieu du carrefour et pousse les véhicules vers les avenues du dessous' },
   { id: 'twister', name: 'La tornade', max: 1, icon: twisterIcon, cost: () => tune.twister_cost, country: 'us',
     desc: () => 'C : une tornade arrive par la gauche, aspire les véhicules, les fait tourner et les projette au loin' },
+  { id: 'carnaval', name: 'Le char de carnaval', max: 1, icon: carnavalIcon, cost: () => tune.carnaval_cost, country: 'br',
+    desc: () => 'C : un char de carnaval géant arrive par la gauche, écrase tout sur son passage et sème des confettis' },
   { id: 'farmers', name: 'Agriculteurs pas contents', max: 1, icon: farmersIcon, cost: () => tune.farmers_cost, country: 'fr',
     desc: () => 'C : des tracteurs déboulent par la gauche, bousculent tout et sèment du foin, sans toucher aux bâtiments' },
 ];
@@ -4757,7 +5024,7 @@ const rowY = (i: number) => 200 + i * rowH();
 const GARAGE_BY = Object.fromEntries(GARAGE.map((g: Loose) => [g.id, g]));
 const TABS: Loose = [
   { name: 'AMÉLIORATIONS', items: ['engine', 'bullbar', 'armor', 'extratime', 'extratime2', 'insurance', 'magnet'] },
-  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex', 'farmers', 'nessie', 'mecha', 'twister'] }, // an item with a country shows only in it
+  { name: 'GADGETS', items: ['dynamite', 'dynamite2', 'rocket', 'rocket2', 'trex', 'farmers', 'nessie', 'mecha', 'twister', 'carnaval'] }, // an item with a country shows only in it
   { name: 'VÉHICULES', cars: true },
 ];
 const carStars = (id: Loose) => id === 'sport' ? 0 : tune['my_stars_' + id]; // stars it takes to unlock a vehicle
@@ -4840,7 +5107,7 @@ function drawWheelCard(i: Loose, k: Loose) {
   if (sel) { ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 3; ctx.strokeRect(r.x + 8, r.y + 3, r.w - 16, r.h - 6); }
   text(String(i + 1), mx, r.y + 30 * sc, Math.round(36 * sc), ok ? '#ffc83d' : '#5c5470', 'center', 'bold italic');
   text(ok ? lv.name : 'Verrouillé', mx, r.y + 64 * sc, Math.round(19 * sc), ok ? '#fff' : '#8a80a8', 'center', 'bold');
-  const tags = [lv.rain && 'pluie', lv.night && 'nuit', lv.fog && 'brouillard', lv.ice && 'verglas', lv.median && 'autoroute', lv.ramp && 'tremplin', lv.typhoon && 'typhon', lv.lanterns && 'lanternes'].filter(Boolean).join(' · ');
+  const tags = [lv.rain && 'pluie', lv.night && 'nuit', lv.fog && 'brouillard', lv.ice && 'verglas', lv.median && 'autoroute', lv.ramp && 'tremplin', lv.typhoon && 'typhon', lv.lanterns && 'lanternes', lv.slope && 'pente'].filter(Boolean).join(' · ');
   if (ok && tags) text(tags, mx, r.y + 88 * sc, Math.round(14 * sc), '#a89fc8', 'center', 'bold');
   for (let s2 = 0; s2 < 3; s2++) star(mx - 30 * sc + s2 * 30 * sc, r.y + 116 * sc, 12 * sc, s2 < nst ? '#ffc83d' : '#3b3160');
   if (ok) text(best[i] ? 'Record ' + money(best[i]) : 'Objectif ' + money(TH_OF(i)), mx, r.y + 146 * sc, Math.round(14 * sc), '#d0c8f0', 'center', 'bold');
@@ -4850,10 +5117,10 @@ function drawWheelCard(i: Loose, k: Loose) {
 
 // ---- Scenes ------------------------------------------------------------------------------
 // ---- The countries: the home screen picks one, then its levels' wheel ---------------------
-// Only France is ready: its 19 levels are the game's. The others show as "soon".
+// Each country opens with a star on the last level of the one before it (after).
 const COUNTRIES: Loose[] = [
   { id: 'fr', name: 'France', ready: true }, { id: 'uk', name: 'Royaume-Uni', ready: true, after: 'fr' },
-  { id: 'jp', name: 'Japon', ready: true, after: 'uk' }, { id: 'us', name: 'États-Unis', ready: true, after: 'jp' }, { id: 'br', name: 'Brésil', ready: false },
+  { id: 'jp', name: 'Japon', ready: true, after: 'uk' }, { id: 'us', name: 'États-Unis', ready: true, after: 'jp' }, { id: 'br', name: 'Brésil', ready: true, after: 'us' },
 ];
 let countryIdx = 0, homeMsg = '', homeMsgT = 0, settingsBack = 'countries';
 /** A country is open once the one before it has a star on its last level (France always is). */
@@ -5266,11 +5533,11 @@ const scenes: Loose = {
       const st = state, f = st.replay[st.rp.idx] || st.replay[0], live = st.bodies, oils = st.oils, skids = st.skids, scorch = st.scorch;
       // the road as it was at that moment: only the oil, skid marks and scorches made so far
       st.bodies = f.bodies; st.oils = oils.filter((o: Loose) => o.seq <= f.oilSeq); st.skids = skids.filter((k: Loose) => k[4] <= f.skidSeq); st.scorch = scorch.slice(0, f.scorchN);
-      const trex = st.trex, farmers = st.farmers, nessie = st.nessie, mecha = st.mecha, twister = st.twister, xs = st.crossings.map((c: Loose) => [c.gate, c.phase, c.trains]), thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
-      st.trex = f.trex; st.farmers = f.farmers || null; st.nessie = f.nessie || null; st.mecha = f.mecha || null; st.twister = f.twister || null; st.crossings.forEach((c: Loose, i: number) => { if (f.trains && f.trains[i]) [c.gate, c.phase, c.trains] = f.trains[i]; }); st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
+      const trex = st.trex, farmers = st.farmers, nessie = st.nessie, mecha = st.mecha, twister = st.twister, carnaval = st.carnaval, xs = st.crossings.map((c: Loose) => [c.gate, c.phase, c.trains]), thetas = st.cranes.map((c: Loose) => [c.theta, c.falling]), shops = st.shops.map((S: Loose) => [S.dmg, S.h, S.ruined]);
+      st.trex = f.trex; st.farmers = f.farmers || null; st.nessie = f.nessie || null; st.mecha = f.mecha || null; st.carnaval = f.carnaval || null; st.twister = f.twister || null; st.crossings.forEach((c: Loose, i: number) => { if (f.trains && f.trains[i]) [c.gate, c.phase, c.trains] = f.trains[i]; }); st.cranes.forEach((c: Loose, i: number) => { c.theta = f.cranes[i]; c.falling = f.cranes[i] > 0; });
       st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = f.shops[i]; });
       try { drawWorld(); } finally {
-        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex; st.farmers = farmers; st.nessie = nessie; st.mecha = mecha; st.twister = twister; st.crossings.forEach((c: Loose, i: number) => { [c.gate, c.phase, c.trains] = xs[i]; });
+        st.bodies = live; st.oils = oils; st.skids = skids; st.scorch = scorch; st.trex = trex; st.farmers = farmers; st.nessie = nessie; st.mecha = mecha; st.carnaval = carnaval; st.twister = twister; st.crossings.forEach((c: Loose, i: number) => { [c.gate, c.phase, c.trains] = xs[i]; });
         st.cranes.forEach((c: Loose, i: number) => { [c.theta, c.falling] = thetas[i]; }); st.shops.forEach((S: Loose, i: number) => { [S.dmg, S.h, S.ruined] = shops[i]; });
       }
       ctx.fillStyle = '#0b0818'; ctx.fillRect(0, 0, W, 54); ctx.fillRect(0, H - 54, W, 54);
@@ -5332,6 +5599,7 @@ function drawTouch() {
       if (G().farmers && country === 'fr' && !st.farmersUsed) gadget(W - 206, ry, 'TRACTEURS', 'KeyC', farmersIcon, 'rgba(170,90,20,0.85)');
       if (G().nessie && country === 'uk' && !st.nessieUsed) gadget(W - 206, ry, 'MONSTRE', 'KeyC', nessieIcon, 'rgba(20,120,110,0.85)');
       if (G().mecha && country === 'jp' && !st.mechaUsed) gadget(W - 206, ry, 'MÉCA', 'KeyC', mechaIcon, 'rgba(190,80,10,0.85)');
+      if (G().carnaval && country === 'br' && !st.carnavalUsed) gadget(W - 206, ry, 'CARNAVAL', 'KeyC', carnavalIcon, 'rgba(174,62,201,0.85)');
       if (G().twister && country === 'us' && !st.twisterUsed) gadget(W - 206, ry, 'TORNADE', 'KeyC', twisterIcon, 'rgba(70,70,90,0.85)');
     }
   }); else if (scene === 'title') {

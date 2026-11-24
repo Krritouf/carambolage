@@ -1,0 +1,1391 @@
+[
+  {
+    "name": "Copacabana",
+    "lanes": 1,
+    "approach": 1700,
+    "mix": {
+      "car": 5,
+      "taxi": 4,
+      "moto": 3
+    },
+    "spawn": [
+      1.5,
+      2.7
+    ],
+    "pickups": [
+      [
+        "points",
+        19,
+        1350
+      ],
+      [
+        "mult",
+        -19,
+        1050
+      ],
+      [
+        "boost",
+        19,
+        720
+      ]
+    ],
+    "ramp": false,
+    "challenges": [
+      {
+        "type": "hits",
+        "n": 4,
+        "reward": 3000
+      },
+      {
+        "type": "destroy",
+        "kind": "moto",
+        "n": 1,
+        "reward": 3000
+      },
+      {
+        "type": "score",
+        "n": 25000,
+        "reward": 5000
+      }
+    ]
+  },
+  {
+    "name": "La colline de Santa Teresa",
+    "lanes": 2,
+    "approach": 1800,
+    "mix": {
+      "car": 4,
+      "taxi": 3,
+      "moto": 3,
+      "bus": 3,
+      "truck": 2,
+      "tanker": 1,
+      "police": 1
+    },
+    "spawn": [
+      1.3,
+      2.4
+    ],
+    "pickups": [
+      [
+        "points",
+        -19,
+        1450
+      ],
+      [
+        "boost",
+        19,
+        1150
+      ],
+      [
+        "mult",
+        -19,
+        820
+      ],
+      [
+        "points",
+        19,
+        560
+      ]
+    ],
+    "ramp": false,
+    "challenges": [
+      {
+        "type": "destroy",
+        "kind": "bus",
+        "n": 1,
+        "reward": 5000
+      },
+      {
+        "type": "blasts",
+        "n": 1,
+        "reward": 6000
+      },
+      {
+        "type": "hits",
+        "n": 8,
+        "reward": 5000
+      }
+    ],
+    "slope": 1
+  },
+  {
+    "name": "Le pont Rio-Niterói",
+    "lanes": 3,
+    "approach": 1900,
+    "mix": {
+      "car": 3,
+      "taxi": 3,
+      "moto": 3,
+      "bus": 4,
+      "truck": 2,
+      "tanker": 2,
+      "police": 1,
+      "ambulance": 1
+    },
+    "spawn": [
+      1.15,
+      2.1
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        1550
+      ],
+      [
+        "points",
+        -19,
+        1250
+      ],
+      [
+        "boost",
+        0,
+        900
+      ]
+    ],
+    "ramp": {
+      "from": 150,
+      "len": 110
+    },
+    "events": [
+      "convoy"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 2,
+        "reward": 8000
+      },
+      {
+        "type": "destroy",
+        "kind": "truck",
+        "n": 1,
+        "reward": 6000
+      },
+      {
+        "type": "score",
+        "n": 500000,
+        "reward": 10000
+      }
+    ]
+  },
+  {
+    "name": "L'heure de pointe à São Paulo",
+    "lanes": 4,
+    "approach": 2000,
+    "speedMul": 1.1,
+    "mix": {
+      "car": 5,
+      "taxi": 4,
+      "moto": 3,
+      "bus": 3,
+      "truck": 2,
+      "tanker": 2,
+      "police": 2,
+      "ambulance": 1,
+      "fire": 1
+    },
+    "spawn": [
+      0.8,
+      1.5
+    ],
+    "pickups": [
+      [
+        "points",
+        19,
+        1750
+      ],
+      [
+        "mult",
+        -19,
+        1450
+      ],
+      [
+        "boost",
+        19,
+        1100
+      ],
+      [
+        "points",
+        -19,
+        800
+      ],
+      [
+        "mult",
+        19,
+        500
+      ]
+    ],
+    "ramp": false,
+    "events": [
+      "chase"
+    ],
+    "challenges": [
+      {
+        "type": "destroy",
+        "kind": "police",
+        "n": 2,
+        "reward": 8000
+      },
+      {
+        "type": "hits",
+        "n": 15,
+        "reward": 8000
+      },
+      {
+        "type": "blasts",
+        "n": 2,
+        "reward": 8000
+      }
+    ]
+  },
+  {
+    "name": "Pluie tropicale sur Ipanema",
+    "lanes": 4,
+    "approach": 2000,
+    "speedMul": 1.15,
+    "rain": true,
+    "oilPatches": 4,
+    "mix": {
+      "car": 5,
+      "taxi": 4,
+      "moto": 4,
+      "bus": 3,
+      "truck": 2,
+      "tanker": 2,
+      "police": 2,
+      "ambulance": 1
+    },
+    "spawn": [
+      0.8,
+      1.4
+    ],
+    "pickups": [
+      [
+        "points",
+        19,
+        1700
+      ],
+      [
+        "mult",
+        -19,
+        1400
+      ],
+      [
+        "boost",
+        19,
+        1050
+      ],
+      [
+        "mult",
+        19,
+        600
+      ]
+    ],
+    "ramp": false,
+    "events": [
+      "chase",
+      "convoy"
+    ],
+    "challenges": [
+      {
+        "type": "destroy",
+        "kind": "taxi",
+        "n": 3,
+        "reward": 18000
+      },
+      {
+        "type": "hits",
+        "n": 20,
+        "reward": 18000
+      },
+      {
+        "type": "score",
+        "n": 2500000,
+        "reward": 18000
+      }
+    ],
+    "slope": -1
+  },
+  {
+    "name": "Le convoi de Belo Horizonte",
+    "lanes": 4,
+    "approach": 2100,
+    "speedMul": 1.15,
+    "oilPatches": 6,
+    "mix": {
+      "tanker": 6,
+      "truck": 3,
+      "car": 3,
+      "moto": 2,
+      "fire": 2,
+      "police": 1
+    },
+    "spawn": [
+      0.9,
+      1.6
+    ],
+    "pickups": [
+      [
+        "mult",
+        -19,
+        1850
+      ],
+      [
+        "points",
+        19,
+        1550
+      ],
+      [
+        "mult",
+        19,
+        1250
+      ],
+      [
+        "boost",
+        0,
+        900
+      ]
+    ],
+    "ramp": {
+      "from": 170,
+      "len": 120
+    },
+    "events": [
+      "giant",
+      "convoy"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 4,
+        "reward": 12000
+      },
+      {
+        "type": "destroy",
+        "kind": "fire",
+        "n": 1,
+        "reward": 10000
+      },
+      {
+        "type": "hits",
+        "n": 18,
+        "reward": 10000
+      }
+    ]
+  },
+  {
+    "name": "Les néons de Lapa",
+    "lanes": 5,
+    "approach": 2200,
+    "speedMul": 1.25,
+    "oilPatches": 10,
+    "mix": {
+      "car": 4,
+      "taxi": 4,
+      "moto": 4,
+      "bus": 4,
+      "truck": 3,
+      "tanker": 4,
+      "police": 3,
+      "ambulance": 2,
+      "fire": 2
+    },
+    "spawn": [
+      0.7,
+      1.3
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        1950
+      ],
+      [
+        "points",
+        -19,
+        1700
+      ],
+      [
+        "mult",
+        -19,
+        1400
+      ],
+      [
+        "points",
+        19,
+        1150
+      ],
+      [
+        "boost",
+        0,
+        900
+      ]
+    ],
+    "ramp": {
+      "from": 180,
+      "len": 130
+    },
+    "events": [
+      "convoy",
+      "chase",
+      "giant",
+      "parade"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 5,
+        "reward": 15000
+      },
+      {
+        "type": "destroy",
+        "kind": "ambulance",
+        "n": 2,
+        "reward": 15000
+      },
+      {
+        "type": "hits",
+        "n": 25,
+        "reward": 15000
+      }
+    ]
+  },
+  {
+    "name": "Nuit sur les hauteurs de Rio",
+    "lanes": 5,
+    "approach": 2100,
+    "speedMul": 1.2,
+    "night": true,
+    "oilPatches": 6,
+    "mix": {
+      "car": 4,
+      "taxi": 4,
+      "moto": 3,
+      "bus": 3,
+      "truck": 3,
+      "tanker": 4,
+      "police": 2,
+      "ambulance": 1,
+      "fire": 2
+    },
+    "spawn": [
+      0.75,
+      1.35
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        1850
+      ],
+      [
+        "points",
+        -19,
+        1550
+      ],
+      [
+        "mult",
+        -19,
+        1250
+      ],
+      [
+        "boost",
+        0,
+        900
+      ]
+    ],
+    "ramp": {
+      "from": 180,
+      "len": 130
+    },
+    "events": [
+      "giant",
+      "chase"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 6,
+        "reward": 20000
+      },
+      {
+        "type": "destroy",
+        "kind": "fire",
+        "n": 2,
+        "reward": 20000
+      },
+      {
+        "type": "hits",
+        "n": 28,
+        "reward": 20000
+      }
+    ],
+    "slope": 1
+  },
+  {
+    "name": "Le froid de Gramado",
+    "lanes": 3,
+    "approach": 1900,
+    "speedMul": 1.1,
+    "ice": true,
+    "mix": {
+      "car": 5,
+      "taxi": 3,
+      "moto": 3,
+      "bus": 3,
+      "truck": 2,
+      "tanker": 4,
+      "police": 1,
+      "fire": 1
+    },
+    "spawn": [
+      0.8,
+      1.4
+    ],
+    "pickups": [
+      [
+        "points",
+        19,
+        1600
+      ],
+      [
+        "mult",
+        -19,
+        1300
+      ],
+      [
+        "boost",
+        0,
+        900
+      ]
+    ],
+    "ramp": {
+      "from": 150,
+      "len": 110
+    },
+    "events": [
+      "convoy"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 5,
+        "reward": 35000
+      },
+      {
+        "type": "destroy",
+        "kind": "moto",
+        "n": 3,
+        "reward": 35000
+      },
+      {
+        "type": "score",
+        "n": 5250000,
+        "reward": 35000
+      }
+    ],
+    "shops": true,
+    "cranes": 1
+  },
+  {
+    "name": "Les coursiers de Salvador",
+    "lanes": 4,
+    "approach": 2000,
+    "speedMul": 1.35,
+    "mix": {
+      "moto": 14,
+      "car": 3,
+      "police": 3,
+      "tanker": 2,
+      "bus": 2
+    },
+    "spawn": [
+      0.5,
+      0.9
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        1700
+      ],
+      [
+        "boost",
+        -19,
+        1350
+      ],
+      [
+        "mult",
+        -19,
+        1000
+      ],
+      [
+        "points",
+        19,
+        700
+      ]
+    ],
+    "ramp": false,
+    "events": [
+      "chase",
+      "parade"
+    ],
+    "challenges": [
+      {
+        "type": "destroy",
+        "kind": "moto",
+        "n": 12,
+        "reward": 55000
+      },
+      {
+        "type": "hits",
+        "n": 40,
+        "reward": 55000
+      },
+      {
+        "type": "blasts",
+        "n": 3,
+        "reward": 55000
+      }
+    ],
+    "shops": true,
+    "cranes": 2
+  },
+  {
+    "name": "La ruelle du Pelourinho",
+    "lanes": 5,
+    "approach": 1200,
+    "speedMul": 1.3,
+    "mix": {
+      "car": 4,
+      "taxi": 4,
+      "moto": 3,
+      "bus": 4,
+      "truck": 3,
+      "tanker": 3,
+      "police": 2,
+      "ambulance": 2,
+      "fire": 2
+    },
+    "spawn": [
+      0.6,
+      1.2
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        950
+      ],
+      [
+        "boost",
+        -19,
+        700
+      ],
+      [
+        "points",
+        19,
+        450
+      ]
+    ],
+    "ramp": false,
+    "events": [
+      "chase"
+    ],
+    "challenges": [
+      {
+        "type": "hits",
+        "n": 35,
+        "reward": 40000
+      },
+      {
+        "type": "destroy",
+        "kind": "bus",
+        "n": 3,
+        "reward": 40000
+      },
+      {
+        "type": "blasts",
+        "n": 5,
+        "reward": 40000
+      }
+    ],
+    "shops": true,
+    "cranes": 1,
+    "slope": -1
+  },
+  {
+    "name": "Brouillard sur la baie de Guanabara",
+    "lanes": 4,
+    "approach": 2000,
+    "speedMul": 1.25,
+    "fog": true,
+    "mix": {
+      "car": 5,
+      "taxi": 4,
+      "moto": 3,
+      "bus": 3,
+      "truck": 3,
+      "tanker": 3,
+      "police": 2,
+      "ambulance": 1,
+      "fire": 1
+    },
+    "spawn": [
+      0.7,
+      1.3
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        1700
+      ],
+      [
+        "points",
+        -19,
+        1400
+      ],
+      [
+        "mult",
+        -19,
+        1100
+      ],
+      [
+        "boost",
+        19,
+        800
+      ]
+    ],
+    "ramp": false,
+    "events": [
+      "chase",
+      "giant"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 4,
+        "reward": 30000
+      },
+      {
+        "type": "destroy",
+        "kind": "truck",
+        "n": 3,
+        "reward": 30000
+      },
+      {
+        "type": "hits",
+        "n": 30,
+        "reward": 30000
+      }
+    ],
+    "shops": true,
+    "cranes": 1
+  },
+  {
+    "name": "L'autoroute de São Paulo",
+    "lanes": 6,
+    "approach": 2300,
+    "speedMul": 1.4,
+    "median": true,
+    "rain": true,
+    "oilPatches": 8,
+    "mix": {
+      "car": 5,
+      "taxi": 3,
+      "moto": 4,
+      "bus": 4,
+      "truck": 4,
+      "tanker": 4,
+      "police": 3,
+      "ambulance": 2,
+      "fire": 2
+    },
+    "spawn": [
+      0.6,
+      1.1
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        2050
+      ],
+      [
+        "points",
+        -19,
+        1750
+      ],
+      [
+        "mult",
+        -19,
+        1450
+      ],
+      [
+        "points",
+        19,
+        1150
+      ],
+      [
+        "boost",
+        0,
+        950
+      ]
+    ],
+    "ramp": {
+      "from": 200,
+      "len": 140
+    },
+    "events": [
+      "convoy",
+      "giant",
+      "chase",
+      "parade"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 6,
+        "reward": 25000
+      },
+      {
+        "type": "destroy",
+        "kind": "bus",
+        "n": 3,
+        "reward": 25000
+      },
+      {
+        "type": "hits",
+        "n": 35,
+        "reward": 25000
+      }
+    ]
+  },
+  {
+    "name": "Orage sur Recife",
+    "lanes": 5,
+    "approach": 2200,
+    "speedMul": 1.3,
+    "rain": true,
+    "night": true,
+    "oilPatches": 10,
+    "mix": {
+      "car": 4,
+      "taxi": 4,
+      "moto": 3,
+      "bus": 4,
+      "truck": 3,
+      "tanker": 4,
+      "police": 2,
+      "ambulance": 2,
+      "fire": 2
+    },
+    "spawn": [
+      0.65,
+      1.2
+    ],
+    "pickups": [
+      [
+        "mult",
+        -19,
+        1900
+      ],
+      [
+        "points",
+        19,
+        1600
+      ],
+      [
+        "mult",
+        19,
+        1300
+      ],
+      [
+        "boost",
+        0,
+        950
+      ]
+    ],
+    "ramp": {
+      "from": 180,
+      "len": 130
+    },
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 7,
+        "reward": 50000
+      },
+      {
+        "type": "destroy",
+        "kind": "ambulance",
+        "n": 3,
+        "reward": 50000
+      },
+      {
+        "type": "score",
+        "n": 8250000,
+        "reward": 50000
+      }
+    ],
+    "shops": true,
+    "cranes": 1,
+    "slope": 1
+  },
+  {
+    "name": "Les pompiers de Porto Alegre",
+    "lanes": 5,
+    "approach": 2100,
+    "speedMul": 1.3,
+    "oilPatches": 6,
+    "mix": {
+      "fire": 6,
+      "ambulance": 5,
+      "police": 5,
+      "car": 3,
+      "tanker": 3
+    },
+    "spawn": [
+      0.7,
+      1.2
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        1800
+      ],
+      [
+        "points",
+        -19,
+        1500
+      ],
+      [
+        "mult",
+        -19,
+        1200
+      ],
+      [
+        "boost",
+        19,
+        850
+      ]
+    ],
+    "ramp": false,
+    "events": [
+      "chase",
+      "giant"
+    ],
+    "challenges": [
+      {
+        "type": "destroy",
+        "kind": "fire",
+        "n": 4,
+        "reward": 60000
+      },
+      {
+        "type": "destroy",
+        "kind": "ambulance",
+        "n": 4,
+        "reward": 60000
+      },
+      {
+        "type": "destroy",
+        "kind": "police",
+        "n": 5,
+        "reward": 60000
+      }
+    ],
+    "shops": true,
+    "cranes": 2
+  },
+  {
+    "name": "La route de nuit de Brasília",
+    "lanes": 6,
+    "approach": 2300,
+    "speedMul": 1.45,
+    "median": true,
+    "night": true,
+    "oilPatches": 8,
+    "mix": {
+      "car": 5,
+      "taxi": 3,
+      "moto": 3,
+      "bus": 4,
+      "truck": 4,
+      "tanker": 5,
+      "police": 3,
+      "ambulance": 2,
+      "fire": 2
+    },
+    "spawn": [
+      0.55,
+      1
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        2050
+      ],
+      [
+        "points",
+        -19,
+        1750
+      ],
+      [
+        "mult",
+        -19,
+        1450
+      ],
+      [
+        "points",
+        19,
+        1150
+      ],
+      [
+        "boost",
+        0,
+        950
+      ]
+    ],
+    "ramp": {
+      "from": 200,
+      "len": 140
+    },
+    "events": [
+      "convoy",
+      "giant",
+      "chase"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 8,
+        "reward": 65000
+      },
+      {
+        "type": "destroy",
+        "kind": "bus",
+        "n": 4,
+        "reward": 65000
+      },
+      {
+        "type": "hits",
+        "n": 45,
+        "reward": 65000
+      }
+    ],
+    "shops": true,
+    "cranes": 2
+  },
+  {
+    "name": "Le convoi de Fortaleza",
+    "lanes": 5,
+    "approach": 2200,
+    "speedMul": 1.25,
+    "night": true,
+    "oilPatches": 6,
+    "mix": {
+      "tanker": 7,
+      "truck": 4,
+      "car": 3,
+      "police": 2,
+      "fire": 2
+    },
+    "spawn": [
+      0.75,
+      1.3
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        1900
+      ],
+      [
+        "points",
+        -19,
+        1600
+      ],
+      [
+        "mult",
+        -19,
+        1300
+      ],
+      [
+        "boost",
+        0,
+        950
+      ]
+    ],
+    "ramp": {
+      "from": 180,
+      "len": 130
+    },
+    "events": [
+      "convoy",
+      "giant"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 8,
+        "reward": 45000
+      },
+      {
+        "type": "destroy",
+        "kind": "police",
+        "n": 3,
+        "reward": 45000
+      },
+      {
+        "type": "hits",
+        "n": 35,
+        "reward": 45000
+      }
+    ],
+    "shops": true,
+    "cranes": 1,
+    "slope": -1
+  },
+  {
+    "name": "Le brouillard de la Serra Gaúcha",
+    "lanes": 6,
+    "approach": 2300,
+    "speedMul": 1.35,
+    "ice": true,
+    "fog": true,
+    "oilPatches": 6,
+    "mix": {
+      "car": 5,
+      "taxi": 3,
+      "moto": 3,
+      "bus": 4,
+      "truck": 4,
+      "tanker": 5,
+      "police": 2,
+      "ambulance": 2,
+      "fire": 2
+    },
+    "spawn": [
+      0.6,
+      1.1
+    ],
+    "pickups": [
+      [
+        "mult",
+        -19,
+        2050
+      ],
+      [
+        "points",
+        19,
+        1750
+      ],
+      [
+        "mult",
+        19,
+        1450
+      ],
+      [
+        "boost",
+        0,
+        950
+      ]
+    ],
+    "ramp": {
+      "from": 200,
+      "len": 140
+    },
+    "events": [
+      "giant",
+      "convoy"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 8,
+        "reward": 70000
+      },
+      {
+        "type": "hits",
+        "n": 45,
+        "reward": 70000
+      },
+      {
+        "type": "score",
+        "n": 15000000,
+        "reward": 70000
+      }
+    ],
+    "shops": true,
+    "cranes": 2
+  },
+  {
+    "name": "Le grand carrefour de Brasília",
+    "lanes": 7,
+    "approach": 2400,
+    "speedMul": 1.5,
+    "rain": true,
+    "night": true,
+    "oilPatches": 14,
+    "mix": {
+      "car": 4,
+      "taxi": 4,
+      "moto": 4,
+      "bus": 4,
+      "truck": 4,
+      "tanker": 6,
+      "police": 3,
+      "ambulance": 3,
+      "fire": 3
+    },
+    "spawn": [
+      0.5,
+      0.9
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        2150
+      ],
+      [
+        "points",
+        -19,
+        1850
+      ],
+      [
+        "mult",
+        -19,
+        1550
+      ],
+      [
+        "points",
+        19,
+        1250
+      ],
+      [
+        "boost",
+        0,
+        1000
+      ]
+    ],
+    "ramp": {
+      "from": 210,
+      "len": 150
+    },
+    "events": [
+      "convoy",
+      "chase",
+      "giant"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 12,
+        "reward": 80000
+      },
+      {
+        "type": "destroy",
+        "kind": "fire",
+        "n": 4,
+        "reward": 80000
+      },
+      {
+        "type": "hits",
+        "n": 60,
+        "reward": 80000
+      }
+    ],
+    "shops": true,
+    "cranes": 2
+  },
+  {
+    "name": "Le grand final de Rio",
+    "lanes": 6,
+    "approach": 2300,
+    "speedMul": 1.55,
+    "rain": true,
+    "night": true,
+    "oilPatches": 16,
+    "mix": {
+      "car": 4,
+      "taxi": 5,
+      "moto": 4,
+      "bus": 5,
+      "truck": 4,
+      "tanker": 6,
+      "police": 3,
+      "ambulance": 3,
+      "fire": 3
+    },
+    "spawn": [
+      0.5,
+      0.9
+    ],
+    "pickups": [
+      [
+        "mult",
+        19,
+        2150
+      ],
+      [
+        "points",
+        -19,
+        1850
+      ],
+      [
+        "mult",
+        -19,
+        1550
+      ],
+      [
+        "points",
+        19,
+        1250
+      ],
+      [
+        "boost",
+        0,
+        1000
+      ]
+    ],
+    "ramp": {
+      "from": 210,
+      "len": 150
+    },
+    "events": [
+      "convoy",
+      "chase",
+      "giant",
+      "parade"
+    ],
+    "challenges": [
+      {
+        "type": "blasts",
+        "n": 12,
+        "reward": 80000
+      },
+      {
+        "type": "destroy",
+        "kind": "fire",
+        "n": 4,
+        "reward": 80000
+      },
+      {
+        "type": "hits",
+        "n": 60,
+        "reward": 80000
+      }
+    ],
+    "shops": true,
+    "cranes": 2,
+    "fog": true,
+    "slope": 1
+  }
+]

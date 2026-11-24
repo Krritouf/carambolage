@@ -183,6 +183,22 @@ explose en confettis.
 
 #### Brésil (Amérique)
 
+**Fait (2026-11-24)** : ouvert quand le niveau 20 des États-Unis a au moins 1 étoile ; le réal (`br_rate` = 6) ;
+20 niveaux (`data/levels-br.json`, seuils repris des États-Unis en attendant le pilote automatique). Faits :
+- **les rues en pente** (niveaux 2, 5, 8, 11, 14, 17 et 20, `slope` = 1 ou -1, le sens de la descente) : panneaux et
+  chevrons sur la chaussée ; la circulation tient sa voie, mais ce qui est lâché (épaves, ta voiture hors de contrôle)
+  accroche moins (`slope_grip`) et dévale (`slope_accel`) : le carambolage continue tout seul plus bas ;
+- **le téléphérique** à la place de la première grue : un pylône d'acier, son câble et sa cabine rouge ; il tombe comme
+  un monument (`teleferique_*`), puis la cabine se décroche et dévale le boulevard (`cabin_push`, `value_cabin`) ;
+- **le char de carnaval** (C, gadget du Brésil) : arrive par la gauche, batucada, plumes, soleil géant, écrase tout
+  (`carnaval_*`) et sème des confettis ; **le T-Rex fait le carnaval** : s'il croise le char, il monte dessus, danse
+  (prime `carnaval_bonus`) et repart avec lui ;
+- **la parade** (niveaux 7, 10, 13 et 20) avec des chars de carnaval : éventail de plumes, masque, soleil, ananas ;
+- les boutiques : bar à jus et boutique de tongs (à la place de la boulangerie et de la boucherie) ;
+- les véhicules : minibus, petite citadine, taxi jaune à bande bleue, police blanche et bleue, moto-taxi avec son
+  passager, bus de ville blanc, camion bariolé à bâche rayée ; au garage, le minibus et le camion bariolé.
+Reste : la pluie tropicale par averses (la pluie actuelle sert pour l'instant).
+
 - **Mécanique : les rues en pente** de Rio : les épaves dévalent la colline, le carambolage continue
   tout seul en bas.
 - Circulation : minibus colorés, motos-taxis, petites voitures.

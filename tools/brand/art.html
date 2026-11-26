@@ -1,8 +1,8 @@
 <!doctype html>
 <!-- The app's icon and splash, drawn in code in the game's look, shot to PNG in assets/:
      ?what=icon -> icon-only.png, ?what=fg -> icon-foreground.png, ?what=bg -> icon-background.png
-     (1024 x 1024), ?what=splash -> splash.png (2732 x 2732). The icon is its own drawing (cartoon cars and
-     fireball, icon()); tools/brand/icon-art.mjs shoots it. Then npm run android:assets.
+     (1024 x 1024), ?what=splash -> splash.png (2732 x 2732). Both are their own drawing (cartoon cars and
+     fireball: icon(), splash()); tools/brand/icon-art.mjs shoots them. Then npm run android:assets.
      The title is 'ready' once it is drawn. -->
 <html lang="fr">
 <head>
@@ -18,71 +18,8 @@ const S = what === 'splash' ? 2732 : 1024;
 const cv = document.getElementById('c'); cv.width = S; cv.height = S; cv.style.width = S + 'px'; cv.style.height = S + 'px';
 const g = cv.getContext('2d');
 let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-const poly = (pts, c) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) g.lineTo(p[0], p[1]); g.closePath(); g.fillStyle = c; g.fill(); };
 const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); const c = s => Math.min(255, Math.round(((n >> s) & 255) * f)); return `rgb(${c(16)},${c(8)},${c(0)})`; };
 
-// a box seen from above, its top lifted toward the viewer (the game's 2.5D)
-function box(cx, cy, a, len, wid, h, top, side) {
-  const c = Math.cos(a), s = Math.sin(a), hl = len / 2, hw = wid / 2;
-  const pts = [[hl, hw], [hl, -hw], [-hl, -hw], [-hl, hw]].map(([u, v]) => [cx + c * u - s * v, cy + s * u + c * v]);
-  const lift = [-h * 0.35, -h * 0.55];
-  const tp = pts.map(p => [p[0] + lift[0], p[1] + lift[1]]);
-  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; poly([pts[i], pts[j], tp[j], tp[i]], shade(side, 0.62 + 0.08 * i)); }
-  poly(tp, top);
-  return tp;
-}
-// a rectangle drawn flat on a lifted top: an offset (u along, v across) in the car's frame
-function flat(cx, cy, a, u, v, len, wid, h, color) {
-  const c = Math.cos(a), s = Math.sin(a), x = cx + c * u - s * v - h * 0.35, y = cy + s * u + c * v - h * 0.55, hl = len / 2, hw = wid / 2;
-  poly([[hl, hw], [hl, -hw], [-hl, -hw], [-hl, hw]].map(([p, q]) => [x + c * p - s * q, y + s * p + c * q]), color);
-}
-function car(cx, cy, a, k, body, kind) {
-  const L = 230 * k, Wd = 115 * k;
-  g.globalAlpha = 0.35; box(cx + 26 * k, cy + 34 * k, a, L + 14 * k, Wd + 14 * k, 0, '#0b0818', '#0b0818'); g.globalAlpha = 1;
-  box(cx, cy, a, L, Wd, 46 * k, body, body);
-  const ch = 82 * k;
-  box(cx - Math.cos(a) * 12 * k, cy - Math.sin(a) * 12 * k, a, L * 0.45, Wd * 0.82, ch, kind === 'taxi' ? '#22305a' : '#22305a', '#22305a');
-  flat(cx, cy, a, -14 * k, 0, L * 0.32, Wd * 0.68, ch, shade(body, 1.12));
-  flat(cx, cy, a, L / 2 - 10 * k, Wd * 0.3, 14 * k, 22 * k, 46 * k, '#fff3bf'); flat(cx, cy, a, L / 2 - 10 * k, -Wd * 0.3, 14 * k, 22 * k, 46 * k, '#fff3bf');
-  if (kind === 'player') { // racing stripes and a spoiler
-    for (const v of [-11, 11]) { flat(cx, cy, a, L * 0.3, v * k, L * 0.36, 11 * k, 46 * k, '#ffffff'); flat(cx, cy, a, -14 * k, v * k, L * 0.32, 11 * k, ch, '#ffffff'); }
-    flat(cx, cy, a, -L * 0.4, 0, 18 * k, Wd * 0.95, 48 * k, '#1d1a26');
-  } else { // the taxi's roof sign
-    box(cx - Math.cos(a) * 14 * k, cy - Math.sin(a) * 14 * k, a, 30 * k, 58 * k, ch + 26 * k, '#ffffff', '#ced4da');
-  }
-}
-function burst(cx, cy, r) {
-  const ring = (rr, n, c, rot) => { const p = []; for (let i = 0; i < n * 2; i++) { const an = rot + i * Math.PI / n, q = i % 2 ? rr * 0.5 : rr * (0.85 + rnd() * 0.3); p.push([cx + Math.cos(an) * q, cy + Math.sin(an) * q]); } poly(p, c); };
-  ring(r, 12, '#ff4a1c', 0.1); ring(r * 0.78, 11, '#ff9a1f', 0.3); ring(r * 0.52, 9, '#ffe066', 0.5); ring(r * 0.28, 8, '#fffbe0', 0.2);
-}
-function sparks(cx, cy, r, n, px) {
-  const cols = ['#fffbe0', '#ffe066', '#ff9a1f', '#ff4a1c'];
-  for (let i = 0; i < n; i++) {
-    const an = rnd() * Math.PI * 2, d = r * (0.7 + rnd() * 0.9), x = Math.round((cx + Math.cos(an) * d) / px) * px, y = Math.round((cy + Math.sin(an) * d) / px) * px;
-    g.fillStyle = cols[Math.floor(rnd() * cols.length)]; g.fillRect(x, y, px, px);
-    if (rnd() < 0.5) g.fillRect(x + px, y, px, px);
-  }
-  for (let i = 0; i < n / 4; i++) { // debris
-    const an = rnd() * Math.PI * 2, d = r * (0.9 + rnd() * 0.6), x = cx + Math.cos(an) * d, y = cy + Math.sin(an) * d, s = px * (1.5 + rnd() * 2);
-    poly([[x, y - s], [x + s, y + s * 0.6], [x - s * 0.8, y + s * 0.4]], rnd() < 0.5 ? '#ff2d2d' : '#ffd21f');
-  }
-}
-function city() { // the game's crossroads: a boulevard across the middle, blocks in rows above and below
-  const pal = ['#ff5e7a', '#2ec4b6', '#ffc83d', '#7b5cff', '#ff8fd0', '#19c37d', '#4aa8ff', '#ff7b39'];
-  const road = 760, y0 = S / 2 - road / 2 + 90, y1 = y0 + road;
-  g.fillStyle = '#e9d8a6'; g.fillRect(0, y0 - 60, S, road + 120); // sidewalks
-  g.fillStyle = '#4b5577'; g.fillRect(0, y0, S, road);
-  g.fillStyle = '#ffd21f'; g.fillRect(0, (y0 + y1) / 2 - 10, S, 7); g.fillRect(0, (y0 + y1) / 2 + 6, S, 7);
-  g.fillStyle = '#f1f3f5'; for (const f of [0.25, 0.75]) for (let x = 0; x < S; x += 160) g.fillRect(x, y0 + road * f - 4, 90, 8);
-  const row = (top, bottom) => {
-    for (let x = -40; x < S; ) {
-      const w = 300 + rnd() * 260, c = pal[Math.floor(rnd() * pal.length)];
-      box(x + w / 2, (top + bottom) / 2, 0, w - 50, bottom - top - 50, 120 + rnd() * 160, c, c);
-      x += w;
-    }
-  };
-  row(0, y0 - 80); row(y1 + 80, S);
-}
 // ---- the icon: two cartoon cars meeting in a fireball, drawn for its own sake (not the game's sprites) --------
 // round shapes, a dark outline round everything, light from the top left and from the fire, so it reads at 48 px
 const INK = '#1b1530';
@@ -258,6 +195,51 @@ function icon() {
   sparksAndBits(I[0], I[1], R);
   g.restore();
 }
+/** A row of rooftops at night, from y0 to y1: dark blocks, outlined, a few windows lit. */
+function nightRoofs(y0, y1) {
+  const pal = ['#3b2f66', '#2f3f63', '#4b2f5a', '#2e4a52', '#3f3a70', '#523263'];
+  for (let x = -60; x < S; ) {
+    const w = 300 + rnd() * 220, c = pal[Math.floor(rnd() * pal.length)], h = y1 - y0 - 60;
+    rr(x + 20, y0 + 30, w - 40, h, 26); g.fillStyle = lin(0, y0, 0, y1, [[0, shade(c, 1.15)], [1, shade(c, 0.85)]]); g.fill();
+    g.lineWidth = 12; g.strokeStyle = INK; g.stroke();
+    // a roof edge catching the light, and lit windows
+    rr(x + 40, y0 + 46, w - 80, 14, 7); g.fillStyle = 'rgba(255,255,255,0.12)'; g.fill();
+    for (let wy = y0 + 100; wy < y0 + 30 + h - 70; wy += 90) for (let wx = x + 60; wx < x + w - 90; wx += 70) {
+      const lit = rnd() < 0.28; rr(wx, wy, 34, 46, 6);
+      g.fillStyle = lit ? '#ffd86b' : 'rgba(10,6,24,0.35)'; if (lit) { g.save(); g.shadowColor = '#ffb000'; g.shadowBlur = 24; g.fill(); g.restore(); } else g.fill();
+    }
+    x += w;
+  }
+}
+/** The splash: the icon's crash on a night boulevard across the picture, the title above. Android crops it to the
+ *  screen, a landscape band through the middle (about y 780 to 1950 on a 21:9 phone): everything that matters is there. */
+function splash() {
+  const RY = 1430, K = 1.45;
+  g.fillStyle = '#1b1530'; g.fillRect(0, 0, S, S);
+  nightRoofs(RY - 250 * K - 980, RY - 250 * K + 10);
+  nightRoofs(RY + 250 * K - 10, RY + 250 * K + 980);
+  g.save(); g.translate(S / 2, RY); g.scale(K, K);
+  iconRoad(0, 0, 0);
+  g.restore();
+  // the dark closing in above and below the band the phone shows
+  g.fillStyle = lin(0, 0, 0, S, [[0, 'rgba(27,21,48,1)'], [0.27, 'rgba(27,21,48,0.75)'], [0.4, 'rgba(27,21,48,0.25)'], [0.62, 'rgba(27,21,48,0.25)'], [0.74, 'rgba(27,21,48,0.75)'], [1, 'rgba(27,21,48,1)']]);
+  g.fillRect(0, 0, S, S);
+  g.save(); g.translate(S / 2, RY); g.scale(K, K);
+  const L = 420, R = 150, a1 = 0.04, a2 = Math.PI - 0.38;
+  speedLines(-L * 0.62, 62, a1, 4, L * 0.5, L * 1.1);
+  toonCar(-Math.cos(a2) * L * 0.58, -Math.sin(a2) * L * 0.58 - 20, a2 + 0.1, L * 0.94, 'taxi', 0.5); // the cab, thrown up
+  toonCar(-L * 0.62, 62, a1, L, 'sport', 0);
+  fireball(0, 10, R);
+  sparksAndBits(0, 10, R);
+  g.restore();
+  // the title, glowing a little
+  g.save(); g.translate(S / 2, 960); g.rotate(-0.04);
+  g.font = 'italic bold 225px "Trebuchet MS", "Arial Black", Verdana, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 40; g.lineJoin = 'round'; g.strokeStyle = INK; g.strokeText('CARAMBOLAGE', 0, 0);
+  g.shadowColor = 'rgba(255,180,60,0.6)'; g.shadowBlur = 50;
+  g.fillStyle = lin(0, -110, 0, 110, [[0, '#ffe27a'], [1, '#ffb52e']]); g.fillText('CARAMBOLAGE', 0, 0);
+  g.restore();
+}
 g.fillStyle = '#1b1530'; g.fillRect(0, 0, S, S);
 if (what === 'bg') { // the adaptive icon's background: the violet glow alone
   const grd = g.createRadialGradient(S / 2, S / 2, 40, S / 2, S / 2, S * 0.6); grd.addColorStop(0, '#3b2a6e'); grd.addColorStop(1, '#1b1530');
@@ -266,16 +248,7 @@ if (what === 'bg') { // the adaptive icon's background: the violet glow alone
   // fg is the whole icon: the assets tool insets it by a sixth, to Android's safe zone; the crash keeps to the middle
   icon();
 } else {
-  city();
-  const cx = S / 2, cy = S / 2 + 90;
-  burst(cx, cy, 470);
-  car(cx + 230, cy - 120, Math.PI * 0.62, 2.0, '#ffd21f', 'taxi');
-  car(cx - 210, cy + 170, -Math.PI * 0.27, 2.25, '#ff2d2d', 'player');
-  sparks(cx, cy, 380, 90, 24);
-  g.save(); g.translate(cx, cy - 640); g.rotate(-0.05);
-  g.font = 'italic bold 230px "Trebuchet MS", "Arial Black", Verdana, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.lineWidth = 34; g.lineJoin = 'round'; g.strokeStyle = '#1b1530'; g.strokeText('CARAMBOLAGE', 0, 0);
-  g.fillStyle = '#ffc83d'; g.fillText('CARAMBOLAGE', 0, 0); g.restore();
+  splash();
 }
 document.title = 'ready';
 </script>

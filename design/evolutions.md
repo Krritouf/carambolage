@@ -341,7 +341,9 @@ chaos, on fonce les ramasser.
 - ~~Un **20ᵉ niveau** pour un compte rond~~ — fait : la place de l'Étoile (France).
 - Le **bouton « Effacer la sauvegarde »** des réglages (commit `09d673b`) : à garder ou non pour la
   version publiée, à décider.
-- **Recalibrer tous les seuils** avec le pilote automatique : le plafond de 280 véhicules (les derniers
-  niveaux), le Royaume-Uni, le niveau 20, les tracteurs, le monstre et le combo jurassique ont changé
-  les scores depuis la dernière mesure.
+- ~~**Recalibrer tous les seuils** avec le pilote automatique~~ — fait le 2026-11-26 : les 5 pays, 20 parties par
+  test (`propose.mjs --floor=0.1` : les carambolages ratés du pilote sont écartés). Le tremplin (niveau 3) est à
+  150 k pour le 1★ dans tous les pays (réglé à la main). US 16 (Route 66 de nuit) garde ses anciens seuils : le pilote
+  se jette sur le train dans 13 parties sur 19. Les prix du garage n'ont pas été touchés.
+  À revoir en jouant : US 7 et 10 (1★ vers 2,1 M), Brésil 2 (2★ et 3★ serrés), France 20 (1★ passé de 16,1 à 7,15 M).
 - **Un combo par pays** entre son gadget et le T-Rex (comme le combo jurassique en France).

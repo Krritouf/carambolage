@@ -1,96 +1,69 @@
-// Works out the star thresholds and garage prices from the autopilot's runs, by the rules the
-// owner chose (2026-11-20). It prints the proposal; with --write it also puts it in
-// data/config.json (thresholds, 2- and 3-star scores, item prices, vehicle factors).
-//   node tools/balance/propose.mjs [--write]
+// Works out each country's star thresholds from the autopilot's runs, by the rules the owner chose
+// (2026-11-20). It prints the proposal; with --write it also puts it in data/config.json
+// (threshold_N, star2_N, star3_N under each country's prefix: uk_threshold_3...). Thresholds only:
+// the garage prices are left as they are (owner's choice, 2026-11-26).
+//   node tools/balance/propose.mjs [--write] [--countries=fr,uk]
 // Rules:
 //   - runs that never crashed are left out (a person always hits something)
 //   - 1 star  = MARGIN x the bare car's 25th percentile: passable with nothing bought
 //   - 3 stars, levels 1-2 = MARGIN x the bare car's 75th percentile
-//   - 3 stars, level N >= 3 = MARGIN x the median of the kit a player has around level N + AHEAD
+//   - 3 stars, level N >= 3 = MARGIN x the median of the kit a player has around level N + AHEAD (plan.mjs)
 //   - 2 stars = the geometric mean of 1 and 3 stars
-//   - a vehicle scores its damage factor (my_dmg_*) times the sports car with the same items:
-//     the autopilot measured every vehicle within 3 % of the sports car before the factor existed
-//   - garage: the sports car's items are priced by the level they should be bought at, from what
-//     a player earns by then (records near 2 stars); each other vehicle multiplies the prices
-//     (my_price_*, set here); everything for every vehicle costs
-//     the sum of the 3-star scores of levels 1-15
-// The runs (tools/balance/results/<setup>-<n>.json) were made with the levels' old order:
-// RUNS_ORDER maps each position to the level number the runs were made with: the runs from
-// before 2026-11-20's reorder used the old numbers; the runs since use the positions (identity).
-import { readFileSync, writeFileSync } from 'node:fs';
+//   - a vehicle scores its damage factor (my_dmg_*) times the sports car with every item
+// Scores and thresholds are in euros, the game's base unit; the game rounds them in each country's money.
+// The runs: tools/balance/results/<country>-<setup>-<level>.json (autopilot.spec.ts).
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { COUNTRIES, DMG, kit3, setup3 } from './plan.mjs';
 
 const WRITE = process.argv.includes('--write');
-const MARGIN = 0.9, AHEAD = 3, LAST_FULL = 15;
-const OLD_ORDER = [1, 2, 3, 4, 7, 5, 6, 8, 11, 15, 12, 10, 9, 14, 16, 17, 13, 18, 19]; // src/game/save.ts, for runs made before the reorder
-const RUNS_ORDER = process.argv.includes('--old-runs') ? OLD_ORDER : OLD_ORDER.map((_, i) => i + 1);
-const FIXED_T1 = { 3: 150000 }; // the ramp level: the autopilot handles the ramp badly; set by hand, to check in play
-const DMG = { van: 1.15, ambulance: 1.3, truck: 1.5, semi: 1.75 };
+const only = (process.argv.find(a => a.startsWith('--countries=')) || '').slice(12);
+const IDS = only ? only.split(',') : Object.keys(COUNTRIES);
+const MARGIN = 0.9;
+const FIXED_T1 = { fr: { 3: 150000 } }; // France's ramp level: the autopilot handles the ramp badly; set by hand, checked in play
 const config = JSON.parse(readFileSync('data/config.json', 'utf8'));
-const levels = JSON.parse(readFileSync('data/levels.json', 'utf8'));
-const runs = (setup, pos) => JSON.parse(readFileSync(`tools/balance/results/${setup}-${RUNS_ORDER[pos - 1]}.json`, 'utf8')).filter(r => r.crashed).map(r => r.final);
+const file = (c, setup, pos) => `tools/balance/results/${c}-${setup}-${pos}.json`;
+const runs = (c, setup, pos) => JSON.parse(readFileSync(file(c, setup, pos), 'utf8')).filter(r => r.crashed).map(r => r.final);
 const q = (xs, p) => { const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
-// the kit a player has by a position, and its median score on a level
-const kitAt = pos => pos <= 3 ? 'bare' : pos === 4 ? 'starter' : pos <= 6 ? 'dyn' : pos <= 9 ? 'mid' : pos <= 11 ? 'full'
-  : pos === 12 ? 'van' : pos <= 14 ? 'ambulance' : pos <= 16 ? 'truck' : 'semi';
-const kitMedian = (kit, pos) => DMG[kit] ? DMG[kit] * q(runs('full', pos), 0.5) : q(runs(kit, pos), 0.5);
 const round = n => n >= 1e6 ? Math.round(n / 5e4) * 5e4 : n >= 1e5 ? Math.round(n / 5e3) * 5e3 : Math.round(n / 500) * 500;
 const M = n => n >= 1e6 ? (n / 1e6).toFixed(2).replace('.', ',') + ' M' : Math.round(n / 1e3) + ' k';
+const val = k => config[k] && config[k].value;
 
-const N = levels.length, rows = [];
-for (let p = 1; p <= N; p++) {
-  const bare = runs('bare', p), oldN = p;
-  const t1 = FIXED_T1[p] ?? round(MARGIN * q(bare, 0.25));
-  const kit = p <= 2 ? 'bare p75' : kitAt(Math.min(N, p + AHEAD));
-  const ref = p <= 2 ? q(bare, 0.75) : kitMedian(kit, p);
-  const t3 = Math.max(round(MARGIN * ref), round(t1 * 1.5));
-  const t2 = round(Math.sqrt(t1 * t3));
-  const old = [config['threshold_' + p].value, (config['star2_' + p] || {}).value ?? config['threshold_' + p].value * config.star2.value, (config['star3_' + p] || {}).value ?? config['threshold_' + p].value * config.star3.value];
-  rows.push({ p, oldN, name: levels[p - 1].name, old, t: [t1, t2, t3], kit });
+const missing = [];
+for (const c of IDS) {
+  const { prefix, levels: lf } = COUNTRIES[c], levels = JSON.parse(readFileSync(lf, 'utf8')), N = levels.length;
+  console.log(`\n=== ${c} ===`);
+  console.log('pos  name                    old 1*/2*/3*                  new 1*/2*/3*                    3* from  (crashed runs bare/kit)');
+  const rows = [];
+  for (let p = 1; p <= N; p++) {
+    const need = [...new Set([file(c, 'bare', p), file(c, setup3(p, N), p)])].filter(f => !existsSync(f));
+    if (need.length) { missing.push(...need); continue; }
+    const bare = runs(c, 'bare', p), kit = kit3(p, N);
+    const kitRuns = p <= 2 ? bare : runs(c, setup3(p, N), p);
+    const t1 = FIXED_T1[c]?.[p] ?? round(MARGIN * q(bare, 0.25));
+    const ref = p <= 2 ? q(bare, 0.75) : (DMG[kit] || 1) * q(kitRuns, 0.5);
+    const t3 = Math.max(round(MARGIN * ref), round(t1 * 1.5));
+    const t2 = round(Math.sqrt(t1 * t3));
+    const t1Old = val(prefix + 'threshold_' + p);
+    const old = [t1Old, val(prefix + 'star2_' + p) ?? t1Old * val('star2'), val(prefix + 'star3_' + p) ?? t1Old * val('star3')];
+    rows.push({ p, t: [t1, t2, t3] });
+    console.log(String(p).padStart(3), ' ', levels[p - 1].name.padEnd(22), old.map(M).join(' / ').padEnd(30), [t1, t2, t3].map(M).join(' / ').padEnd(30), (p <= 2 ? 'bare p75' : kit).padEnd(9), `(${bare.length}/${kitRuns.length})`);
+  }
+  if (WRITE) {
+    const step = { min: 0, max: 60000000, step: 1000 };
+    for (const r of rows) {
+      const k1 = prefix + 'threshold_' + r.p;
+      if (!config[k1]) throw new Error('no ' + k1 + ' in data/config.json');
+      config[k1].value = r.t[0]; config[k1].max = Math.max(config[k1].max, r.t[0] * 2);
+      for (const [k, v] of [[prefix + 'star2_' + r.p, r.t[1]], [prefix + 'star3_' + r.p, r.t[2]]]) {
+        config[k] = Object.assign({}, step, config[k], { value: v });
+        config[k].max = Math.max(config[k].max, v * 2);
+      }
+    }
+  }
 }
-console.log('pos (old)  name                    old 1*/2*/3*                  new 1*/2*/3*                    3* needs');
-for (const r of rows) console.log(String(r.p).padStart(3), `(${r.oldN})`.padStart(5), ' ', r.name.padEnd(22), r.old.map(M).join(' / ').padEnd(30), r.t.map(M).join(' / ').padEnd(30), r.kit);
-
-// ---- the garage ---------------------------------------------------------------------------
-const CALENDAR = [ // the sports car's items, and the position each should be bought at
-  ['engine_cost_1', 3], ['bullbar_cost', 3], ['extratime_cost', 4], ['dynamite_cost', 5], ['engine_cost_2', 6], ['armor_cost', 7],
-  ['rocket_cost', 7], ['insurance_cost', 8], ['magnet_cost', 9], ['extratime2_cost', 9], ['dynamite2_cost', 10], ['engine_cost_3', 10],
-  ['rocket2_cost', 11], ['trex_cost', 11],
-];
-const earned2 = pos => rows.slice(0, pos).reduce((a, r) => a + r.t[1], 0); // records near 2 stars
-const earned3 = pos => rows.slice(0, pos).reduce((a, r) => a + r.t[2], 0); // records at 3 stars
-// each vehicle multiplies the item prices (my_price_*); everything for every vehicle costs the
-// 3-star sum of levels 1-15, so the sports car's full kit is that sum over (1 + the factors)
-const factor = { van: 1.3, ambulance: 1.6, truck: 2, semi: 2.5 };
-const goal = earned3(LAST_FULL);
-const B = goal / (1 + Object.values(factor).reduce((a, b) => a + b, 0));
-// an item's share of the sports car's kit follows what a player has earned by its level
-const rawSum = CALENDAR.reduce((a, [, pos]) => a + earned2(pos), 0);
-const price = {}; for (const [k, pos] of CALENDAR) price[k] = round(earned2(pos) * B / rawSum);
-
-console.log(`\nThe sports car, everything: old ${M(Object.keys(price).reduce((a, k) => a + config[k].value, 0))}, new ${M(B)}`);
-console.log('item               old        new   (bought at; the kit so far; earned by then near 2 stars)');
-let kitSoFar = 0;
-for (const [k, pos] of CALENDAR) { kitSoFar += price[k]; console.log(k.padEnd(17), M(config[k].value).padStart(8), M(price[k]).padStart(10), `  (${pos}; ${M(kitSoFar)}; ${M(earned2(pos))})`); }
-console.log('\nvehicle    damage   price factor old -> new   its full kit   total spent   3-star bank by');
-let cum = B;
-for (const [car, pos] of [['van', 12], ['ambulance', 14], ['truck', 15], ['semi', 15]]) {
-  cum += factor[car] * B;
-  console.log(car.padEnd(10), ('x' + DMG[car]).padEnd(8), `${config['my_price_' + car].value} -> ${factor[car]}`.padEnd(25), M(factor[car] * B).padStart(10), M(cum).padStart(13), `  ${pos}: ${M(earned3(pos))}`);
-}
-console.log(`everything, every vehicle: ${M(cum)}; the 3-star sum of levels 1-${LAST_FULL}: ${M(goal)}`);
+if (missing.length) console.log(`\nnot measured yet (${missing.length}): ${missing.slice(0, 8).join(', ')}${missing.length > 8 ? '...' : ''}`);
 
 if (WRITE) {
-  const set = (k, v) => { if (!config[k]) throw new Error('no ' + k + ' in data/config.json'); config[k].value = v; };
-  const add = (k, v, after, entry) => { config[k] = Object.assign({ value: v }, entry); };
-  for (const r of rows) {
-    set('threshold_' + r.p, r.t[0]);
-    const step = { min: 0, max: 60000000, step: 1000 };
-    add('star2_' + r.p, r.t[1], null, step); add('star3_' + r.p, r.t[2], null, step);
-  }
-  for (const k of Object.keys(price)) { set(k, price[k]); if (config[k].max < price[k] * 2) config[k].max = price[k] * 2; }
-  for (const car of Object.keys(factor)) { set('my_price_' + car, factor[car]); if (config['my_price_' + car].max < factor[car] * 2) config['my_price_' + car].max = Math.ceil(factor[car] * 2); }
-  for (const car of Object.keys(DMG)) add('my_dmg_' + car, DMG[car], null, { min: 1, max: 3, step: 0.05 });
-  for (let p = 1; p <= N; p++) { const k = 'threshold_' + p; config[k].max = Math.max(config[k].max, rows[p - 1].t[0] * 2); }
   // keep the file's one-entry-a-line shape
   const out = '{\n' + Object.entries(config).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v).replace(/,"/g, ', "').replace(/":/g, '": ').replace(/^\{/, '{ ').replace(/\}$/, ' }')}`).join(',\n') + '\n}\n';
   JSON.parse(out);

@@ -4,7 +4,8 @@
 /** A vehicle and its items, as the save stores them (item -> level). */
 export interface Setup { car: string; gear: Record<string, number> }
 
-const ALL = { engine: 3, bullbar: 1, armor: 1, dynamite: 1, dynamite2: 1, rocket: 1, rocket2: 1, magnet: 1, trex: 1, farmers: 1, insurance: 1, extratime: 1, extratime2: 1 };
+// everything; the country's own gadget (the farmers in France, the loch monster in the UK...) is added per run
+const ALL = { engine: 3, bullbar: 1, armor: 1, dynamite: 1, dynamite2: 1, rocket: 1, rocket2: 1, magnet: 1, trex: 1, insurance: 1, extratime: 1, extratime2: 1 };
 
 export const SETUPS: Record<string, Setup> = {
   bare: { car: 'sport', gear: {} },

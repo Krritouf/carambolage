@@ -4,14 +4,17 @@
 //   npm run build:single
 //   npx playwright test -c tools/balance/balance.config.ts
 //
-// Env: BALANCE_LEVELS=1-19 (or 1,3,5)   BALANCE_SEEDS=20   BALANCE_SETUPS=bare,full (names below)
-// Each (setup, level) writes tools/balance/results/<setup>-<level>.json: one row per run.
+// Env: BALANCE_COUNTRIES=fr,uk,jp,us,br (default all)   BALANCE_SEEDS=20   BALANCE_LEVELS=1-20 (or 1,3,5)
+//      BALANCE_SETUPS=bare,full: these setups on every level; left out, only what the star thresholds need
+//      (plan.mjs: the bare car on every level, then the one 3-star kit of each level), bare runs first.
+// Each (country, setup, level) writes tools/balance/results/<country>-<setup>-<level>.json: one row per run.
 // The browser profile is a fresh one: the player's own save is never read or touched.
 import { test, expect } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { SETUPS } from './setups';
+import { COUNTRIES, setup3 } from './plan.mjs';
 
 const config = JSON.parse(readFileSync(resolve('data/config.json'), 'utf8'));
 const tune: Record<string, number> = Object.fromEntries(Object.entries(config).map(([k, v]: [string, any]) => [k, typeof v === 'object' ? v.value : v]));
@@ -25,12 +28,22 @@ function range(spec: string, max: number): number[] {
   }
   return out;
 }
-const LEVELS = range(process.env.BALANCE_LEVELS || '1-19', 19);
 const SEEDS = Number(process.env.BALANCE_SEEDS) || 20;
-const SETUP_NAMES = (process.env.BALANCE_SETUPS || 'bare').split(',');
+const COUNTRY_IDS = (process.env.BALANCE_COUNTRIES || Object.keys(COUNTRIES).join(',')).split(',');
+/** The runs to make, in order: [country, setup, level]. */
+const PLAN: [string, string, number][] = [];
+for (const c of COUNTRY_IDS) {
+  const n = JSON.parse(readFileSync(resolve(COUNTRIES[c].levels), 'utf8')).length, levels = range(process.env.BALANCE_LEVELS || '1-' + n, n);
+  if (process.env.BALANCE_SETUPS) { for (const s of process.env.BALANCE_SETUPS.split(',')) for (const l of levels) PLAN.push([c, s, l]); continue; }
+  for (const l of levels) PLAN.push([c, 'bare', l]);
+}
+if (!process.env.BALANCE_SETUPS) for (const c of COUNTRY_IDS) {
+  const n = JSON.parse(readFileSync(resolve(COUNTRIES[c].levels), 'utf8')).length;
+  for (const l of range(process.env.BALANCE_LEVELS || '1-' + n, n)) if (setup3(l, n) !== 'bare') PLAN.push([c, setup3(l, n), l]);
+}
 
 /** One run, driven inside the page: returns what the result screen would show. */
-function drive(arg: { seed: number; dynR: number }): unknown {
+function drive(arg: { seed: number; dynR: number; used: string }): unknown {
   const g: any = window.game, st: any = g.state, p: any = st.player;
   // the policy's own dice, from the seed: each run tries a slightly different line and timing
   let s = arg.seed * 2654435761 >>> 0;
@@ -83,28 +96,31 @@ function drive(arg: { seed: number; dynR: number }): unknown {
       if (near >= 4 || st.countdown < 1.5) g.press('Space');
     }
     if (st.crashed && !st.trexUsed) g.press('KeyT');
-    if (st.crashed && !st.farmersUsed) g.press('KeyC'); // the farmers (France): with the T-Rex, the Jurassic combo
+    if (st.crashed && !st[arg.used]) g.press('KeyC'); // the country's gadget (the farmers in France: with the T-Rex, the Jurassic combo)
     g.step(1, false);
   }
   for (const k of KEYS) g.hold(k, false);
   return { scene: g.scene, final: st.final, damage: Math.round(st.damage), bonus: st.bonus, mult: st.mult, insK: st.insK,
-    stars: st.stars, crashed: st.crashed, steps: n, chal: (st.chal || []).map((c: any) => c.ok) };
+    stars: st.stars, crashed: st.crashed, steps: n, chal: (st.chal || []).map((c: any) => c.ok), gadget: !!st[arg.used], trex: !!st.trexUsed };
 }
 
-for (const setupName of SETUP_NAMES) for (const level of LEVELS) {
-  test(`${setupName} level ${level}`, async ({ page }) => {
-    const setup = SETUPS[setupName];
+for (const [c, setupName, level] of PLAN) {
+  test(`${c} ${setupName} level ${level}`, async ({ page }) => {
+    const setup = SETUPS[setupName], ctry = COUNTRIES[c];
     expect(setup, `unknown setup ${setupName}`).toBeTruthy();
-    const save = { best: [], unlocked: 19, up: { cars: ['sport', setup.car], car: setup.car, gear: { [setup.car]: setup.gear } }, spent: 0, done: {} };
+    expect(ctry, `unknown country ${c}`).toBeTruthy();
+    // the full kit takes the country's own gadget
+    const gear = setupName.endsWith('full') ? { ...setup.gear, [ctry.gadget]: 1 } : setup.gear;
+    const save = { lv: 3, countries: { [c]: { best: [], unlocked: 20, up: { cars: ['sport', setup.car], car: setup.car, gear: { [setup.car]: gear } }, spent: 0, done: {} } } };
     await page.addInitScript((s: string) => { localStorage.setItem('carambolage', s); localStorage.setItem('carambolage_settings', '{"sound":false,"vibrate":false,"lang":"fr"}'); }, JSON.stringify(save));
     const rows: unknown[] = [];
     for (let seed = 1; seed <= SEEDS; seed++) {
-      await page.goto(build(`manual=1&seed=${seed * 101}&scene=play&level=${level}`));
+      await page.goto(build(`manual=1&seed=${seed * 101}&scene=play&country=${c}&level=${level}`));
       await expect.poll(() => page.evaluate(() => typeof (window as any).game?.step)).toBe('function');
-      rows.push({ seed, ...(await page.evaluate(drive, { seed, dynR: tune.dynamite_radius }) as object) });
+      rows.push({ seed, ...(await page.evaluate(drive, { seed, dynR: tune.dynamite_radius, used: ctry.used }) as object) });
     }
     const out = process.env.BALANCE_OUT || 'tools/balance/results'; // another folder keeps a check from overwriting the reference runs
     mkdirSync(resolve(out), { recursive: true });
-    writeFileSync(resolve(`${out}/${setupName}-${level}.json`), JSON.stringify(rows));
+    writeFileSync(resolve(`${out}/${c}-${setupName}-${level}.json`), JSON.stringify(rows));
   });
 }

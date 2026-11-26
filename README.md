@@ -29,4 +29,4 @@ lines in `../CLAUDE.md` and `../project.yaml`, and a few lines in `../.gitignore
 | `npm run android:aab` | The signed bundle for the Play Store (raise `versionCode` in `android/app/build.gradle` first) |
 | `node tools/store-shots.mjs` | The Play Store screenshots again, after `npm run build:single` |
 | `node tools/brand/store-art.mjs` | The Play Store feature graphic again, after `npm run build:single` |
-| `node tools/brand/icon-art.mjs` | The icon again (the game's own cars), after `npm run build:single`; then `npm run android:assets` |
+| `node tools/brand/icon-art.mjs` | The icon again (drawn in `tools/brand/art.html`), and the 512 one for the store; then `npm run android:assets` |

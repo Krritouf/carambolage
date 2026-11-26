@@ -1,9 +1,9 @@
 <!doctype html>
 <!-- The app's icon and splash, drawn in code in the game's look, shot to PNG in assets/:
      ?what=icon -> icon-only.png, ?what=fg -> icon-foreground.png, ?what=bg -> icon-background.png
-     (1024 x 1024), ?what=splash -> splash.png (2732 x 2732). The icon's cars are the game's own,
-     shots/cars.png; tools/brand/icon-art.mjs renders them and shoots the three icon pictures.
-     Then npm run android:assets. The title is 'ready' once it is drawn. -->
+     (1024 x 1024), ?what=splash -> splash.png (2732 x 2732). The icon is its own drawing (cartoon cars and
+     fireball, icon()); tools/brand/icon-art.mjs shoots it. Then npm run android:assets.
+     The title is 'ready' once it is drawn. -->
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -83,26 +83,121 @@ function city() { // the game's crossroads: a boulevard across the middle, block
   };
   row(0, y0 - 80); row(y1 + 80, S);
 }
+// ---- the icon: two cartoon cars meeting in a fireball, drawn for its own sake (not the game's sprites) --------
+// round shapes, a dark outline round everything and soft gradients, so it still reads at 48 px
+const INK = '#1b1530';
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function lin(x0, y0, x1, y1, stops) { const l = g.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, c]) => l.addColorStop(o, c)); return l; }
+function rad(x, y, r0, r1, stops) { const l = g.createRadialGradient(x, y, r0, x, y, r1); stops.forEach(([o, c]) => l.addColorStop(o, c)); return l; }
+/** A car seen from above, front towards +x, centred on (cx, cy), turned by a; kind 'sport' or 'taxi'. */
+function toonCar(cx, cy, a, L, kind) {
+  const W = L * 0.5, body = kind === 'taxi' ? ['#ffe14d', '#ffc41f', '#d99a00'] : ['#ff5a4f', '#f0262b', '#a8121c'];
+  g.save(); g.translate(cx, cy); g.rotate(a);
+  // its shadow, soft
+  g.save(); g.filter = 'blur(14px)'; g.fillStyle = 'rgba(8,4,20,0.55)'; rr(-L / 2 + 14, -W / 2 + 22, L, W, W * 0.32); g.fill(); g.restore();
+  // the wheels, peeking out
+  g.fillStyle = '#17131f'; for (const u of [-0.3, 0.3]) for (const v of [-1, 1]) { rr(L * u - L * 0.1, v * W * 0.5 - W * 0.13, L * 0.2, W * 0.26, 12); g.fill(); }
+  // the body: its side (darker) under its top
+  g.lineWidth = 12; g.strokeStyle = INK; g.lineJoin = 'round';
+  rr(-L / 2, -W / 2, L, W, W * 0.32); g.fillStyle = body[2]; g.fill(); g.stroke();
+  rr(-L / 2 + 8, -W / 2 + 6, L - 16, W - 22, W * 0.28); g.fillStyle = lin(0, -W / 2, 0, W / 2, [[0, body[0]], [0.55, body[1]], [1, body[2]]]); g.fill();
+  // a shine along the top edge
+  g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 6; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-L * 0.4, -W * 0.36); g.lineTo(L * 0.38, -W * 0.36); g.stroke();
+  if (kind === 'sport') { // two white racing stripes, nose to tail
+    g.fillStyle = '#ffffff'; for (const v of [-0.115, 0.025]) { rr(-L / 2 + 10, v * W, L - 20, W * 0.09, 6); g.fill(); }
+  } else { // the taxi's chequered band down both sides
+    const n = 12, cw = (L * 0.62) / n;
+    for (const v of [-1, 1]) for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) {
+      g.fillStyle = (i + j) % 2 ? '#1d1a26' : '#ffffff';
+      g.fillRect(-L * 0.31 + i * cw, v > 0 ? W * 0.27 + j * cw * 0.7 : -W * 0.4 + j * cw * 0.7, cw, cw * 0.7);
+    }
+  }
+  // the cabin: dark glass all round, the roof on top
+  const cx0 = -L * 0.2, cl = L * 0.44, cw0 = W * 0.7;
+  rr(cx0, -cw0 / 2 - W * 0.04, cl, cw0, 30); g.fillStyle = lin(cx0, 0, cx0 + cl, 0, [[0, '#2a3566'], [1, '#121a3a']]); g.fill();
+  g.lineWidth = 7; g.strokeStyle = INK; g.stroke();
+  // windscreen shine
+  g.fillStyle = 'rgba(190,220,255,0.55)'; g.beginPath(); g.moveTo(cx0 + cl - 30, -cw0 * 0.42); g.lineTo(cx0 + cl - 12, -cw0 * 0.42); g.lineTo(cx0 + cl - 40, cw0 * 0.3); g.lineTo(cx0 + cl - 58, cw0 * 0.3); g.closePath(); g.fill();
+  rr(cx0 + cl * 0.18, -cw0 * 0.36 - W * 0.04, cl * 0.56, cw0 * 0.72, 18); g.fillStyle = lin(0, -cw0 / 2, 0, cw0 / 2, [[0, body[0]], [1, body[1]]]); g.fill();
+  if (kind === 'sport') { g.fillStyle = '#ffffff'; for (const v of [-0.115, 0.025]) { rr(cx0 + cl * 0.18, v * W, cl * 0.56, W * 0.09, 4); g.fill(); } }
+  else { // the roof sign
+    rr(cx0 + cl * 0.34, -W * 0.2, cl * 0.24, W * 0.32, 8); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 5; g.strokeStyle = INK; g.stroke();
+    g.fillStyle = '#1d1a26'; g.font = 'bold ' + Math.round(W * 0.13) + 'px "Trebuchet MS", Verdana, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.save(); g.translate(cx0 + cl * 0.46, -W * 0.04); g.rotate(Math.PI / 2); g.fillText('TAXI', 0, 0); g.restore();
+  }
+  // lights: the headlamps glowing at the front, red ones at the back
+  g.save(); g.shadowColor = '#fff2a8'; g.shadowBlur = 24; g.fillStyle = '#fffbe0';
+  for (const v of [-1, 1]) { rr(L / 2 - 22, v * W * 0.3 - 13, 16, 26, 7); g.fill(); }
+  g.restore(); g.fillStyle = '#ff3355'; for (const v of [-1, 1]) { rr(-L / 2 + 6, v * W * 0.3 - 12, 12, 24, 6); g.fill(); }
+  g.restore();
+}
+/** A round cartoon fireball: puffs of smoke, curling flames, a hot core. */
+function fireball(x, y, R) {
+  const puffs = (n, dist, r0, r1, rot) => { const out = []; for (let i = 0; i < n; i++) { const an = rot + i * Math.PI * 2 / n + (rnd() - 0.5) * 0.3, d = dist * (0.85 + rnd() * 0.3); out.push([x + Math.cos(an) * d, y + Math.sin(an) * d, r0 + rnd() * (r1 - r0)]); } return out; };
+  const blob = (list) => { g.beginPath(); for (const [px, py, r] of list) { g.moveTo(px + r, py); g.arc(px, py, r, 0, Math.PI * 2); } };
+  // smoke behind
+  const smoke = puffs(11, R * 0.82, R * 0.2, R * 0.3, 0.2);
+  blob(smoke); g.lineWidth = 12; g.strokeStyle = INK; g.stroke(); g.fillStyle = rad(x, y, R * 0.4, R * 1.1, [[0, '#7a6a9e'], [1, '#463a68']]); g.fill();
+  // flames licking out: wide at the fire, a round tip, bent a little
+  for (let i = 0; i < 8; i++) {
+    const an = i * Math.PI * 2 / 8 + 0.35 + (rnd() - 0.5) * 0.3, len = R * (0.95 + rnd() * 0.25), wid = R * 0.26, tr = wid * 0.42, bend = (rnd() - 0.5) * 0.5;
+    g.save(); g.translate(x, y); g.rotate(an);
+    g.beginPath(); g.moveTo(R * 0.3, -wid);
+    g.bezierCurveTo(len * 0.55, -wid * 1.25, len - tr * 1.2, -tr * 1.3 + bend * tr, len - tr, -tr + bend * tr);
+    g.arc(len - tr, bend * tr, tr, -Math.PI / 2, Math.PI / 2);
+    g.bezierCurveTo(len - tr * 1.2, tr * 1.3 + bend * tr, len * 0.55, wid * 1.25, R * 0.3, wid); g.closePath();
+    g.lineWidth = 10; g.strokeStyle = INK; g.lineJoin = 'round'; g.stroke(); g.fillStyle = lin(R * 0.3, 0, len, 0, [[0, '#ffb43a'], [0.55, '#ff7a1a'], [1, '#ff4a1c']]); g.fill();
+    g.restore();
+  }
+  // the fire: one round mass, outlined, hot inside
+  const fire = puffs(9, R * 0.45, R * 0.3, R * 0.4, 0);
+  blob(fire); g.lineWidth = 12; g.strokeStyle = INK; g.stroke();
+  g.fillStyle = rad(x, y, R * 0.05, R * 0.85, [[0, '#fffbe0'], [0.3, '#ffe066'], [0.62, '#ff9a1f'], [1, '#ff4a1c']]); g.fill();
+  const core = puffs(7, R * 0.2, R * 0.18, R * 0.24, 0.5);
+  blob(core); g.fillStyle = rad(x, y, 0, R * 0.42, [[0, '#ffffff'], [0.5, '#fffbe0'], [1, '#ffe066']]); g.fill();
+}
+/** Glowing sparks shooting out, and a few bits of car flying. */
+function sparksAndBits(x, y, R) {
+  g.save(); g.lineCap = 'round'; g.shadowColor = '#ffb000'; g.shadowBlur = 18;
+  for (let i = 0; i < 22; i++) {
+    const an = rnd() * Math.PI * 2, d0 = R * (0.95 + rnd() * 0.25), d1 = d0 + R * (0.12 + rnd() * 0.22);
+    g.strokeStyle = rnd() < 0.5 ? '#fff6c2' : '#ffd23f'; g.lineWidth = 7 + rnd() * 6;
+    g.beginPath(); g.moveTo(x + Math.cos(an) * d0, y + Math.sin(an) * d0); g.lineTo(x + Math.cos(an) * d1, y + Math.sin(an) * d1); g.stroke();
+  }
+  g.restore();
+  const bits = [['#f0262b', -2.4, 1.32], ['#ffc41f', 0.9, 1.38], ['#ffc41f', -0.9, 1.3], ['#f0262b', 2.5, 1.25], ['#9aa3b5', 1.9, 1.4]];
+  for (const [c, an, k] of bits) {
+    const bx = x + Math.cos(an) * R * k, by = y + Math.sin(an) * R * k, s = R * 0.09;
+    g.save(); g.translate(bx, by); g.rotate(an * 3);
+    g.beginPath(); g.moveTo(-s, -s * 0.6); g.lineTo(s * 0.9, -s * 0.8); g.lineTo(s * 0.7, s * 0.7); g.lineTo(-s * 0.8, s * 0.5); g.closePath();
+    g.lineWidth = 7; g.strokeStyle = INK; g.lineJoin = 'round'; g.stroke(); g.fillStyle = c; g.fill(); g.restore();
+  }
+}
+function icon() {
+  g.fillStyle = rad(S / 2, S / 2, 40, S * 0.62, [[0, '#45307e'], [1, '#1b1530']]); g.fillRect(0, 0, S, S);
+  // soft rays from the crash
+  const I = [S * 0.5, S * 0.47];
+  g.save(); g.globalAlpha = 0.06; g.fillStyle = '#ffd86b';
+  for (let i = 0; i < 12; i++) { const a0 = i * Math.PI / 6 + 0.1; g.beginPath(); g.moveTo(I[0], I[1]); g.arc(I[0], I[1], S * 0.6, a0, a0 + 0.1); g.closePath(); g.fill(); }
+  g.restore();
+  // the cars nose to nose, their fronts in the fire; the fire small enough to leave them seen
+  // all of it a little smaller round the middle, clear of the edges a round or squircle mask cuts
+  g.save(); g.translate(S / 2, S / 2); g.scale(0.84, 0.84); g.translate(-S / 2 + 18, -S / 2 - 20);
+  const L = 420, a1 = -0.62, a2 = a1 + Math.PI + 0.55, R = S * 0.15;
+  toonCar(I[0] - Math.cos(a2) * L * 0.6, I[1] - Math.sin(a2) * L * 0.6, a2, L * 0.94, 'taxi');
+  toonCar(I[0] - Math.cos(a1) * L * 0.62, I[1] - Math.sin(a1) * L * 0.62, a1, L, 'sport');
+  fireball(I[0], I[1], R);
+  sparksAndBits(I[0], I[1], R);
+  g.restore();
+}
 g.fillStyle = '#1b1530'; g.fillRect(0, 0, S, S);
 if (what === 'bg') { // the adaptive icon's background: the violet glow alone
   const grd = g.createRadialGradient(S / 2, S / 2, 40, S / 2, S / 2, S * 0.6); grd.addColorStop(0, '#3b2a6e'); grd.addColorStop(1, '#1b1530');
   g.fillStyle = grd; g.fillRect(0, 0, S, S);
 } else if (what === 'icon' || what === 'fg') {
-  // fg: the adaptive icon's foreground; Android shows only its middle two thirds, so the crash is drawn smaller
-  // fg is the whole icon: the assets tool insets it by a sixth, to Android's safe zone
-  // a dark glow behind, the crash in the middle (the adaptive icon keeps the centre)
-  const grd = g.createRadialGradient(S / 2, S / 2, 40, S / 2, S / 2, S * 0.6); grd.addColorStop(0, '#3b2a6e'); grd.addColorStop(1, '#1b1530');
-  g.fillStyle = grd; g.fillRect(0, 0, S, S);
-  burst(S * 0.5, S * 0.46, S * 0.3);
-  // the cars as the game draws them (shots/cars.png, made by icon-art.mjs), else the old drawn ones
-  const cars = new Image();
-  cars.onload = () => { g.drawImage(cars, 0, 0, S, S); sparks(S * 0.5, S * 0.46, S * 0.22, 70, 14); document.title = 'ready'; };
-  cars.onerror = () => {
-    car(S * 0.62, S * 0.38, Math.PI * 0.62, 1.0, '#ffd21f', 'taxi');
-    car(S * 0.4, S * 0.6, -Math.PI * 0.27, 1.12, '#ff2d2d', 'player');
-    sparks(S * 0.5, S * 0.46, S * 0.22, 70, 14); document.title = 'ready';
-  };
-  cars.src = 'shots/cars.png';
+  // fg is the whole icon: the assets tool insets it by a sixth, to Android's safe zone; the crash keeps to the middle
+  icon();
 } else {
   city();
   const cx = S / 2, cy = S / 2 + 90;
@@ -115,7 +210,7 @@ if (what === 'bg') { // the adaptive icon's background: the violet glow alone
   g.lineWidth = 34; g.lineJoin = 'round'; g.strokeStyle = '#1b1530'; g.strokeText('CARAMBOLAGE', 0, 0);
   g.fillStyle = '#ffc83d'; g.fillText('CARAMBOLAGE', 0, 0); g.restore();
 }
-if (what !== 'icon' && what !== 'fg') document.title = 'ready';
+document.title = 'ready';
 </script>
 </body>
 </html>

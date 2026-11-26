@@ -11,7 +11,7 @@ lines in `../CLAUDE.md` and `../project.yaml`, and a few lines in `../.gitignore
 | `assets/` | The icon and the opening picture (drawn by `tools/brand/art.html`) |
 | `tests/` | Unit tests (Vitest) and the in-browser tests (Playwright) |
 | `android/` | The Android app (Capacitor). `keystore.properties` names the Play Store key and is never committed |
-| `store/` | The Play Store art: the feature graphic and the screenshots, in French and English |
+| `store/` | The Play Store art: the 512 icon, the feature graphic and the screenshots, in French and English |
 | `tools/` | The APK/AAB build, the store screenshots, the icon and banner drawings |
 | `design/game-brief.md` | The game's brief: what it is and every feature added |
 | `prototype/` | The first one-file version of the game, kept as it was |
@@ -28,3 +28,5 @@ lines in `../CLAUDE.md` and `../project.yaml`, and a few lines in `../.gitignore
 | `npm run android:apk` | A test APK for your phone |
 | `npm run android:aab` | The signed bundle for the Play Store (raise `versionCode` in `android/app/build.gradle` first) |
 | `node tools/store-shots.mjs` | The Play Store screenshots again, after `npm run build:single` |
+| `node tools/brand/store-art.mjs` | The Play Store feature graphic again, after `npm run build:single` |
+| `node tools/brand/icon-art.mjs` | The icon again (the game's own cars), after `npm run build:single`; then `npm run android:assets` |

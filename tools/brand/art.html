@@ -1,7 +1,9 @@
 <!doctype html>
 <!-- The app's icon and splash, drawn in code in the game's look, shot to PNG in assets/:
      ?what=icon -> icon-only.png, ?what=fg -> icon-foreground.png, ?what=bg -> icon-background.png
-     (1024 x 1024), ?what=splash -> splash.png (2732 x 2732). Then npm run android:assets. -->
+     (1024 x 1024), ?what=splash -> splash.png (2732 x 2732). The icon's cars are the game's own,
+     shots/cars.png; tools/brand/icon-art.mjs renders them and shoots the three icon pictures.
+     Then npm run android:assets. The title is 'ready' once it is drawn. -->
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -92,9 +94,15 @@ if (what === 'bg') { // the adaptive icon's background: the violet glow alone
   const grd = g.createRadialGradient(S / 2, S / 2, 40, S / 2, S / 2, S * 0.6); grd.addColorStop(0, '#3b2a6e'); grd.addColorStop(1, '#1b1530');
   g.fillStyle = grd; g.fillRect(0, 0, S, S);
   burst(S * 0.5, S * 0.46, S * 0.3);
-  car(S * 0.62, S * 0.38, Math.PI * 0.62, 1.0, '#ffd21f', 'taxi');
-  car(S * 0.4, S * 0.6, -Math.PI * 0.27, 1.12, '#ff2d2d', 'player');
-  sparks(S * 0.5, S * 0.46, S * 0.22, 70, 14);
+  // the cars as the game draws them (shots/cars.png, made by icon-art.mjs), else the old drawn ones
+  const cars = new Image();
+  cars.onload = () => { g.drawImage(cars, 0, 0, S, S); sparks(S * 0.5, S * 0.46, S * 0.22, 70, 14); document.title = 'ready'; };
+  cars.onerror = () => {
+    car(S * 0.62, S * 0.38, Math.PI * 0.62, 1.0, '#ffd21f', 'taxi');
+    car(S * 0.4, S * 0.6, -Math.PI * 0.27, 1.12, '#ff2d2d', 'player');
+    sparks(S * 0.5, S * 0.46, S * 0.22, 70, 14); document.title = 'ready';
+  };
+  cars.src = 'shots/cars.png';
 } else {
   city();
   const cx = S / 2, cy = S / 2 + 90;
@@ -107,6 +115,7 @@ if (what === 'bg') { // the adaptive icon's background: the violet glow alone
   g.lineWidth = 34; g.lineJoin = 'round'; g.strokeStyle = '#1b1530'; g.strokeText('CARAMBOLAGE', 0, 0);
   g.fillStyle = '#ffc83d'; g.fillText('CARAMBOLAGE', 0, 0); g.restore();
 }
+if (what !== 'icon' && what !== 'fg') document.title = 'ready';
 </script>
 </body>
 </html>
